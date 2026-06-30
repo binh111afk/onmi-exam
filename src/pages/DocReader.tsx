@@ -221,21 +221,27 @@ export const DocReader: React.FC<DocReaderProps> = ({
           </div>
 
           {leftSidebarOpen ? (
-            <div className="space-y-1">
-              {doc.chapters.map((ch, idx) => (
-                <button
-                  key={ch.id}
-                  onClick={() => setActiveChapterIdx(idx)}
-                  className={`w-full text-left px-3 py-2 text-xs font-medium rounded-btn flex items-start gap-2 transition-default leading-relaxed ${
-                    activeChapterIdx === idx
-                      ? 'bg-primary-light text-primary border-l-2 border-primary'
-                      : 'text-text-secondary hover:bg-slate-50 hover:text-text-primary'
-                  }`}
-                >
-                  <FileText size={14} className="shrink-0 mt-0.5" />
-                  <span>{ch.title}</span>
-                </button>
-              ))}
+            <div className="space-y-1 relative pl-2.5 border-l border-slate-200 ml-1.5">
+              {doc.chapters.map((ch, idx) => {
+                const isActive = activeChapterIdx === idx;
+                return (
+                  <button
+                    key={ch.id}
+                    onClick={() => setActiveChapterIdx(idx)}
+                    className={`w-full text-left px-2.5 py-1.5 text-xs transition-default leading-relaxed flex items-start gap-2 select-none relative ${
+                      isActive
+                        ? 'text-primary font-bold'
+                        : 'text-text-secondary hover:text-text-primary font-medium'
+                    }`}
+                  >
+                    {isActive && (
+                      <span className="absolute -left-[14px] top-2.5 h-2 w-2 rounded-full bg-primary border border-white"></span>
+                    )}
+                    <FileText size={13} className="shrink-0 mt-0.5" />
+                    <span>{ch.title}</span>
+                  </button>
+                );
+              })}
             </div>
           ) : (
             <div className="space-y-3 flex flex-col items-center">
@@ -272,7 +278,7 @@ export const DocReader: React.FC<DocReaderProps> = ({
               >
                 <ZoomOut size={16} />
               </button>
-              <span className="font-mono text-text-secondary select-none" title="Kích cỡ phông chữ">{zoomSize}px</span>
+              <span className="text-text-secondary select-none font-bold" title="Kích cỡ phông chữ">{zoomSize}px</span>
               <button
                 onClick={zoomIn}
                 disabled={zoomSize >= 24}
@@ -336,9 +342,9 @@ export const DocReader: React.FC<DocReaderProps> = ({
                 className="flex items-center gap-1 font-semibold disabled:opacity-40 transition-default"
               >
                 <ChevronLeft size={16} />
-                Chương trước
+                 Chương trước
               </button>
-              <span className="font-mono opacity-80">
+              <span className="opacity-80 font-bold">
                 {activeChapterIdx + 1} / {doc.chapters.length}
               </span>
               <button
@@ -498,8 +504,8 @@ export const DocReader: React.FC<DocReaderProps> = ({
                 <div className="space-y-2">
                   {historyLog.map((log, i) => (
                     <div key={i} className="flex justify-between items-center text-xs text-text-secondary py-1 border-b border-slate-50 last:border-0">
-                      <span className="font-medium text-text-primary">{log.event}</span>
-                      <span className="text-[10px] font-mono">{log.time}</span>
+                       <span className="font-medium text-text-primary">{log.event}</span>
+                      <span className="text-[10px] font-bold text-text-muted">{log.time}</span>
                     </div>
                   ))}
                 </div>
@@ -510,19 +516,19 @@ export const DocReader: React.FC<DocReaderProps> = ({
         </main>
 
         {/* Right Column: Table of Contents (Col span 2) */}
-        <aside className="lg:col-span-2 sticky top-24 space-y-4 border-l border-slate-100 pl-4">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-text-primary pb-1">
+        <aside className="lg:col-span-2 sticky top-24 space-y-4 border-l border-slate-200 pl-4 select-none">
+          <h4 className="text-[10px] font-bold uppercase tracking-wider text-text-primary pb-1">
             Mục lục chương
           </h4>
           
           {headings.length > 0 ? (
-            <div className="space-y-2 text-[11px] leading-relaxed text-text-secondary">
+            <div className="space-y-2.5 text-[10px] leading-relaxed text-text-secondary">
               {headings.map(h => (
                 <button
                   key={h.id}
                   onClick={() => handleHeadingClick(h.id)}
                   className={`w-full text-left block hover:text-primary transition-default ${
-                    h.tag === 'h3' ? 'pl-3 font-normal opacity-85' : 'font-medium text-text-primary/95'
+                    h.tag === 'h3' ? 'pl-3 font-normal opacity-85' : 'font-bold text-text-primary/90'
                   }`}
                 >
                   {h.text}
@@ -530,7 +536,7 @@ export const DocReader: React.FC<DocReaderProps> = ({
               ))}
             </div>
           ) : (
-            <p className="text-[10px] text-text-secondary italic">Chương này không có tiểu mục phụ.</p>
+            <p className="text-[9px] text-text-secondary italic">Chương này không có tiểu mục phụ.</p>
           )}
         </aside>
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { initialUser, mockExams, mockDocuments, mockLeaderboard } from './data/mockData';
 import type { User } from './types';
 import { Navbar } from './components/Navbar';
+import { Sidebar } from './components/Sidebar';
 import { Footer } from './components/Footer';
 import { Home } from './pages/Home';
 import { Exams } from './pages/Exams';
@@ -14,6 +15,8 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { About } from './pages/About';
 import { Contact } from './pages/Contact';
+import { Blog } from './pages/Blog';
+import { Profile } from './pages/Profile';
 
 function App() {
   // Global States
@@ -124,6 +127,13 @@ function App() {
     });
   };
 
+  const handleUpdateProfile = (updatedData: Partial<User>) => {
+    setUser((prev) => ({
+      ...prev,
+      ...updatedData,
+    }));
+  };
+
   // View routers
   const handleSelectExam = (id: string) => {
     setSelectedExamId(id);
@@ -171,85 +181,104 @@ function App() {
         />
       )}
 
-      {/* Main Container */}
-      <div className="flex-1 w-full">
-        {view === 'home' && (
-          <Home
-            user={user}
-            onViewChange={handleViewChange}
-            featuredExams={mockExams}
-            featuredDocs={mockDocuments}
-            onSelectExam={handleSelectExam}
-            onSelectDoc={handleSelectDoc}
-            onStartExam={handleStartExam}
-          />
+      {/* Main Container: Split sidebar + viewport */}
+      <div className="flex-1 w-full flex overflow-hidden">
+        {showHeaderFooter && (
+          <Sidebar currentView={view} onViewChange={handleViewChange} />
         )}
 
-        {view === 'exams' && (
-          <Exams
-            exams={mockExams}
-            onSelectExam={handleSelectExam}
-            onStartExam={handleStartExam}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-          />
-        )}
+        {/* Viewport with its own scrollbar */}
+        <div className="flex-1 overflow-y-auto bg-slate-50/50 flex flex-col h-[calc(100vh-3.5rem)]">
+          <div className="flex-1">
+            {view === 'home' && (
+              <Home
+                user={user}
+                onViewChange={handleViewChange}
+                featuredExams={mockExams}
+                featuredDocs={mockDocuments}
+                onSelectExam={handleSelectExam}
+                onSelectDoc={handleSelectDoc}
+                onStartExam={handleStartExam}
+              />
+            )}
 
-        {view === 'exam-detail' && (
-          <ExamDetail
-            exam={activeExam}
-            user={user}
-            onBack={() => handleViewChange('exams')}
-            onStartExam={handleStartExam}
-            onSaveToggle={handleSaveExamToggle}
-            isSaved={user.savedExams.includes(activeExam.id)}
-          />
-        )}
+            {view === 'exams' && (
+              <Exams
+                exams={mockExams}
+                onSelectExam={handleSelectExam}
+                onStartExam={handleStartExam}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+              />
+            )}
 
-        {view === 'active-exam' && (
-          <ActiveExam
-            exam={activeExam}
-            user={user}
-            onFinishExam={handleFinishExam}
-            onExit={() => handleSelectExam(activeExam.id)}
-          />
-        )}
+            {view === 'exam-detail' && (
+              <ExamDetail
+                exam={activeExam}
+                user={user}
+                onBack={() => handleViewChange('exams')}
+                onStartExam={handleStartExam}
+                onSaveToggle={handleSaveExamToggle}
+                isSaved={user.savedExams.includes(activeExam.id)}
+              />
+            )}
 
-        {view === 'documents' && (
-          <Documents
-            documents={mockDocuments}
-            onSelectDoc={handleSelectDoc}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-          />
-        )}
+            {view === 'active-exam' && (
+              <ActiveExam
+                exam={activeExam}
+                user={user}
+                onFinishExam={handleFinishExam}
+                onExit={() => handleSelectExam(activeExam.id)}
+              />
+            )}
 
-        {view === 'doc-reader' && (
-          <DocReader
-            doc={activeDoc}
-            user={user}
-            onBack={() => handleViewChange('documents')}
-            onSaveNotes={handleSaveNotes}
-            onBookmarkToggle={handleBookmarkToggle}
-            relatedExams={relatedExams}
-            relatedDocs={relatedDocs}
-            onSelectDoc={handleSelectDoc}
-            onSelectExam={handleSelectExam}
-          />
-        )}
+            {view === 'documents' && (
+              <Documents
+                documents={mockDocuments}
+                onSelectDoc={handleSelectDoc}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+              />
+            )}
 
-        {view === 'leaderboard' && <Leaderboard entries={mockLeaderboard} />}
+            {view === 'doc-reader' && (
+              <DocReader
+                doc={activeDoc}
+                user={user}
+                onBack={() => handleViewChange('documents')}
+                onSaveNotes={handleSaveNotes}
+                onBookmarkToggle={handleBookmarkToggle}
+                relatedExams={relatedExams}
+                relatedDocs={relatedDocs}
+                onSelectDoc={handleSelectDoc}
+                onSelectExam={handleSelectExam}
+              />
+            )}
 
-        {view === 'login' && <Login onLoginSuccess={handleLoginSuccess} onViewChange={handleViewChange} />}
+            {view === 'leaderboard' && <Leaderboard entries={mockLeaderboard} />}
 
-        {view === 'register' && <Register onRegisterSuccess={handleRegisterSuccess} onViewChange={handleViewChange} />}
+            {view === 'login' && <Login onLoginSuccess={handleLoginSuccess} onViewChange={handleViewChange} />}
 
-        {view === 'about' && <About />}
+            {view === 'register' && <Register onRegisterSuccess={handleRegisterSuccess} onViewChange={handleViewChange} />}
 
-        {view === 'contact' && <Contact />}
+            {view === 'about' && <About />}
+
+            {view === 'contact' && <Contact />}
+
+            {view === 'blog' && <Blog />}
+
+            {view === 'profile' && (
+              <Profile
+                user={user}
+                onUpdateProfile={handleUpdateProfile}
+                onViewChange={handleViewChange}
+              />
+            )}
+          </div>
+          
+          {showHeaderFooter && <Footer onViewChange={handleViewChange} />}
+        </div>
       </div>
-
-      {showHeaderFooter && <Footer onViewChange={handleViewChange} />}
     </div>
   );
 }

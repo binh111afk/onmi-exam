@@ -105,15 +105,38 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ entries }) => {
 
                   {/* Badges list */}
                   <td className="py-4 px-4 hidden md:table-cell">
-                    <div className="flex flex-wrap gap-1">
-                      {entry.badges.map((badge, idx) => (
-                        <span
-                          key={idx}
-                          className="text-[9px] font-medium bg-slate-50 text-slate-600 px-2 py-0.5 rounded border border-slate-100/50"
-                        >
-                          {badge}
-                        </span>
-                      ))}
+                    <div className="flex flex-wrap gap-1.5">
+                      {entry.badges.map((badge) => {
+                        let theme = 'bg-slate-50 border-slate-200 text-slate-700';
+                        let emoji = '🏅';
+
+                        if (badge.includes('Lý thuyết')) {
+                          theme = 'bg-blue-50 border-blue-200/50 text-blue-700';
+                          emoji = '📖';
+                        } else if (badge.includes('chiến binh') || badge.includes('Chiến binh')) {
+                          theme = 'bg-red-50 border-red-200/50 text-red-700';
+                          emoji = '🔥';
+                        } else if (badge.includes('bền bỉ') || badge.includes('Chăm chỉ')) {
+                          theme = 'bg-emerald-50 border-emerald-200/50 text-emerald-700';
+                          emoji = '⚡';
+                        } else if (badge.includes('Vô địch') || badge.includes('Top')) {
+                          theme = 'bg-amber-50 border-amber-250/50 text-amber-700';
+                          emoji = '🏆';
+                        } else if (badge.includes('Sáng tạo')) {
+                          theme = 'bg-purple-50 border-purple-200/50 text-purple-700';
+                          emoji = '💡';
+                        }
+
+                        return (
+                          <span
+                            key={badge}
+                            className={`text-[9px] font-bold px-2.5 py-0.5 border rounded-full flex items-center gap-1 shadow-sm transition-all duration-200 hover:scale-[1.02] ${theme}`}
+                          >
+                            <span>{emoji}</span>
+                            <span>{badge}</span>
+                          </span>
+                        );
+                      })}
                     </div>
                   </td>
                 </tr>

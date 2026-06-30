@@ -145,7 +145,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
         {/* Timer and Action */}
         <div className="flex items-center gap-4">
           {!isSubmitted && (
-            <div className={`flex items-center gap-1.5 font-mono text-sm font-semibold px-3 py-1.5 rounded-btn border ${
+            <div className={`flex items-center gap-1.5 text-sm font-bold px-3 py-1.5 rounded-btn border ${
               timeLeft < 300 
                 ? 'bg-danger-light text-danger border-danger/25 animate-pulse' 
                 : 'bg-slate-50 text-text-primary border-slate-200'
@@ -241,29 +241,26 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
                   const letter = String.fromCharCode(65 + oIdx);
                   const isSelected = answers[currentQuestion.id] === oIdx;
                   
-                  // Styling overrides for answers review
-                  let optionStyle = 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/50';
-                  let letterStyle = 'bg-slate-100 text-text-secondary';
+                  // Tactile keycap styling
+                  let optionStyle = 'border-slate-200 border-b-[3.5px] hover:border-slate-300 hover:bg-slate-50/50 active:translate-y-[1px] active:border-b-[2.5px]';
+                  let letterStyle = 'bg-slate-100 text-text-secondary border-b border-slate-200';
 
                   if (isSelected && !isSubmitted) {
-                    optionStyle = 'border-primary bg-primary-light/10 ring-1 ring-primary/20';
-                    letterStyle = 'bg-primary text-white';
+                    optionStyle = 'border-primary border-b-[3.5px] border-b-primary-hover bg-primary-light/10 active:translate-y-[1px] active:border-b-[2.5px]';
+                    letterStyle = 'bg-primary text-white border-b border-primary-hover';
                   }
 
                   if (isSubmitted) {
                     const isCorrect = currentQuestion.correctOptionIndex === oIdx;
                     if (isCorrect) {
-                      // Correct option is emerald
-                      optionStyle = 'border-success bg-success-light/20 text-success';
-                      letterStyle = 'bg-success text-white';
+                      optionStyle = 'border-success border-b-[3.5px] border-b-success-hover bg-success-light/10 text-success pointer-events-none';
+                      letterStyle = 'bg-success text-white border-b border-success-hover';
                     } else if (isSelected) {
-                      // Selected wrong option is red
-                      optionStyle = 'border-danger bg-danger-light/20 text-danger';
-                      letterStyle = 'bg-danger text-white';
+                      optionStyle = 'border-danger border-b-[3.5px] border-b-danger-hover bg-danger-light/10 text-danger pointer-events-none';
+                      letterStyle = 'bg-danger text-white border-b border-danger-hover';
                     } else {
-                      // Others are grayed out
-                      optionStyle = 'border-slate-100 text-text-secondary opacity-65';
-                      letterStyle = 'bg-slate-50 text-slate-400';
+                      optionStyle = 'border-slate-100 border-b text-text-secondary opacity-50 pointer-events-none';
+                      letterStyle = 'bg-slate-50 text-slate-450';
                     }
                   }
 
@@ -274,7 +271,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
                       onClick={() => handleSelectOption(currentQuestion.id, oIdx)}
                       className={`w-full flex items-center gap-3.5 p-3.5 border rounded-btn text-left text-xs transition-default ${optionStyle}`}
                     >
-                      <span className={`h-6 w-6 rounded-btn flex items-center justify-center font-bold text-xs shrink-0 ${letterStyle}`}>
+                      <span className={`h-6 w-6 rounded flex items-center justify-center font-bold text-xs shrink-0 ${letterStyle}`}>
                         {letter}
                       </span>
                       <span className="leading-relaxed">{opt}</span>
@@ -408,24 +405,24 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
                 const isAnswered = answers[q.id] !== undefined;
                 const isActive = currentIdx === idx;
                 
-                let buttonStyle = 'bg-white border-slate-200 text-text-primary hover:border-slate-350';
+                let buttonStyle = 'bg-white border-slate-200 border-b-[3.5px] border-b-slate-300 text-text-primary hover:border-slate-350 active:translate-y-[1px] active:border-b-[2.5px]';
                 
                 if (isAnswered) {
-                  buttonStyle = 'bg-primary-light/50 border-primary/30 text-primary';
+                  buttonStyle = 'bg-primary-light/35 border-primary/20 border-b-[3.5px] border-b-primary text-primary active:translate-y-[1px] active:border-b-[2.5px]';
                 }
 
                 if (isActive) {
-                  buttonStyle = 'border-primary bg-primary text-white ring-1 ring-primary/10';
+                  buttonStyle = 'bg-primary border-primary border-b-[3.5px] border-b-primary-hover text-white';
                 }
 
                 if (isSubmitted) {
                   const isCorrect = q.correctOptionIndex === answers[q.id];
                   if (isCorrect) {
-                    buttonStyle = 'bg-success text-white border-success';
+                    buttonStyle = 'bg-success border-success border-b-[3.5px] border-b-success-hover text-white';
                   } else if (answers[q.id] !== undefined) {
-                    buttonStyle = 'bg-danger text-white border-danger';
+                    buttonStyle = 'bg-danger border-danger border-b-[3.5px] border-b-danger-hover text-white';
                   } else {
-                    buttonStyle = 'bg-slate-50 text-slate-400 border-slate-100';
+                    buttonStyle = 'bg-slate-50 border-slate-200 border-b text-slate-400';
                   }
                 }
 

@@ -1,15 +1,22 @@
 import React from 'react';
-import { Eye, Download, FileText, ArrowRight } from 'lucide-react';
+import { Bookmark, FileText } from 'lucide-react';
 import type { Document } from '../types';
 
 interface DocCardProps {
   doc: Document;
   onSelect: (id: string) => void;
+  onBookmarkToggle?: (docId: string) => void;
+  isBookmarked?: boolean;
 }
 
-export const DocCard: React.FC<DocCardProps> = ({ doc, onSelect }) => {
-  // Format color indicators
-  const formatColors = {
+export const DocCard: React.FC<DocCardProps> = ({ 
+  doc, 
+  onSelect,
+  onBookmarkToggle,
+  isBookmarked = false
+}) => {
+  // Color code file extensions
+  const formatBadges = {
     'PDF': 'bg-red-50 text-red-600 border-red-100',
     'DOCX': 'bg-blue-50 text-blue-600 border-blue-100',
     'Slide': 'bg-amber-50 text-amber-600 border-amber-100',
@@ -17,82 +24,55 @@ export const DocCard: React.FC<DocCardProps> = ({ doc, onSelect }) => {
     'Đề cương': 'bg-indigo-50 text-indigo-600 border-indigo-100',
   };
 
-  // Decorative vector styling based on subject
-  const subjectThemes = {
-    'Toán học': 'bg-blue-50 border-blue-100/50 text-blue-600',
-    'Vật lý': 'bg-purple-50 border-purple-100/50 text-purple-600',
-    'Hóa học': 'bg-teal-50 border-teal-100/50 text-teal-600',
-    'Tiếng Anh': 'bg-orange-50 border-orange-100/50 text-orange-600',
-    'Sinh học': 'bg-emerald-50 border-emerald-100/50 text-emerald-600',
-  };
+  const badgeClass = formatBadges[doc.format] || 'bg-slate-50 text-slate-600 border-slate-100';
 
-  const themeClass = subjectThemes[doc.subject as keyof typeof subjectThemes] || 'bg-slate-50 text-slate-600';
+  const handleBookmark = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onBookmarkToggle) {
+      onBookmarkToggle(doc.id);
+    }
+  };
 
   return (
     <div
       onClick={() => onSelect(doc.id)}
-      className="group bg-white border border-slate-100 rounded-card p-4 flex flex-col justify-between cursor-pointer notion-shadow notion-card-hover"
+      className="group w-full flex items-center justify-between gap-3.5 p-3.5 bg-white border border-slate-200/80 hover:border-slate-350 hover:bg-slate-50/50 transition-default cursor-pointer select-none"
     >
-      {/* Document layout representation / Thumbnail */}
-      <div className={`w-full aspect-[4/3] rounded-lg border flex flex-col justify-between p-3.5 mb-4 select-none ${themeClass}`}>
-        <div className="flex items-center justify-between">
-          <span className={`text-[9px] font-bold px-2 py-0.5 border rounded uppercase ${formatColors[doc.format]}`}>
-            {doc.format}
-          </span>
-          <FileText size={16} className="opacity-60" />
-        </div>
-        
-        {/* Mock content lines */}
-        <div className="space-y-1.5 my-2">
-          <div className="h-2 bg-current opacity-20 rounded w-11/12"></div>
-          <div className="h-2 bg-current opacity-15 rounded w-5/6"></div>
-          <div className="h-2 bg-current opacity-10 rounded w-3/4"></div>
-        </div>
+      {/* Left: Extension Badge */}
+      <div className={`h-11 w-11 rounded border flex flex-col items-center justify-center shrink-0 font-black text-[9px] uppercase tracking-wider ${badgeClass}`}>
+        <FileText size={14} className="opacity-80 mb-0.5" />
+        <span>{doc.format}</span>
+      </div>
 
-        <div className="flex items-center justify-between text-[9px] font-semibold opacity-70">
-          <span>{doc.subject}</span>
-          <span>{doc.grade}</span>
+      {/* Middle: Title & Meta Info */}
+      <div className="flex-1 min-w-0 space-y-1">
+        <h4 className="text-xs font-bold text-text-primary group-hover:text-primary transition-default leading-normal line-clamp-1">
+          {doc.title}
+        </h4>
+        <div className="flex flex-wrap items-center gap-x-2 text-[10px] text-text-secondary font-semibold">
+          <span className="text-slate-400 capitalize">{doc.subject}</span>
+          <span>•</span>
+          <span>{doc.pageCount} trang</span>
+          <span>•</span>
+          <span>{doc.fileSize}</span>
+          <span>•</span>
+          <span>{doc.downloads >= 1000 ? `${(doc.downloads / 1000).toFixed(1)}K` : doc.downloads} lượt tải</span>
         </div>
       </div>
 
-      {/* Info details */}
-      <div className="flex-1 flex flex-col justify-between">
-        <div>
-          <h3 className="text-xs font-semibold text-text-primary group-hover:text-primary transition-default line-clamp-2 h-8 mb-2 leading-relaxed">
-            {doc.title}
-          </h3>
-          <p className="text-[10px] text-text-secondary mb-3">
-            Tác giả: <span className="font-medium">{doc.author}</span>
-          </p>
-        </div>
+      {/* Right: Bookmark pin */}
+      <button
+        onClick={handleBookmark}
+        className={`p-1.5 rounded-full border transition-default shrink-0 ${
+          isBookmarked
+            ? 'border-primary/20 bg-primary-light text-primary'
+            : 'border-transparent text-slate-350 hover:border-slate-200 hover:text-slate-500'
+        }`}
+        title="Đánh dấu tài liệu"
+      >
+        <Bookmark size={13} className={isBookmarked ? 'fill-primary' : ''} />
+      </button>
 
-        {/* Footer specifications */}
-        <div className="border-t border-slate-50 pt-3 flex items-center justify-between text-[10px] text-text-secondary">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span>{doc.pageCount} trang</span>
-            <span className="text-slate-300">•</span>
-            <span>{doc.fileSize}</span>
-          </div>
-          
-          <div className="flex items-center gap-1.5">
-            <span className="flex items-center gap-0.5">
-              <Eye size={10} />
-              {doc.views >= 1000 ? `${(doc.views / 1000).toFixed(1)}k` : doc.views}
-            </span>
-            <span className="flex items-center gap-0.5">
-              <Download size={10} />
-              {doc.downloads >= 1000 ? `${(doc.downloads / 1000).toFixed(1)}k` : doc.downloads}
-            </span>
-          </div>
-        </div>
-
-        <div className="border-t border-slate-50 pt-2.5 mt-2.5 flex justify-end">
-          <span className="text-[10px] font-bold text-primary flex items-center gap-0.5 opacity-90 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-default">
-            Đọc tài liệu
-            <ArrowRight size={10} />
-          </span>
-        </div>
-      </div>
     </div>
   );
 };
