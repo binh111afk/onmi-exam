@@ -1,307 +1,534 @@
-import React from 'react';
-import { Flame, Star, GraduationCap, BarChart3, ArrowRight, BookOpenCheck } from 'lucide-react';
-import type { Exam, Document, User } from '../types';
-import { ExamCard } from '../components/ExamCard';
-import { DocCard } from '../components/DocCard';
+import React, { useState } from 'react';
+import { Search, Flame, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import type { User } from '../types';
 
 interface HomeProps {
   user: User;
   onViewChange: (view: string) => void;
-  featuredExams: Exam[];
-  featuredDocs: Document[];
-  onSelectExam: (id: string) => void;
   onSelectDoc: (id: string) => void;
-  onStartExam: (id: string) => void;
 }
 
 export const Home: React.FC<HomeProps> = ({
   user,
   onViewChange,
-  featuredExams,
-  featuredDocs,
-  onSelectExam,
   onSelectDoc,
-  onStartExam,
 }) => {
+  // Calendar states
+  const [calendarDate, setCalendarDate] = useState(new Date());
+  const year = calendarDate.getFullYear();
+  const month = calendarDate.getMonth();
 
-  const subjectsList = [
-    { label: 'Toán học', count: '1.250 đề thi', bg: 'bg-blue-50/60 hover:bg-blue-50 text-blue-700 border-blue-100', dot: 'bg-blue-500' },
-    { label: 'Vật lý', count: '890 đề thi', bg: 'bg-emerald-50/60 hover:bg-emerald-50 text-emerald-700 border-emerald-100', dot: 'bg-emerald-500' },
-    { label: 'Hóa học', count: '950 đề thi', bg: 'bg-amber-50/60 hover:bg-amber-50 text-amber-700 border-amber-100', dot: 'bg-amber-500' },
-    { label: 'Sinh học', count: '780 đề thi', bg: 'bg-teal-50/60 hover:bg-teal-50 text-teal-700 border-teal-100', dot: 'bg-teal-500' },
-    { label: 'Ngữ văn', count: '850 đề thi', bg: 'bg-red-50/60 hover:bg-red-50 text-red-700 border-red-100', dot: 'bg-red-500' },
-    { label: 'Tiếng Anh', count: '1.100 đề thi', bg: 'bg-purple-50/60 hover:bg-purple-50 text-purple-700 border-purple-100', dot: 'bg-purple-500' },
+  // Handle local query for redirecting to exams
+  const [localQuery, setLocalQuery] = useState('');
+
+  // Calendar logic
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayOfWeek = new Date(year, month, 1).getDay();
+  // Adjust Monday as start (Mon = 0, Sun = 6)
+  const startOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+
+  const monthNames = [
+    "Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6",
+    "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"
+  ];
+
+  const handlePrevMonth = () => {
+    setCalendarDate(new Date(year, month - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCalendarDate(new Date(year, month + 1, 1));
+  };
+
+  const calendarCells: (number | null)[] = [];
+  for (let i = 0; i < startOffset; i++) {
+    calendarCells.push(null);
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    calendarCells.push(d);
+  }
+
+  const todayDate = new Date();
+  const isToday = (day: number) => {
+    return todayDate.getDate() === day && todayDate.getMonth() === month && todayDate.getFullYear() === year;
+  };
+
+  // Mock study days to highlight on calendar
+  const highlightEvents: Record<number, { type: 'exam' | 'lesson'; title: string }> = {
+    7: { type: 'exam', title: 'Thi thử Vật lý' },
+    12: { type: 'exam', title: 'Kiểm tra tiếng Anh' },
+    20: { type: 'lesson', title: 'Đọc tài liệu Giải tích' },
+    29: { type: 'lesson', title: 'Bài tập Sinh học' }
+  };
+
+  // Formatted date string for dashboard header
+  const getHeaderDateString = () => {
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    };
+    return new Date().toLocaleDateString('vi-VN', options);
+  };
+
+  // Top focus units data (Classes mockup style)
+  const focusUnits = [
+    {
+      subject: 'Toán học - Giải tích 12',
+      unit: 'Chương I: Đạo hàm & Khảo sát',
+      teacher: 'Thầy Tiến Đạt',
+      files: '32 tài liệu',
+      gradient: 'from-[#4F46E5] to-[#7C3AED]',
+      docId: 'doc-math-1',
+      members: [
+        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=40&h=40',
+        'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=40&h=40',
+        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=40&h=40'
+      ]
+    },
+    {
+      subject: 'Vật lý - Dao động cơ',
+      unit: 'Chuyên đề: Dao động điều hòa',
+      teacher: 'Cô Chu Thảo',
+      files: '14 tài liệu',
+      gradient: 'from-[#6C5DD3] to-[#8F85F3]',
+      docId: 'doc-phys-1',
+      members: [
+        'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=40&h=40',
+        'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=40&h=40',
+        'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=40&h=40'
+      ]
+    },
+    {
+      subject: 'Tiếng Anh - Ngữ pháp',
+      unit: '20 Chủ điểm thi THPT Quốc gia',
+      teacher: 'Ms. Hoa TOEIC',
+      files: '45 tài liệu',
+      gradient: 'from-[#FF758F] to-[#FF9EAF]',
+      docId: 'doc-eng-1',
+      members: [
+        'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=40&h=40',
+        'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&w=40&h=40',
+        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=40&h=40'
+      ]
+    }
+  ];
+
+  // Practice progress table data (Lessons mockup style)
+  const practiceHistory = [
+    {
+      subject: 'Toán học (Lớp 12)',
+      teacher: 'Thầy Tiến Đạt',
+      time: '29.06.2026',
+      docName: 'Sổ tay Giải tích',
+      docId: 'doc-math-1',
+      status: 'completed',
+      score: '9.0 điểm',
+      members: [
+        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=24&h=24',
+        'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=24&h=24',
+        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=24&h=24'
+      ]
+    },
+    {
+      subject: 'Vật lý (Lớp 12)',
+      teacher: 'Cô Chu Thảo',
+      time: '30.06.2026',
+      docName: 'Sơ đồ tư duy Cơ học',
+      docId: 'doc-phys-1',
+      status: 'pending',
+      score: 'Đang ôn',
+      members: [
+        'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=24&h=24',
+        'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=24&h=24'
+      ]
+    },
+    {
+      subject: 'Tiếng Anh (Lớp 12)',
+      teacher: 'Ms. Hoa TOEIC',
+      time: '25.06.2026',
+      docName: '20 Chủ điểm Ngữ pháp',
+      docId: 'doc-eng-1',
+      status: 'completed',
+      score: '8.5 điểm',
+      members: [
+        'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=24&h=24',
+        'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&w=24&h=24',
+        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=24&h=24',
+        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=24&h=24'
+      ]
+    }
   ];
 
   return (
-    <div className="max-w-container mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <div className="w-full py-6 px-4 sm:px-6 lg:px-8 select-none">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        {/* ========================================== */}
-        {/* LEFT COLUMN: Main viewport area (70%)      */}
-        {/* ========================================== */}
-        <div className="lg:col-span-8 space-y-6">
+        {/* ======================================================= */}
+        {/* CENTER COLUMN: Main dashboard elements (8/12 width)    */}
+        {/* ======================================================= */}
+        <div className="lg:col-span-8 space-y-7">
           
-          {/* 1. Hero banner matching reference graphic layout */}
-          <section className="bg-white border border-slate-200/80 rounded-card p-6 sm:p-8 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
-            {/* Grid decorative background */}
-            <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:16px_16px] opacity-35 pointer-events-none"></div>
+          {/* Header row: Search Bar & Live Date */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            
+            {/* Pill Search bar matching reference */}
+            <div className="relative w-full sm:max-w-md">
+              <Search className="absolute left-4.5 top-3.5 h-4 w-4 text-text-muted" />
+              <input
+                type="text"
+                placeholder="Tìm đề thi, tài liệu hoặc môn học..."
+                value={localQuery}
+                onChange={(e) => setLocalQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && localQuery.trim()) {
+                    onViewChange('exams');
+                  }
+                }}
+                className="w-full pl-11 pr-5 py-3 bg-[#E9EDF5]/60 hover:bg-[#E9EDF5]/90 border border-transparent rounded-full text-xs text-text-primary focus:bg-white focus:border-primary/40 focus:ring-0 transition-all placeholder:text-text-muted/80 font-medium"
+              />
+            </div>
 
-            <div className="flex-1 space-y-4 relative z-10">
-              <h1 className="text-2xl sm:text-3xl font-black text-text-primary tracking-tight leading-snug">
-                Học thông minh<br />
-                Thi tự tin – <span className="text-primary">Đỗ dễ dàng</span>
+            {/* Current Date in Vietnamese */}
+            <div className="text-[11px] font-black text-text-secondary uppercase tracking-wider pl-2">
+              {getHeaderDateString()}
+            </div>
+
+          </div>
+
+          {/* Welcome back / Hero Banner */}
+          <section className="bg-white border border-slate-100 rounded-card p-6 sm:p-8 relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-6">
+            
+            {/* Grid graphic overlay */}
+            <div className="absolute inset-0 bg-[radial-gradient(#e9edf5_1px,transparent_1px)] [background-size:20px_20px] opacity-40 pointer-events-none"></div>
+
+            <div className="flex-1 space-y-4 relative z-10 text-center sm:text-left">
+              <h1 className="text-xl sm:text-2xl font-black text-text-primary leading-tight tracking-tight">
+                Chào mừng quay trở lại,<br />
+                <span className="text-primary">{user.name}!</span>
               </h1>
-              <p className="text-xs text-text-secondary leading-relaxed max-w-[420px]">
-                Kho đề thi chất lượng – Tài liệu chọn lọc – Lộ trình cá nhân hóa<br />
-                Đồng hành cùng bạn chinh phục mọi kỳ thi quan trọng.
+              <p className="text-[11px] text-text-secondary leading-relaxed max-w-[380px] mx-auto sm:mx-0">
+                Các tài liệu ôn tập và đề thi thử THPT Quốc gia môn Toán, Lý, Anh mới nhất đã được cập nhật sẵn sàng. Hãy ôn luyện ngay để củng cố kiến thức!
               </p>
-              <div className="flex flex-wrap items-center gap-3 pt-2">
+              <div className="pt-1">
                 <button
                   onClick={() => onViewChange('exams')}
-                  className="px-5 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-bold rounded-full transition-all duration-200 flex items-center gap-1.5 shadow-sm"
+                  className="px-6 py-2.5 bg-primary hover:bg-primary-hover text-white text-[11px] font-black rounded-full transition-all duration-200 shadow-[0_4px_12px_rgba(108,93,211,0.2)] hover:shadow-[0_6px_16px_rgba(108,93,211,0.3)] cursor-pointer"
                 >
-                  Khám phá đề thi
-                  <ArrowRight size={13} />
-                </button>
-                <button
-                  onClick={() => onViewChange('documents')}
-                  className="px-5 py-2 border border-slate-200 text-primary bg-white hover:bg-slate-50 text-xs font-bold rounded-full transition-all duration-200"
-                >
-                  Bắt đầu ôn luyện
+                  Luyện đề ngay
                 </button>
               </div>
             </div>
 
-            {/* Right: Atomic Orbit Sphere Graphic in pure vector SVG */}
-            <div className="relative w-44 h-44 md:w-56 md:h-56 shrink-0 flex items-center justify-center">
-              <svg viewBox="0 0 200 200" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
-                {/* Outer orbit lines */}
-                <ellipse cx="100" cy="100" rx="90" ry="32" stroke="#D1E2FF" strokeWidth="1.5" transform="rotate(-30, 100, 100)" />
-                <ellipse cx="100" cy="100" rx="80" ry="26" stroke="#D1E2FF" strokeWidth="1.5" transform="rotate(35, 100, 100)" />
-                <ellipse cx="100" cy="100" rx="85" ry="28" stroke="#D1E2FF" strokeWidth="1.5" transform="rotate(-75, 100, 100)" />
-                
-                {/* Central main glowing sphere representing logo orbits */}
-                <circle cx="100" cy="100" r="28" fill="url(#sphereGradient)" filter="drop-shadow(0px 8px 16px rgba(37, 99, 235, 0.25))" />
-                
-                {/* Inner brand symbol inside sphere */}
-                <circle cx="92" cy="104" r="2" fill="#FFFFFF" />
-                <circle cx="108" cy="94" r="2" fill="#0ea5e9" />
-                <circle cx="107" cy="105" r="2.5" fill="#f97316" />
-                <ellipse cx="100" cy="100" rx="14" ry="5" stroke="#FFFFFF" strokeWidth="1" transform="rotate(-20, 100, 100)" />
-                <ellipse cx="100" cy="100" rx="12" ry="4.5" stroke="#FFFFFF" strokeWidth="1" transform="rotate(25, 100, 100)" />
+            {/* Isometric Stacked Books SVG Graphic */}
+            <div className="relative w-40 h-40 shrink-0 flex items-center justify-center">
+              <svg viewBox="0 0 200 180" className="w-full h-full drop-shadow-md" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* Bottom Book (Blue) */}
+                <path d="M40 120 L110 150 L170 120 L100 90 Z" fill="#4F46E5" />
+                <path d="M40 120 L40 128 L110 158 L110 150 Z" fill="#3730A3" />
+                <path d="M110 150 L110 158 L170 128 L170 120 Z" fill="#312E81" />
+                <path d="M48 123 L110 150 L162 124" stroke="#818CF8" strokeWidth="2" fill="none" />
+                <path d="M41 123 L41 127 L109 156 L109 152 Z" fill="#E2E8F0" />
+                <path d="M110 152 L110 156 L169 127 L169 123 Z" fill="#CBD5E1" />
 
-                {/* Floating subject badge capsules */}
-                {/* Graduation cap */}
-                <g transform="translate(100, 20)">
-                  <circle cx="0" cy="0" r="13" fill="#8B5CF6" stroke="#FFFFFF" strokeWidth="2.5" />
-                  <path d="M-6 -2.5L0 -5.5L6 -2.5L0 0.5L-6 -2.5Z" fill="#FFFFFF" />
-                  <path d="M-4 -1V3C-4 4 0 5 0 5C0 5 4 4 4 3V-1" stroke="#FFFFFF" strokeWidth="1" fill="none" />
-                </g>
-                {/* Document icon */}
-                <g transform="translate(162, 108)">
-                  <circle cx="0" cy="0" r="11" fill="#10B981" stroke="#FFFFFF" strokeWidth="2" />
-                  <path d="M-3 -4.5H1.5L4.5 -1.5V4.5H-3V-4.5Z" fill="#FFFFFF" />
-                </g>
-                {/* Yellow star badge */}
-                <g transform="translate(132, 160)">
-                  <circle cx="0" cy="0" r="12" fill="#F59E0B" stroke="#FFFFFF" strokeWidth="2" />
-                  <path d="M0 -5L1.5 -1.5H5L2.2 0.5L3.2 4L0 2L-3.2 4L-2.2 0.5L-5 -1.5H-1.5L0 -5Z" fill="#FFFFFF" />
-                </g>
-                {/* Stats chart badge */}
-                <g transform="translate(36, 128)">
-                  <circle cx="0" cy="0" r="12" fill="#EF562F" stroke="#FFFFFF" strokeWidth="2" />
-                  <rect x="-4" y="-4" width="2" height="8" rx="0.5" fill="#FFFFFF" />
-                  <rect x="-1" y="-6" width="2" height="10" rx="0.5" fill="#FFFFFF" />
-                  <rect x="2" y="-2" width="2" height="6" rx="0.5" fill="#FFFFFF" />
-                </g>
+                {/* Middle Book (Pink/Rose) */}
+                <path d="M30 90 L100 120 L160 90 L90 60 Z" fill="#FF758F" />
+                <path d="M30 90 L30 98 L100 128 L100 120 Z" fill="#E0536C" />
+                <path d="M100 120 L100 128 L160 98 L160 90 Z" fill="#B32B44" />
+                <path d="M38 93 L100 120 L152 94" stroke="#FFA3B5" strokeWidth="2" fill="none" />
+                <path d="M31 93 L31 97 L99 126 L99 122 Z" fill="#E2E8F0" />
+                <path d="M100 122 L100 126 L159 97 L159 93 Z" fill="#CBD5E1" />
 
-                {/* Gradients */}
-                <defs>
-                  <radialGradient id="sphereGradient" cx="30%" cy="30%" r="70%">
-                    <stop offset="0%" stopColor="#60A5FA" />
-                    <stop offset="65%" stopColor="#1D4ED8" />
-                    <stop offset="100%" stopColor="#1E3A8A" />
-                  </radialGradient>
-                </defs>
+                {/* Top Book (Light Blue/Cyan) */}
+                <path d="M50 60 L120 90 L180 60 L110 30 Z" fill="#0EA5E9" />
+                <path d="M50 60 L50 68 L120 98 L120 90 Z" fill="#0284C7" />
+                <path d="M120 90 L120 98 L180 68 L180 60 Z" fill="#0369A1" />
+                <path d="M58 63 L120 90 L172 64" stroke="#38BDF8" strokeWidth="2" fill="none" />
+                <path d="M51 63 L51 67 L119 96 L119 92 Z" fill="#E2E8F0" />
+                <path d="M120 92 L120 96 L179 67 L179 63 Z" fill="#CBD5E1" />
+
+                {/* Paper sheet on top of top book */}
+                <path d="M75 52 L115 69 L155 52 L115 35 Z" fill="#FFFFFF" />
+                <line x1="92" y1="47" x2="112" y2="55" stroke="#94A3B8" strokeWidth="1.5" />
+                <line x1="97" y1="52" x2="120" y2="61" stroke="#94A3B8" strokeWidth="1.5" />
+                <line x1="110" y1="43" x2="130" y2="51" stroke="#94A3B8" strokeWidth="1.5" />
+                
+                {/* Spark particles */}
+                <circle cx="155" cy="25" r="2.5" fill="#FF758F" />
+                <circle cx="135" cy="18" r="1.5" fill="#6C5DD3" />
+                <circle cx="65" cy="115" r="2" fill="#10B981" />
               </svg>
             </div>
+
           </section>
 
-          {/* 2. Stats Grid (4 Blocks with colored icons) */}
-          <section className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {[
-              { value: '2.500+', label: 'Đề thi', icon: GraduationCap, color: 'text-blue-600 bg-blue-50 border-blue-100' },
-              { value: '5.000+', label: 'Tài liệu', icon: BookOpenCheck, color: 'text-emerald-600 bg-emerald-50 border-emerald-100' },
-              { value: '100.000+', label: 'Lượt làm bài', icon: BarChart3, color: 'text-orange-650 bg-orange-50 border-orange-100' },
-              { value: '96%', label: 'Hài lòng', icon: Star, color: 'text-purple-600 bg-purple-50 border-purple-100' },
-            ].map((stat, idx) => {
-              const Icon = stat.icon;
-              return (
-                <div key={idx} className="bg-white border border-slate-200/80 p-4 rounded-card flex items-center gap-3">
-                  <div className={`h-9 w-9 rounded flex items-center justify-center border shrink-0 ${stat.color}`}>
-                    <Icon size={16} />
-                  </div>
-                  <div>
-                    <div className="text-sm font-black text-text-primary leading-none">{stat.value}</div>
-                    <div className="text-[10px] text-text-secondary mt-1 font-semibold">{stat.label}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </section>
-
-          {/* 3. Featured Exams Grid */}
-          <section className="space-y-3.5">
+          {/* Classes section (gradient cards layout) */}
+          <section className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-text-primary flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary"></span>
-                Đề thi nổi bật
+              <h2 className="text-xs font-black uppercase tracking-wider text-text-primary">
+                Chuyên đề trọng tâm
               </h2>
               <button
-                onClick={() => onViewChange('exams')}
-                className="text-[10px] font-semibold text-primary hover:underline flex items-center gap-0.5"
+                onClick={() => onViewChange('documents')}
+                className="text-[10px] font-black text-primary hover:underline cursor-pointer"
               >
                 Xem tất cả &rarr;
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {featuredExams.slice(0, 4).map((exam) => (
-                <ExamCard
-                  key={exam.id}
-                  exam={exam}
-                  onSelect={onSelectExam}
-                  onStartExam={onStartExam}
-                />
+            {/* Gradient card row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {focusUnits.map((item, idx) => (
+                <div
+                  key={idx}
+                  onClick={() => onSelectDoc(item.docId)}
+                  className={`bg-gradient-to-br ${item.gradient} text-white rounded-card p-5 space-y-4 cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1 relative overflow-hidden`}
+                >
+                  {/* Subtle orb background graphics */}
+                  <div className="absolute -top-12 -right-12 h-28 w-28 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+                  
+                  <div className="space-y-1.5">
+                    <span className="text-[9px] uppercase tracking-wider font-extrabold bg-white/20 px-2 py-0.5 rounded">
+                      {item.subject.split(' - ')[0]}
+                    </span>
+                    <h3 className="text-xs font-black leading-snug pt-1 h-9 line-clamp-2">
+                      {item.unit}
+                    </h3>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-white/20">
+                    <div className="flex items-center -space-x-1.5">
+                      {item.members.map((avatar, aIdx) => (
+                        <img
+                          key={aIdx}
+                          src={avatar}
+                          alt="member"
+                          className="h-5.5 w-5.5 rounded-full border-2 border-white/90 object-cover"
+                        />
+                      ))}
+                      <div className="h-5.5 w-5.5 rounded-full bg-white/20 border-2 border-white/90 flex items-center justify-center text-[7px] font-bold">
+                        +5
+                      </div>
+                    </div>
+
+                    <div className="text-right leading-none">
+                      <div className="text-[8px] font-medium opacity-80">{item.files}</div>
+                      <div className="text-[9px] font-extrabold mt-1">{item.teacher}</div>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           </section>
 
-          {/* 4. Explore by Subject Categories */}
-          <section className="space-y-3.5">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-text-primary">
-              Khám phá theo môn học
+          {/* Lessons table section (Practice progress layout) */}
+          <section className="space-y-4">
+            <h2 className="text-xs font-black uppercase tracking-wider text-text-primary">
+              Tiến độ ôn tập & kết quả
             </h2>
 
-            <div className="flex flex-wrap items-center gap-3">
-              {subjectsList.map((sub, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => onViewChange('exams')}
-                  className={`px-4 py-2.5 rounded border text-[11px] font-bold flex items-center gap-2 transition-all duration-200 hover:scale-[1.02] ${sub.bg}`}
-                >
-                  <span className={`h-1.5 w-1.5 rounded-full ${sub.dot}`}></span>
-                  <span>{sub.label}</span>
-                  <span className="opacity-60 font-semibold">({sub.count})</span>
-                </button>
-              ))}
-
-              <button
-                onClick={() => onViewChange('exams')}
-                className="px-4 py-2.5 border border-slate-200 bg-white hover:bg-slate-50 text-[11px] font-bold rounded flex items-center gap-1 text-text-primary transition-default ml-auto"
-              >
-                Xem tất cả môn học
-                <ArrowRight size={12} />
-              </button>
+            {/* Custom styled table with card containment */}
+            <div className="bg-white border border-slate-100 rounded-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/70 border-b border-slate-100 text-[10px] font-black text-text-secondary uppercase tracking-wider">
+                      <th className="py-4 px-5">Môn học / Chuyên đề</th>
+                      <th className="py-4 px-4">Giáo viên</th>
+                      <th className="py-4 px-4">Lượt ôn</th>
+                      <th className="py-4 px-4">Ngày học</th>
+                      <th className="py-4 px-4">Tài liệu</th>
+                      <th className="py-4 px-5 text-right">Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-[11px] font-semibold text-text-primary">
+                    {practiceHistory.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="py-4 px-5">
+                          <button
+                            onClick={() => onSelectDoc(row.docId)}
+                            className="font-bold text-text-primary hover:text-primary transition-default text-left cursor-pointer"
+                          >
+                            {row.subject}
+                            <span className="block text-[9px] text-text-secondary font-medium mt-0.5">{row.docName}</span>
+                          </button>
+                        </td>
+                        <td className="py-4 px-4 text-text-secondary font-bold">{row.teacher}</td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center -space-x-1">
+                            {row.members.slice(0, 3).map((avatar, aIdx) => (
+                              <img
+                                key={aIdx}
+                                src={avatar}
+                                alt="member"
+                                className="h-5 w-5 rounded-full border border-white object-cover"
+                              />
+                            ))}
+                            {row.members.length > 3 && (
+                              <div className="h-5 w-5 rounded-full bg-slate-100 border border-white flex items-center justify-center text-[7px] font-bold text-text-secondary">
+                                +{row.members.length - 3}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-text-secondary font-medium">{row.time}</td>
+                        <td className="py-4 px-4">
+                          <button
+                            onClick={() => onSelectDoc(row.docId)}
+                            className="text-primary hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                          >
+                            <Download size={12} /> Tải về
+                          </button>
+                        </td>
+                        <td className="py-4 px-5 text-right">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black bg-emerald-55 text-success">
+                            <span className="h-1.5 w-1.5 rounded-full bg-success"></span>
+                            {row.score}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </section>
 
         </div>
 
-        {/* ========================================== */}
-        {/* RIGHT COLUMN: Sidebar stats & lists (30%)   */}
-        {/* ========================================== */}
-        <div className="lg:col-span-4 space-y-6">
+        {/* ======================================================= */}
+        {/* RIGHT COLUMN: Sidebar (User info, Calendar)            */}
+        {/* ======================================================= */}
+        <div className="lg:col-span-4 space-y-7">
           
-          {/* 1. Auth Card / User Progress Dashboard */}
-          {!user.loggedIn ? (
-            <section className="bg-white border border-slate-200/80 rounded-card p-5 space-y-4">
-              <div className="space-y-1">
-                <h3 className="text-sm font-black text-text-primary">Chào mừng trở lại! 👋</h3>
-                <p className="text-[11px] text-text-secondary leading-normal">
-                  Đăng nhập để lưu tiến độ và tiếp tục hành trình học tập.
-                </p>
+          {/* 1. Student Profile Card */}
+          <section className="bg-white border border-slate-100 rounded-card p-6 text-center space-y-4 flex flex-col items-center">
+            
+            {/* Avatar circle */}
+            <div className="relative group cursor-pointer">
+              <div className="h-20 w-20 rounded-full border-4 border-primary-light bg-primary text-white font-black text-2xl flex items-center justify-center shadow-sm transition-all group-hover:scale-105">
+                {user.name.charAt(0).toUpperCase()}
               </div>
-              <div className="space-y-2 pt-1.5">
-                <button
-                  onClick={() => onViewChange('login')}
-                  className="w-full py-2 bg-primary hover:bg-primary-hover text-white text-xs font-bold rounded-btn transition-default flex items-center justify-center gap-1.5 shadow-sm"
-                >
-                  Đăng nhập
-                </button>
-                <button
-                  onClick={() => onViewChange('register')}
-                  className="w-full py-2 border border-slate-200 bg-white hover:bg-slate-50 text-text-primary text-xs font-bold rounded-btn transition-default"
-                >
-                  Đăng ký tài khoản
-                </button>
+              <div className="absolute -bottom-1 -right-1 bg-accent border-2 border-white rounded-full p-1 text-white shadow-sm flex items-center justify-center" title="Streak">
+                <Flame size={12} className="fill-white stroke-white" />
               </div>
-            </section>
-          ) : (
-            <section className="bg-white border border-slate-200/80 rounded-card p-5 space-y-4">
-              <div className="flex justify-between items-center pb-2.5 border-b border-slate-100">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-text-primary">Thành tích của bạn</h3>
-                <span className="text-[10px] font-bold text-accent flex items-center gap-0.5">
-                  <Flame size={12} className="fill-accent text-accent" /> {user.streak} ngày
-                </span>
-              </div>
-
-              {/* Achievements stats grid */}
-              <div className="grid grid-cols-2 gap-3.5">
-                {[
-                  { label: 'Bài đã làm', value: '0', color: 'text-blue-600 bg-blue-50/50' },
-                  { label: 'Độ chính xác', value: '0%', color: 'text-purple-600 bg-purple-50/50' },
-                  { label: 'Ngày học', value: '0', color: 'text-emerald-600 bg-emerald-50/50' },
-                  { label: 'Kinh nghiệm', value: `${user.xp} XP`, color: 'text-orange-650 bg-orange-50/50' },
-                ].map((item, idx) => (
-                  <div key={idx} className="p-3 bg-slate-50 border border-slate-100 rounded flex flex-col justify-between">
-                    <span className="text-[9px] font-bold text-text-secondary leading-none">{item.label}</span>
-                    <span className="text-xs font-black text-text-primary mt-2">{item.value}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Level Progress bar */}
-              <div className="space-y-1.5 pt-1">
-                <div className="flex justify-between text-[10px] text-text-secondary font-bold">
-                  <span>CẤP ĐỘ 1</span>
-                  <span>{user.xp} / 100 XP</span>
-                </div>
-                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/40">
-                  <div
-                    className="h-full bg-primary transition-all duration-350"
-                    style={{ width: `${Math.min(user.xp, 100)}%` }}
-                  ></div>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* 2. Featured Documents List */}
-          <section className="space-y-3.5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-text-primary flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-success"></span>
-                Tài liệu nổi bật
-              </h2>
-              <button
-                onClick={() => onViewChange('documents')}
-                className="text-[10px] font-semibold text-primary hover:underline"
-              >
-                Xem tất cả &rarr;
-              </button>
             </div>
 
-            {/* List layout stack */}
-            <div className="space-y-2.5">
-              {featuredDocs.slice(0, 4).map((doc) => (
-                <DocCard
-                  key={doc.id}
-                  doc={doc}
-                  onSelect={onSelectDoc}
-                />
-              ))}
+            <div className="space-y-1">
+              <h3 className="text-sm font-black text-text-primary">{user.name}</h3>
+              <p className="text-[10px] text-text-secondary font-bold">Học sinh lớp 12</p>
+            </div>
+
+            {/* Streak and XP display */}
+            <div className="w-full grid grid-cols-2 gap-3 py-3 border-y border-slate-100/80">
+              <div className="text-center">
+                <div className="text-[9px] font-extrabold text-text-secondary uppercase">Chuỗi ngày học</div>
+                <div className="text-sm font-black text-accent mt-1 flex items-center justify-center gap-0.5">
+                  <Flame size={14} className="fill-accent text-accent" />
+                  <span>{user.streak} ngày</span>
+                </div>
+              </div>
+              <div className="text-center border-l border-slate-100">
+                <div className="text-[9px] font-extrabold text-text-secondary uppercase">Kinh nghiệm</div>
+                <div className="text-sm font-black text-primary mt-1">
+                  <span>{user.xp} XP</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Level progression bar */}
+            <div className="w-full space-y-1.5">
+              <div className="flex justify-between text-[9px] text-text-secondary font-bold">
+                <span>Cấp độ học tập: 1</span>
+                <span>{user.xp} / 1500 XP</span>
+              </div>
+              <div className="w-full h-2 bg-slate-50 border border-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-primary to-[#8F85F3] rounded-full transition-all duration-300"
+                  style={{ width: `${Math.min((user.xp / 1500) * 100, 100)}%` }}
+                ></div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => onViewChange('profile')}
+              className="w-full py-2.5 bg-primary-light hover:bg-[#E9EEFC] text-primary text-xs font-black rounded-xl transition-all duration-200 cursor-pointer"
+            >
+              Hồ sơ cá nhân
+            </button>
+          </section>
+
+          {/* 2. Interactive Calendar */}
+          <section className="bg-white border border-slate-100 rounded-card p-6 space-y-4">
+            
+            {/* Header of calendar */}
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black text-text-primary">
+                {monthNames[month]} {year}
+              </h3>
+              
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={handlePrevMonth}
+                  className="p-1 border border-slate-100 rounded-lg text-text-secondary hover:bg-slate-50 transition cursor-pointer"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <button
+                  onClick={handleNextMonth}
+                  className="p-1 border border-slate-100 rounded-lg text-text-secondary hover:bg-slate-50 transition cursor-pointer"
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+
+            {/* Weekday headers */}
+            <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black text-text-secondary uppercase">
+              <div>T2</div>
+              <div>T3</div>
+              <div>T4</div>
+              <div>T5</div>
+              <div>T6</div>
+              <div>T7</div>
+              <div>CN</div>
+            </div>
+
+            {/* Calendar grid cells */}
+            <div className="grid grid-cols-7 gap-1">
+              {calendarCells.map((cell, idx) => {
+                if (cell === null) {
+                  return <div key={idx} className="h-7"></div>;
+                }
+
+                const today = isToday(cell);
+                const hasEvent = highlightEvents[cell];
+
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      if (hasEvent) {
+                        alert(`Sự kiện ngày ${cell}/${month+1}: ${hasEvent.title}`);
+                      }
+                    }}
+                    className={`h-7 w-7 rounded-lg flex items-center justify-center text-[11px] font-bold transition-all relative cursor-pointer ${
+                      today
+                        ? 'bg-accent text-white font-black shadow-[0_3px_8px_rgba(255,117,143,0.3)]'
+                        : hasEvent
+                          ? 'bg-primary-light text-primary border border-primary/20 font-black'
+                          : 'text-text-primary hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>{cell}</span>
+                    {/* Small event indicator dot */}
+                    {hasEvent && !today && (
+                      <span className="absolute bottom-0.5 h-1 w-1 bg-primary rounded-full"></span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </section>
 

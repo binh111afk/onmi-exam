@@ -53,7 +53,7 @@ export const ExamCard: React.FC<ExamCardProps> = ({ exam, onSelect, onStartExam 
   };
 
   const theme = subjectThemes[exam.subject as keyof typeof subjectThemes] || {
-    card: 'bg-slate-50 border-slate-200/80 hover:border-slate-350 hover:bg-slate-100/50',
+    card: 'bg-slate-50 border-slate-200/80 hover:border-slate-300 hover:bg-slate-100/50',
     tag: 'bg-slate-200 text-slate-700',
     btn: 'bg-primary text-white hover:bg-primary-hover',
     accentText: 'text-slate-700'
@@ -71,7 +71,7 @@ export const ExamCard: React.FC<ExamCardProps> = ({ exam, onSelect, onStartExam 
   return (
     <div
       onClick={() => onSelect(exam.id)}
-      className={`group rounded-card border p-5 flex flex-col justify-between cursor-pointer transition-default select-none ${theme.card}`}
+      className={`group rounded-card border p-5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md select-none ${theme.card}`}
     >
       <div>
         {/* Top Tag Row */}
@@ -115,7 +115,7 @@ export const ExamCard: React.FC<ExamCardProps> = ({ exam, onSelect, onStartExam 
         {/* Circular Action Button */}
         <button
           onClick={handleAction}
-          className={`h-7 w-7 rounded-full flex items-center justify-center transition-all duration-200 group-hover:scale-105 ${theme.btn}`}
+          className={`h-7 w-7 rounded-full flex items-center justify-center transition-all duration-200 group-hover:scale-105 cursor-pointer ${theme.btn}`}
           title="Làm bài"
         >
           <ArrowRight size={13} />

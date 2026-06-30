@@ -188,17 +188,13 @@ function App() {
         )}
 
         {/* Viewport with its own scrollbar */}
-        <div className="flex-1 overflow-y-auto bg-slate-50/50 flex flex-col h-[calc(100vh-3.5rem)]">
+        <div className="flex-1 overflow-y-auto bg-slate-50/50 flex flex-col h-[calc(100vh-3.5rem)] lg:h-screen">
           <div className="flex-1">
             {view === 'home' && (
               <Home
                 user={user}
                 onViewChange={handleViewChange}
-                featuredExams={mockExams}
-                featuredDocs={mockDocuments}
-                onSelectExam={handleSelectExam}
                 onSelectDoc={handleSelectDoc}
-                onStartExam={handleStartExam}
               />
             )}
 

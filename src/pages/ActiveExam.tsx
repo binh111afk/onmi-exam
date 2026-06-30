@@ -119,7 +119,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
     <div className="min-h-screen bg-bg-surface flex flex-col font-sans">
       
       {/* 1. Sacred Header: Distraction Free */}
-      <header className="bg-white border-b border-slate-150 h-16 px-6 flex items-center justify-between sticky top-0 z-30">
+      <header className="bg-white border-b border-slate-100 h-16 px-6 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-3">
           <button
             onClick={() => {
@@ -208,7 +208,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
 
           {!isSubmitted || showReview ? (
             /* ACTIVE EXAM TEST PANEL */
-            <div className="bg-white border border-slate-150 rounded-card p-6 sm:p-8 notion-shadow space-y-6">
+            <div className="bg-white border border-slate-100 rounded-card p-6 sm:p-8 notion-shadow space-y-6">
               
               {/* Question indicator & Action toolbar */}
               <div className="flex items-center justify-between border-b border-slate-50 pb-4">
@@ -260,7 +260,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
                       letterStyle = 'bg-danger text-white border-b border-danger-hover';
                     } else {
                       optionStyle = 'border-slate-100 border-b text-text-secondary opacity-50 pointer-events-none';
-                      letterStyle = 'bg-slate-50 text-slate-450';
+                      letterStyle = 'bg-slate-50 text-slate-400';
                     }
                   }
 
@@ -295,7 +295,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
 
               {/* Explanation block in review mode */}
               {isSubmitted && (
-                <div className="p-5 bg-slate-50 border border-slate-150 rounded-card space-y-2">
+                <div className="p-5 bg-slate-50 border border-slate-100 rounded-card space-y-2">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-text-primary">
                     <BookOpen size={14} className="text-primary" />
                     <span>Giải thích đáp án chi tiết:</span>
@@ -329,7 +329,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
             </div>
           ) : (
             /* POST-SUBMISSION MOTIVATING STATS CARD */
-            <div className="bg-white border border-slate-150 rounded-card p-6 sm:p-10 notion-shadow text-center space-y-6">
+            <div className="bg-white border border-slate-100 rounded-card p-6 sm:p-10 notion-shadow text-center space-y-6">
               <div className="max-w-[450px] mx-auto space-y-4">
                 <div className="h-16 w-16 bg-success-light text-success rounded-full flex items-center justify-center mx-auto">
                   <CheckCircle2 size={36} />
@@ -394,7 +394,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
         {/* Right Area: CBT Navigation & Stats (1/4 cols) */}
         <aside className="space-y-6">
           {/* Question navigator panel */}
-          <div className="bg-white border border-slate-150 rounded-card p-5 notion-shadow space-y-4">
+          <div className="bg-white border border-slate-100 rounded-card p-5 notion-shadow space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-text-primary pb-2 border-b border-slate-50">
               Sơ đồ câu hỏi
             </h3>
@@ -405,7 +405,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
                 const isAnswered = answers[q.id] !== undefined;
                 const isActive = currentIdx === idx;
                 
-                let buttonStyle = 'bg-white border-slate-200 border-b-[3.5px] border-b-slate-300 text-text-primary hover:border-slate-350 active:translate-y-[1px] active:border-b-[2.5px]';
+                let buttonStyle = 'bg-white border-slate-200 border-b-[3.5px] border-b-slate-300 text-text-primary hover:border-slate-300 active:translate-y-[1px] active:border-b-[2.5px]';
                 
                 if (isAnswered) {
                   buttonStyle = 'bg-primary-light/35 border-primary/20 border-b-[3.5px] border-b-primary text-primary active:translate-y-[1px] active:border-b-[2.5px]';
@@ -461,7 +461,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
           </div>
 
           {/* Quick info specs */}
-          <div className="bg-white border border-slate-150 rounded-card p-5 notion-shadow text-xs text-text-secondary space-y-3">
+          <div className="bg-white border border-slate-100 rounded-card p-5 notion-shadow text-xs text-text-secondary space-y-3">
             <div className="flex justify-between">
               <span>Đề thi:</span>
               <span className="font-semibold text-text-primary">{exam.subject} {exam.grade}</span>
