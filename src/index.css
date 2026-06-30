@@ -1,0 +1,195 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-primary-light: #EFF6FF;
+
+  --color-success: #10B981;
+  --color-success-hover: #059669;
+  --color-success-light: #ECFDF5;
+
+  --color-accent: #F59E0B;
+  --color-accent-hover: #D97706;
+  --color-accent-light: #FEF3C7;
+
+  --color-danger: #EF4444;
+  --color-danger-hover: #DC2626;
+  --color-danger-light: #FEF2F2;
+
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #64748B;
+  --color-text-muted: #94A3B8;
+
+  --color-bg-base: #FFFFFF;
+  --color-bg-surface: #F8FAFC;
+
+  --font-sans: 'Inter', 'system-ui', 'sans-serif';
+
+  --border-radius-card: 12px;
+  --border-radius-btn: 10px;
+  --border-radius-input: 10px;
+  --border-radius-dialog: 16px;
+  
+  --transition-duration-default: 200ms;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-bg-base);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  
+  ::selection {
+    background-color: var(--color-primary-light);
+    color: var(--color-primary);
+  }
+
+  /* Custom input defaults for a premium look */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"] {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    border: 1px solid #E2E8F0;
+    border-radius: var(--border-radius-input);
+    transition: all var(--transition-duration-default);
+  }
+  
+  input[type="text"]:focus,
+  input[type="email"]:focus,
+  input[type="password"]:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  }
+
+  /* Checkbox styling */
+  input[type="checkbox"] {
+    border-radius: 4px;
+    border-color: #CBD5E1;
+    color: var(--color-primary);
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #E2E8F0;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #CBD5E1;
+  }
+}
+
+/* Custom styles for document reader content */
+.reader-content p {
+  font-size: 1rem;
+  line-height: 1.7;
+  margin-bottom: 1.5rem;
+  color: var(--color-text-primary);
+  max-width: 72ch;
+}
+
+.reader-content h2 {
+  font-size: 1.25rem;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  scroll-margin-top: 5rem;
+}
+
+.reader-content h3 {
+  font-size: 1.125rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  scroll-margin-top: 5rem;
+}
+
+.reader-content ul, .reader-content ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.7;
+  max-width: 72ch;
+  color: var(--color-text-primary);
+}
+
+.reader-content ul {
+  list-style-type: disc;
+}
+
+.reader-content ol {
+  list-style-type: decimal;
+}
+
+.reader-content li {
+  margin-bottom: 0.5rem;
+}
+
+.reader-content blockquote {
+  padding-left: 1rem;
+  border-left: 2px solid #E2E8F0;
+  color: var(--color-text-secondary);
+  font-style: italic;
+  margin: 1.5rem 0;
+  max-width: 72ch;
+}
+
+.reader-content pre {
+  padding: 1rem;
+  background-color: var(--color-bg-surface);
+  border: 1px solid #E2E8F0;
+  border-radius: var(--border-radius-card);
+  margin: 1.5rem 0;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  font-family: monospace;
+  line-height: 1.5;
+  max-width: 72ch;
+}
+
+.reader-content code {
+  padding: 0.125rem 0.375rem;
+  background-color: var(--color-bg-surface);
+  border: 1px solid #E2E8F0;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-family: monospace;
+  color: #DB2777;
+}
+
+.reader-content pre code {
+  padding: 0;
+  background-color: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  font-size: 0.75rem;
+}
+
+/* Shadow definitions matching notion */
+.notion-shadow {
+  box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.05), 0px 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.notion-card-hover {
+  transition: all var(--transition-duration-default) cubic-bezier(0.4, 0, 0.2, 1);
+}
+.notion-card-hover:hover {
+  border-color: #CBD5E1;
+  box-shadow: 0px 4px 16px rgba(0,0,0,0.04);
+}
