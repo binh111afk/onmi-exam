@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Search, Flame, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { Search, Flame, ChevronLeft, ChevronRight, Download, X } from 'lucide-react';
 import type { User } from '../types';
+import { Checkbox } from '../components/Checkbox';
 
 interface HomeProps {
   user: User;
@@ -17,6 +18,49 @@ export const Home: React.FC<HomeProps> = ({
   const [calendarDate, setCalendarDate] = useState(new Date());
   const year = calendarDate.getFullYear();
   const month = calendarDate.getMonth();
+
+  // Modal states
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'plan' | 'notes' | 'summary'>('plan');
+  const [noteText, setNoteText] = useState('Đã hoàn thành các bài ôn tập lý thuyết phần Đạo hàm và Giải tích 12.');
+  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [newTaskText, setNewTaskText] = useState('');
+  const [newTaskCategory, setNewTaskCategory] = useState('Đề thi');
+  const [newTaskDuration, setNewTaskDuration] = useState('30 phút');
+  const [modalTasks, setModalTasks] = useState<{ id: string; text: string; category: string; duration: string; done: boolean }[]>([
+    { id: '1', text: 'Làm đề Toán THPT số 3', category: 'Đề thi', duration: '60 phút', done: true },
+    { id: '2', text: 'Đọc Chương 2 - Tâm lý học', category: 'Tài liệu', duration: '45 phút', done: true },
+    { id: '3', text: 'Ôn Flashcard Sinh học', category: 'Flashcard', duration: '30 phút', done: false }
+  ]);
+
+  const getSelectedDayOfWeekAndFullDate = () => {
+    if (!selectedDay) return { dayOfWeek: '', fullDate: '' };
+    const date = new Date(year, month, selectedDay);
+    const dayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+    const dayOfWeek = dayNames[date.getDay()];
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const fullDate = `${pad(selectedDay)}/${pad(month + 1)}/${year}`;
+    return { dayOfWeek, fullDate };
+  };
+
+  const handleAddTask = () => {
+    if (!newTaskText.trim()) return;
+    const newTask = {
+      id: String(Date.now()),
+      text: newTaskText,
+      category: newTaskCategory,
+      duration: newTaskDuration,
+      done: false
+    };
+    setModalTasks((prev) => [...prev, newTask]);
+    setNewTaskText('');
+    setIsAddingTask(false);
+  };
+
+  const handleToggleTask = (id: string) => {
+    setModalTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+  };
 
   // Handle local query for redirecting to exams
   const [localQuery, setLocalQuery] = useState('');
@@ -221,44 +265,13 @@ export const Home: React.FC<HomeProps> = ({
               </div>
             </div>
 
-            {/* Isometric Stacked Books SVG Graphic */}
-            <div className="relative w-40 h-40 shrink-0 flex items-center justify-center">
-              <svg viewBox="0 0 200 180" className="w-full h-full drop-shadow-md" fill="none" xmlns="http://www.w3.org/2000/svg">
-                {/* Bottom Book (Blue) */}
-                <path d="M40 120 L110 150 L170 120 L100 90 Z" fill="#4F46E5" />
-                <path d="M40 120 L40 128 L110 158 L110 150 Z" fill="#3730A3" />
-                <path d="M110 150 L110 158 L170 128 L170 120 Z" fill="#312E81" />
-                <path d="M48 123 L110 150 L162 124" stroke="#818CF8" strokeWidth="2" fill="none" />
-                <path d="M41 123 L41 127 L109 156 L109 152 Z" fill="#E2E8F0" />
-                <path d="M110 152 L110 156 L169 127 L169 123 Z" fill="#CBD5E1" />
-
-                {/* Middle Book (Pink/Rose) */}
-                <path d="M30 90 L100 120 L160 90 L90 60 Z" fill="#FF758F" />
-                <path d="M30 90 L30 98 L100 128 L100 120 Z" fill="#E0536C" />
-                <path d="M100 120 L100 128 L160 98 L160 90 Z" fill="#B32B44" />
-                <path d="M38 93 L100 120 L152 94" stroke="#FFA3B5" strokeWidth="2" fill="none" />
-                <path d="M31 93 L31 97 L99 126 L99 122 Z" fill="#E2E8F0" />
-                <path d="M100 122 L100 126 L159 97 L159 93 Z" fill="#CBD5E1" />
-
-                {/* Top Book (Light Blue/Cyan) */}
-                <path d="M50 60 L120 90 L180 60 L110 30 Z" fill="#0EA5E9" />
-                <path d="M50 60 L50 68 L120 98 L120 90 Z" fill="#0284C7" />
-                <path d="M120 90 L120 98 L180 68 L180 60 Z" fill="#0369A1" />
-                <path d="M58 63 L120 90 L172 64" stroke="#38BDF8" strokeWidth="2" fill="none" />
-                <path d="M51 63 L51 67 L119 96 L119 92 Z" fill="#E2E8F0" />
-                <path d="M120 92 L120 96 L179 67 L179 63 Z" fill="#CBD5E1" />
-
-                {/* Paper sheet on top of top book */}
-                <path d="M75 52 L115 69 L155 52 L115 35 Z" fill="#FFFFFF" />
-                <line x1="92" y1="47" x2="112" y2="55" stroke="#94A3B8" strokeWidth="1.5" />
-                <line x1="97" y1="52" x2="120" y2="61" stroke="#94A3B8" strokeWidth="1.5" />
-                <line x1="110" y1="43" x2="130" y2="51" stroke="#94A3B8" strokeWidth="1.5" />
-                
-                {/* Spark particles */}
-                <circle cx="155" cy="25" r="2.5" fill="#FF758F" />
-                <circle cx="135" cy="18" r="1.5" fill="#6C5DD3" />
-                <circle cx="65" cy="115" r="2" fill="#10B981" />
-              </svg>
+            {/* Isometric Stacked Books 3D Image */}
+            <div className="relative w-44 h-40 shrink-0 flex items-center justify-center select-none pointer-events-none">
+              <img 
+                src="/books3d.png" 
+                alt="3D Stacked Books" 
+                className="max-w-full max-h-full object-contain hover:scale-105 transition-transform duration-500 ease-out drop-shadow-md" 
+              />
             </div>
 
           </section>
@@ -509,9 +522,8 @@ export const Home: React.FC<HomeProps> = ({
                   <button
                     key={idx}
                     onClick={() => {
-                      if (hasEvent) {
-                        alert(`Sự kiện ngày ${cell}/${month+1}: ${hasEvent.title}`);
-                      }
+                      setSelectedDay(cell);
+                      setIsModalOpen(true);
                     }}
                     className={`h-7 w-7 rounded-lg flex items-center justify-center text-[11px] font-bold transition-all relative cursor-pointer ${
                       today
@@ -523,18 +535,319 @@ export const Home: React.FC<HomeProps> = ({
                   >
                     <span>{cell}</span>
                     {/* Small event indicator dot */}
-                    {hasEvent && !today && (
-                      <span className="absolute bottom-0.5 h-1 w-1 bg-primary rounded-full"></span>
-                    )}
+                    {hasEvent && !today && <span className="absolute bottom-0.5 h-1 w-1 bg-primary rounded-full"></span>}
                   </button>
                 );
               })}
             </div>
           </section>
-
         </div>
-
       </div>
+      {/* ── CALENDAR EVENT DETAILS MODAL ── */}
+      {isModalOpen && selectedDay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop overlay */}
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity animate-fadeIn" onClick={() => setIsModalOpen(false)}></div>
+          
+          {/* Modal Box */}
+          <div className="bg-white rounded-3xl w-full max-w-[480px] shadow-2xl relative overflow-hidden flex flex-col z-50 border border-slate-100 animate-scaleUp">
+            {/* Header section with background grid and illustrations */}
+            <div className="bg-gradient-to-br from-[#F5F3FF] to-[#ECEAFE] p-6 relative overflow-hidden shrink-0 border-b border-slate-100">
+              {/* Background dots grid */}
+              <div className="absolute inset-0 bg-[radial-gradient(#e9edf5_1.5px,transparent_1.5px)] [background-size:15px_15px] opacity-40"></div>
+              
+              {/* Close Button */}
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="absolute top-4 right-4 w-7 h-7 rounded-full bg-white/80 hover:bg-white text-slate-500 hover:text-slate-700 flex items-center justify-center transition shadow-sm cursor-pointer z-20"
+              >
+                <X size={14} className="stroke-[2.5]" />
+              </button>
+
+              <div className="flex justify-between items-start relative z-10">
+                {/* Left Header info */}
+                <div className="flex gap-4 items-center">
+                  <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center shadow-md shadow-indigo-100/40 shrink-0 text-primary">
+                    <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="text-xs font-black text-primary tracking-wide uppercase">
+                      {getSelectedDayOfWeekAndFullDate().dayOfWeek}
+                    </div>
+                    <h2 className="text-xl font-black text-[#1E293B] tracking-tight mt-0.5">
+                      {getSelectedDayOfWeekAndFullDate().fullDate}
+                    </h2>
+                    <p className="text-[10px] text-text-secondary font-bold flex items-center gap-1 mt-1">
+                      <span>☀️</span> Một ngày tốt để học và tiến bộ.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right Illustration: Calendar with Pencil */}
+                <div className="w-24 h-24 relative select-none hidden sm:block shrink-0">
+                  <svg viewBox="0 0 100 100" className="w-full h-full">
+                    {/* Sparkles */}
+                    <path d="M15 20 L18 25 L23 26 L18 27 L15 32 L12 27 L7 26 L12 25 Z" fill="#FBBF24" opacity="0.8" />
+                    <path d="M85 70 L87 73 L90 74 L87 75 L85 78 L83 75 L80 74 L83 73 Z" fill="#FBBF24" opacity="0.8" />
+                    {/* Calendar body */}
+                    <rect x="25" y="30" width="50" height="50" rx="12" fill="white" stroke="#6C5DD3" strokeWidth="3" />
+                    <rect x="25" y="30" width="50" height="15" rx="6" fill="#6C5DD3" />
+                    {/* Spiral rings */}
+                    <circle cx="35" cy="30" r="3" fill="#E2E8F0" />
+                    <circle cx="45" cy="30" r="3" fill="#E2E8F0" />
+                    <circle cx="55" cy="30" r="3" fill="#E2E8F0" />
+                    <circle cx="65" cy="30" r="3" fill="#E2E8F0" />
+                    {/* Grid cells mock */}
+                    <rect x="33" y="52" width="8" height="8" rx="2" fill="#E2E8F0" />
+                    <rect x="46" y="52" width="8" height="8" rx="2" fill="#E2E8F0" />
+                    <rect x="59" y="52" width="8" height="8" rx="2" fill="#E2E8F0" />
+                    <rect x="33" y="65" width="8" height="8" rx="2" fill="#E2E8F0" />
+                    <rect x="46" y="65" width="8" height="8" rx="2" fill="#E2E8F0" />
+                    <rect x="59" y="65" width="8" height="8" rx="2" fill="#E2E8F0" />
+                    {/* Pencil */}
+                    <path d="M78 40 L88 30 L93 35 L83 45 Z" fill="#8F85F3" />
+                    <path d="M88 30 L93 35 L95 33 L90 28 Z" fill="#312E81" />
+                    <path d="M78 40 L75 48 L83 45 Z" fill="#FCA5A5" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Tab navigation */}
+            <div className="flex border-b border-slate-100 bg-[#FAF9FF] shrink-0 text-center text-xs font-bold text-slate-500">
+              <button 
+                onClick={() => setActiveTab('plan')}
+                className={`flex-1 py-3 flex items-center justify-center gap-1.5 border-b-2 transition cursor-pointer select-none ${
+                  activeTab === 'plan' 
+                    ? 'border-primary text-primary bg-white' 
+                    : 'border-transparent hover:text-slate-700 hover:bg-slate-50/50'
+                }`}
+              >
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="9" y1="15" x2="15" y2="15" />
+                  <line x1="9" y1="19" x2="15" y2="19" />
+                  <line x1="9" y1="11" x2="11" y2="11" />
+                </svg>
+                Kế hoạch
+              </button>
+
+              <button 
+                onClick={() => setActiveTab('notes')}
+                className={`flex-1 py-3 flex items-center justify-center gap-1.5 border-b-2 transition cursor-pointer select-none ${
+                  activeTab === 'notes' 
+                    ? 'border-primary text-primary bg-white' 
+                    : 'border-transparent hover:text-slate-700 hover:bg-slate-50/50'
+                }`}
+              >
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+                Ghi chú
+              </button>
+
+              <button 
+                onClick={() => setActiveTab('summary')}
+                className={`flex-1 py-3 flex items-center justify-center gap-1.5 border-b-2 transition cursor-pointer select-none ${
+                  activeTab === 'summary' 
+                    ? 'border-primary text-primary bg-white' 
+                    : 'border-transparent hover:text-slate-700 hover:bg-slate-50/50'
+                }`}
+              >
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                Tổng kết
+              </button>
+            </div>
+
+            {/* Content Area */}
+            <div className="p-6 overflow-y-auto flex-1 max-h-[350px] space-y-5">
+              {activeTab === 'plan' && (
+                <div className="space-y-4">
+                  {/* Subheader */}
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-black text-[#1E293B]">Nhiệm vụ hôm nay</span>
+                    <button 
+                      onClick={() => setIsAddingTask(true)}
+                      className="font-black text-primary hover:text-primary-hover flex items-center gap-1 cursor-pointer transition select-none"
+                    >
+                      + Thêm nhiệm vụ
+                    </button>
+                  </div>
+
+                  {/* Inline adding form */}
+                  {isAddingTask && (
+                    <div className="p-3 border border-indigo-100 bg-[#FAF9FF] rounded-2xl space-y-3 animate-fadeIn">
+                      <input 
+                        type="text"
+                        placeholder="Tên nhiệm vụ..."
+                        value={newTaskText}
+                        onChange={e => setNewTaskText(e.target.value)}
+                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs outline-none"
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') handleAddTask();
+                        }}
+                      />
+                      <div className="flex justify-between items-center">
+                        <div className="flex gap-2">
+                          <select 
+                            value={newTaskCategory}
+                            onChange={e => setNewTaskCategory(e.target.value)}
+                            className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold outline-none cursor-pointer"
+                          >
+                            <option value="Đề thi">Đề thi</option>
+                            <option value="Tài liệu">Tài liệu</option>
+                            <option value="Flashcard">Flashcard</option>
+                          </select>
+                          <input 
+                            type="text"
+                            placeholder="Thời gian"
+                            value={newTaskDuration}
+                            onChange={e => setNewTaskDuration(e.target.value)}
+                            className="w-28 px-2 py-1 bg-white border border-slate-200 rounded-lg text-[10px] font-bold outline-none"
+                          />
+                        </div>
+                        <div className="flex gap-1.5">
+                          <button onClick={() => setIsAddingTask(false)} className="px-2 py-1 bg-slate-100 rounded-lg text-[10px] font-bold text-slate-500 cursor-pointer">Hủy</button>
+                          <button onClick={handleAddTask} className="px-2.5 py-1 bg-primary text-white rounded-lg text-[10px] font-bold cursor-pointer">Lưu</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Task list */}
+                  <div className="space-y-2.5">
+                    {modalTasks.map(task => (
+                      <div 
+                        key={task.id} 
+                        className="p-3.5 border border-slate-100 rounded-2xl flex items-center justify-between bg-white shadow-sm hover:shadow hover:border-slate-250 transition"
+                      >
+                          <Checkbox
+                            checked={task.done}
+                            onChange={() => handleToggleTask(task.id)}
+                            label={
+                              <span className={`text-xs font-bold text-text-primary ${task.done ? 'line-through text-slate-400' : ''}`}>
+                                {task.text}
+                              </span>
+                            }
+                          />
+
+                        <div className="flex items-center gap-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                            task.category === 'Đề thi' 
+                              ? 'bg-purple-50 text-primary' 
+                              : task.category === 'Tài liệu' 
+                                ? 'bg-indigo-50 text-indigo-600' 
+                                : 'bg-emerald-50 text-success'
+                          }`}>
+                            {task.category}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-bold">{task.duration}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* AI Orbit suggestion banner */}
+                  <div className="bg-[#F5F3FF]/70 border border-indigo-50/40 rounded-2xl p-4 flex gap-3.5 items-center">
+                    <div className="w-12 h-12 relative select-none shrink-0 flex items-center justify-center">
+                      <svg viewBox="0 0 100 100" className="w-full h-full">
+                        <rect x="25" y="35" width="50" height="45" rx="20" fill="white" stroke="#6C5DD3" strokeWidth="4" />
+                        <rect x="30" y="42" width="40" height="26" rx="10" fill="#1E293B" />
+                        <ellipse cx="42" cy="55" rx="3.5" ry="3.5" fill="#38BDF8" />
+                        <ellipse cx="58" cy="55" rx="3.5" ry="3.5" fill="#38BDF8" />
+                        <path d="M46 62 Q50 65 54 62" stroke="#38BDF8" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+                        <circle cx="21" cy="58" r="4.5" fill="#6C5DD3" />
+                        <circle cx="79" cy="58" r="4.5" fill="#6C5DD3" />
+                        <rect x="47" y="18" width="6" height="15" rx="3" fill="#6C5DD3" />
+                        <circle cx="50" cy="18" r="5" fill="#8F85F3" />
+                        <rect x="18" y="48" width="5" height="14" rx="2.5" fill="#E2E8F0" />
+                        <rect x="77" y="48" width="5" height="14" rx="2.5" fill="#E2E8F0" />
+                      </svg>
+                    </div>
+                    
+                    <div className="flex-1 space-y-0.5">
+                      <h4 className="text-[11px] font-black text-primary flex items-center gap-1 leading-none">
+                        AI Orbit gợi ý <span className="animate-pulse">✨</span>
+                      </h4>
+                      <p className="text-[10px] text-text-secondary leading-normal font-bold">
+                        Bạn đã học rất đều đặn tuần này! Hôm nay thử dành 20 phút ôn lại Toán nhé.
+                      </p>
+                    </div>
+
+                    <button 
+                      onClick={() => {
+                        setIsModalOpen(false);
+                        onViewChange('exams');
+                      }}
+                      className="px-3 py-1.5 border border-primary hover:bg-primary-light text-primary text-[10px] font-black rounded-xl cursor-pointer transition shrink-0"
+                    >
+                      Bắt đầu ôn ngay
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'notes' && (
+                <div className="space-y-3.5 h-full flex flex-col">
+                  <h3 className="text-xs font-black text-[#1E293B] uppercase tracking-wider">Ghi chú học tập</h3>
+                  <textarea 
+                    value={noteText}
+                    onChange={e => setNoteText(e.target.value)}
+                    placeholder="Nhập ghi chú học tập cho ngày hôm nay..."
+                    rows={6}
+                    className="w-full p-4 border border-slate-205 rounded-2xl text-xs text-[#1E293B] outline-none resize-none bg-slate-50/20 focus:bg-white focus:ring-2 focus:ring-primary/10 focus:border-primary transition font-sans flex-1"
+                  />
+                  <p className="text-[9px] text-slate-400 font-bold text-right italic">Tự động lưu vào hệ thống</p>
+                </div>
+              )}
+
+              {activeTab === 'summary' && (
+                <div className="space-y-4">
+                  <h3 className="text-xs font-black text-[#1E293B] uppercase tracking-wider">Tổng kết hiệu quả</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-4 border border-slate-100 bg-[#FAF9FF] rounded-2xl text-center space-y-1">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase">Thời gian học</div>
+                      <div className="text-lg font-black text-primary">2.5 giờ</div>
+                      <div className="text-[9px] font-bold text-emerald-500 leading-none">+25% so với T2 trước</div>
+                    </div>
+                    <div className="p-4 border border-slate-100 bg-[#FAF9FF] rounded-2xl text-center space-y-1">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase">Đề thi đã làm</div>
+                      <div className="text-lg font-black text-accent">2 đề thi</div>
+                      <div className="text-[9px] font-bold text-slate-400 leading-none">Hoàn thành 100% mục tiêu</div>
+                    </div>
+                  </div>
+                  <div className="p-4 border border-slate-100 rounded-2xl bg-white space-y-2">
+                    <h4 className="text-[11px] font-black text-text-primary">Đánh giá ngày học</h4>
+                    <p className="text-[10px] text-text-secondary leading-normal font-bold">
+                      Một ngày học tập tuyệt vời! Bạn đã hoàn thành hầu hết các nhiệm vụ và duy trì được chuỗi ngày học tốt. Hãy duy trì phong độ này nhé!
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer with close button */}
+            <div className="p-5 border-t border-slate-50 bg-[#FAF9FF] shrink-0 flex justify-center">
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="w-full py-3 bg-gradient-to-r from-primary to-[#8F85F3] hover:from-primary hover:to-[#8F85F3]/90 text-white text-xs font-black rounded-2xl cursor-pointer shadow-md shadow-indigo-100 transition-all select-none text-center"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

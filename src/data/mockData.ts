@@ -36,11 +36,16 @@ export const mockExams: Exam[] = [
     questions: [
       {
         id: 'q-m1-1',
-        text: 'Cho hàm số y = f(x) có đạo hàm liên tục trên R và đồ thị hàm số y = f\'(x) như hình vẽ. Số điểm cực trị của hàm số g(x) = f(x^2 - 3) là bao nhiêu?',
-        options: ['3 cực trị', '4 cực trị', '5 cực trị', '7 cực trị'],
-        correctOptionIndex: 2,
-        explanation: 'Ta có g\'(x) = 2x . f\'(x^2 - 3). Cho g\'(x) = 0 ta được x = 0 hoặc f\'(x^2 - 3) = 0. Từ đồ thị đạo hàm f\'(t) = 0 tại t = -1 (nghiệm đơn), t = 1 (nghiệm đơn), t = 4 (nghiệm đơn). Suy ra x^2 - 3 = -1, x^2 - 3 = 1, x^2 - 3 = 4. Giải ra ta có tổng cộng 5 nghiệm đơn phân biệt đối xứng qua 0, tương ứng với 5 điểm cực trị.',
-        hint: 'Tính đạo hàm của hàm hợp g\'(x) = u\'(x) . f\'(u(x)), sau đó tìm số nghiệm đơn của phương trình g\'(x) = 0.'
+        text: 'Cho hàm số y = f(x) có đạo hàm liên tục trên ℝ và có bảng biến thiên như hình vẽ. Hàm số đã cho đồng biến trên khoảng nào dưới đây?',
+        options: [
+          '(-\\infty; -1) \\cup (2; +\\infty)',
+          '(-1; 2)',
+          '(-\\infty; -1)',
+          '(2; +\\infty)'
+        ],
+        correctOptionIndex: 0,
+        explanation: 'Dựa vào bảng biến thiên, ta thấy f\'(x) > 0 trên khoảng (-\\infty; -1) và (2; +\\infty) nên hàm số đồng biến trên các khoảng đó.',
+        hint: 'Hàm số đồng biến trên khoảng mà đạo hàm f\'(x) nhận giá trị dương (+).'
       },
       {
         id: 'q-m1-2',

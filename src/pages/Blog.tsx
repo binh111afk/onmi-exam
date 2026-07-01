@@ -348,7 +348,7 @@ export const Blog: React.FC = () => {
                       onClick={() => setSelectedPostId(post.id)}
                     >
                       {/* Thumbnail (smaller) */}
-                      <div className={`w-full sm:w-[130px] sm:h-[90px] shrink-0 rounded-xl overflow-hidden ${post.thumbnailBg} transition-transform duration-200 group-hover:scale-[1.02]`}>
+                      <div className={`w-full h-32 sm:w-[130px] sm:h-[90px] shrink-0 rounded-xl overflow-hidden ${post.thumbnailBg} transition-transform duration-200 group-hover:scale-[1.02]`}>
                         <CardThumbnail type={post.thumbnailType} bg={post.thumbnailBg} />
                       </div>
 

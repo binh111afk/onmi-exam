@@ -138,7 +138,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                     onClick={() => {
                       onLogout();
                       setMobileMenuOpen(false);
-                      onViewChange('home');
                     }}
                     className="w-full py-2.5 bg-red-50 hover:bg-red-100 text-danger text-[10px] font-black rounded-xl text-center flex items-center justify-center gap-1.5 cursor-pointer"
                   >

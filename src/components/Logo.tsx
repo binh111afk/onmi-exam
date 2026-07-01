@@ -60,13 +60,9 @@ export const Logo: React.FC<LogoProps> = ({ onViewChange }) => {
   return (
     <div 
       onClick={handleClick} 
-      className="flex items-center gap-2 cursor-pointer select-none"
+      className="flex items-center cursor-pointer select-none"
     >
-      <LogoIcon className="h-9 w-auto shrink-0" />
-      <div className="flex flex-col justify-center leading-none">
-        <span className="text-[17px] font-black tracking-tight text-[#1E60D6] font-sans">ONMI</span>
-        <span className="text-[10px] font-bold tracking-[0.25em] text-[#64748B] uppercase mt-0.5 font-sans">EXAM</span>
-      </div>
+      <img src="/logo.png" alt="Onmi" className="h-20 sm:h-12 w-auto object-contain" />
     </div>
   );
 };

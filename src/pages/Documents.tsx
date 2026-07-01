@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { SlidersHorizontal, BookOpen, LayoutGrid, Calculator, Atom, Beaker, PenTool, Globe, Grid, List, ChevronDown, FileText, Eye, Download, Bookmark, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { SlidersHorizontal, BookOpen, LayoutGrid, Calculator, Atom, Beaker, PenTool, Globe, Grid, List, FileText, Eye, Download, Bookmark, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Document } from '../types';
 import { DocCard } from '../components/DocCard';
+import { Select } from '../components/Select';
+import { Checkbox } from '../components/Checkbox';
 
 interface DocumentsProps {
   documents: Document[];
@@ -25,7 +27,7 @@ export const Documents: React.FC<DocumentsProps> = ({
   const [selectedFormats, setSelectedFormats] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>('newest'); // 'newest', 'popular', 'pages'
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  
+
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -160,29 +162,28 @@ export const Documents: React.FC<DocumentsProps> = ({
   return (
     <div className="max-w-container mx-auto px-4 sm:px-6 lg:px-8 py-8 select-none">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
+
         {/* ======================================================= */}
         {/* LEFT COLUMN: Tabs, grid cards, pagination (9/12 width)  */}
         {/* ======================================================= */}
         <div className="lg:col-span-9 space-y-6">
-          
+
           {/* Horizontal scroll subject tabs matching mockup */}
           <div className="w-full overflow-x-auto pb-2 scrollbar-none">
             <div className="flex items-center gap-3.5 min-w-max pr-4">
               {subjects.map((sub, idx) => {
                 const IconComponent = sub.icon;
-                const isActive = (sub.value === 'All' && selectedSubjects.length === 0) || 
+                const isActive = (sub.value === 'All' && selectedSubjects.length === 0) ||
                   (selectedSubjects.includes(sub.value));
 
                 return (
                   <button
                     key={idx}
                     onClick={() => toggleSubject(sub.value)}
-                    className={`flex items-center gap-3.5 px-5 py-3 rounded-2xl border transition-all duration-200 cursor-pointer ${
-                      isActive
+                    className={`flex items-center gap-3.5 px-5 py-3 rounded-2xl border transition-all duration-200 cursor-pointer ${isActive
                         ? `${sub.bg} bg-white shadow-[0_4px_16px_rgba(108,93,211,0.08)] border-slate-200/50 scale-[1.02]`
                         : 'bg-white border-slate-100 hover:bg-slate-50 text-text-secondary hover:text-text-primary'
-                    }`}
+                      }`}
                   >
                     <div className={`p-2 rounded-xl flex items-center justify-center ${isActive ? 'bg-current/10' : 'bg-slate-50'}`}>
                       <IconComponent size={16} />
@@ -211,23 +212,21 @@ export const Documents: React.FC<DocumentsProps> = ({
             </div>
 
             <div className="flex items-center gap-3">
-              
+
               {/* View switcher buttons */}
               <div className="flex items-center border border-slate-100 bg-white rounded-xl p-0.5">
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`p-1.5 rounded-lg transition-default cursor-pointer ${
-                    viewMode === 'grid' ? 'bg-primary-light text-primary' : 'text-slate-400 hover:text-text-primary'
-                  }`}
+                  className={`p-1.5 rounded-lg transition-default cursor-pointer ${viewMode === 'grid' ? 'bg-primary-light text-primary' : 'text-slate-400 hover:text-text-primary'
+                    }`}
                   title="Xem dạng lưới"
                 >
                   <Grid size={13} />
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`p-1.5 rounded-lg transition-default cursor-pointer ${
-                    viewMode === 'list' ? 'bg-primary-light text-primary' : 'text-slate-400 hover:text-text-primary'
-                  }`}
+                  className={`p-1.5 rounded-lg transition-default cursor-pointer ${viewMode === 'list' ? 'bg-primary-light text-primary' : 'text-slate-400 hover:text-text-primary'
+                    }`}
                   title="Xem dạng danh sách"
                 >
                   <List size={13} />
@@ -245,15 +244,17 @@ export const Documents: React.FC<DocumentsProps> = ({
               {/* Quick sort label */}
               <div className="hidden sm:flex items-center gap-1 bg-white border border-slate-100 rounded-xl px-3 py-1.5 text-xs text-text-secondary font-bold">
                 <span>Sắp xếp:</span>
-                <select
+                <Select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="bg-transparent border-none text-text-primary font-black cursor-pointer focus:outline-none pr-1.5"
-                >
-                  <option value="newest">Mới nhất</option>
-                  <option value="popular">Tải nhiều nhất</option>
-                  <option value="pages">Số trang lớn nhất</option>
-                </select>
+                  onChange={setSortBy}
+                  variant="ghost"
+                  size="sm"
+                  options={[
+                    { value: 'newest', label: 'Mới nhất' },
+                    { value: 'popular', label: 'Tải nhiều nhất' },
+                    { value: 'pages', label: 'Số trang lớn nhất' },
+                  ]}
+                />
               </div>
 
             </div>
@@ -273,23 +274,29 @@ export const Documents: React.FC<DocumentsProps> = ({
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <h4 className="text-[11px] font-black text-text-primary">Khối lớp</h4>
+                <div className="space-y-2 flex flex-col">
+                  <h4 className="text-[11px] font-black text-text-primary mb-1">Khối lớp</h4>
                   {grades.map(g => (
-                    <label key={g.value} className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer select-none">
-                      <input type="checkbox" checked={selectedGrades.includes(g.value)} onChange={() => toggleGrade(g.value)} />
-                      <span>{g.label}</span>
-                    </label>
+                    <Checkbox
+                      key={g.value}
+                      checked={selectedGrades.includes(g.value)}
+                      onChange={() => toggleGrade(g.value)}
+                      label={g.label}
+                      className="text-text-secondary py-1"
+                    />
                   ))}
                 </div>
 
-                <div className="space-y-2">
-                  <h4 className="text-[11px] font-black text-text-primary">Loại tài liệu</h4>
+                <div className="space-y-2 flex flex-col">
+                  <h4 className="text-[11px] font-black text-text-primary mb-1">Loại tài liệu</h4>
                   {documentTypes.map(t => (
-                    <label key={t.value} className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer select-none">
-                      <input type="checkbox" checked={selectedFormats.includes(t.value)} onChange={() => toggleFormat(t.value)} />
-                      <span>{t.label}</span>
-                    </label>
+                    <Checkbox
+                      key={t.value}
+                      checked={selectedFormats.includes(t.value)}
+                      onChange={() => toggleFormat(t.value)}
+                      label={t.label}
+                      className="text-text-secondary py-1"
+                    />
                   ))}
                 </div>
               </div>
@@ -359,7 +366,7 @@ export const Documents: React.FC<DocumentsProps> = ({
                 >
                   <ChevronLeft size={14} />
                 </button>
-                
+
                 {Array.from({ length: totalPages }).map((_, index) => {
                   const pageNum = index + 1;
                   const isActive = currentPage === pageNum;
@@ -368,17 +375,16 @@ export const Documents: React.FC<DocumentsProps> = ({
                     <button
                       key={pageNum}
                       onClick={() => setCurrentPage(pageNum)}
-                      className={`h-8 w-8 rounded-lg text-xs font-black transition-all flex items-center justify-center cursor-pointer ${
-                        isActive
+                      className={`h-8 w-8 rounded-lg text-xs font-black transition-all flex items-center justify-center cursor-pointer ${isActive
                           ? 'bg-primary text-white shadow-[0_3px_8px_rgba(108,93,211,0.25)]'
                           : 'border border-slate-100 bg-white hover:bg-slate-50 text-text-secondary'
-                      }`}
+                        }`}
                     >
                       {pageNum}
                     </button>
                   );
                 })}
-                
+
                 <button
                   onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages}
@@ -413,10 +419,10 @@ export const Documents: React.FC<DocumentsProps> = ({
         {/* RIGHT COLUMN: Filters Panel & Platform Stats (3/12 width)*/}
         {/* ======================================================= */}
         <div className="lg:col-span-3 space-y-6">
-          
+
           {/* Filter Panel matching mockup */}
           <section className="bg-white border border-slate-100 rounded-card p-6 space-y-6">
-            
+
             {/* Header: Title & Reset */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-[11px] font-black text-text-primary uppercase tracking-wider flex items-center gap-1.5">
@@ -430,51 +436,47 @@ export const Documents: React.FC<DocumentsProps> = ({
               </button>
             </div>
 
-            {/* Checkbox: Grade */}
-            <div className="space-y-2.5">
-              <h4 className="text-xs font-black text-text-primary">Khối lớp</h4>
-              <div className="space-y-2">
-                {grades.map((g) => (
-                  <label key={g.value} className="flex items-center justify-between text-xs text-text-secondary hover:text-text-primary cursor-pointer select-none">
-                    <div className="flex items-center gap-2.5">
-                      <input
-                        type="checkbox"
-                        checked={selectedGrades.includes(g.value)}
-                        onChange={() => toggleGrade(g.value)}
-                        className="h-4 w-4 rounded border-slate-200 text-primary focus:ring-0 cursor-pointer"
-                      />
-                      <span className={selectedGrades.includes(g.value) ? 'font-bold text-text-primary' : 'font-medium'}>
-                        {g.label}
-                      </span>
-                    </div>
-                    <span className="text-[10px] font-bold text-text-muted/80">{g.count}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+             {/* Checkbox: Grade */}
+             <div className="space-y-2.5">
+               <h4 className="text-xs font-black text-text-primary">Khối lớp</h4>
+               <div className="space-y-2 flex flex-col">
+                 {grades.map((g) => (
+                   <div key={g.value} className="flex items-center justify-between">
+                     <Checkbox
+                       checked={selectedGrades.includes(g.value)}
+                       onChange={() => toggleGrade(g.value)}
+                       label={
+                         <span className={selectedGrades.includes(g.value) ? 'font-bold text-text-primary' : 'font-medium text-text-secondary group-hover:text-text-primary'}>
+                           {g.label}
+                         </span>
+                       }
+                     />
+                     <span className="text-[10px] font-bold text-text-muted/80">{g.count}</span>
+                   </div>
+                 ))}
+               </div>
+             </div>
 
-            {/* Checkbox: Types */}
-            <div className="space-y-2.5">
-              <h4 className="text-xs font-black text-text-primary">Loại tài liệu</h4>
-              <div className="space-y-2">
-                {documentTypes.map((t) => (
-                  <label key={t.value} className="flex items-center justify-between text-xs text-text-secondary hover:text-text-primary cursor-pointer select-none">
-                    <div className="flex items-center gap-2.5">
-                      <input
-                        type="checkbox"
-                        checked={selectedFormats.includes(t.value)}
-                        onChange={() => toggleFormat(t.value)}
-                        className="h-4 w-4 rounded border-slate-200 text-primary focus:ring-0 cursor-pointer"
-                      />
-                      <span className={selectedFormats.includes(t.value) ? 'font-bold text-text-primary' : 'font-medium'}>
-                        {t.label}
-                      </span>
-                    </div>
-                    <span className="text-[10px] font-bold text-text-muted/80">{t.count}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+             {/* Checkbox: Types */}
+             <div className="space-y-2.5">
+               <h4 className="text-xs font-black text-text-primary">Loại tài liệu</h4>
+               <div className="space-y-2 flex flex-col">
+                 {documentTypes.map((t) => (
+                   <div key={t.value} className="flex items-center justify-between">
+                     <Checkbox
+                       checked={selectedFormats.includes(t.value)}
+                       onChange={() => toggleFormat(t.value)}
+                       label={
+                         <span className={selectedFormats.includes(t.value) ? 'font-bold text-text-primary' : 'font-medium text-text-secondary group-hover:text-text-primary'}>
+                           {t.label}
+                         </span>
+                       }
+                     />
+                     <span className="text-[10px] font-bold text-text-muted/80">{t.count}</span>
+                   </div>
+                 ))}
+               </div>
+             </div>
 
             {/* Format quick buttons */}
             <div className="space-y-2.5">
@@ -488,11 +490,10 @@ export const Documents: React.FC<DocumentsProps> = ({
                     <button
                       key={btn.value}
                       onClick={() => toggleFormat(btn.value)}
-                      className={`py-3.5 border rounded-xl flex flex-col items-center justify-center text-[10px] font-black transition-all cursor-pointer ${
-                        isActive
+                      className={`py-3.5 border rounded-xl flex flex-col items-center justify-center text-[10px] font-black transition-all cursor-pointer ${isActive
                           ? 'border-primary bg-primary-light/50 text-primary font-black shadow-[0_2px_8px_rgba(108,93,211,0.06)]'
                           : 'border-slate-100 bg-white text-text-secondary hover:bg-slate-50'
-                      }`}
+                        }`}
                     >
                       <FileText size={14} className={isActive ? 'text-primary' : 'text-slate-400'} />
                       <span className="mt-1 text-[8px] tracking-wider">{btn.label}</span>
@@ -505,20 +506,16 @@ export const Documents: React.FC<DocumentsProps> = ({
             {/* Sort Dropdown */}
             <div className="space-y-2.5">
               <h4 className="text-xs font-black text-text-primary">Sắp xếp theo</h4>
-              <div className="relative">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold text-text-primary focus:bg-white focus:outline-none cursor-pointer appearance-none"
-                >
-                  <option value="newest">Mới nhất</option>
-                  <option value="popular">Tải nhiều nhất</option>
-                  <option value="pages">Số trang lớn nhất</option>
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-text-secondary">
-                  <ChevronDown size={14} />
-                </div>
-              </div>
+              <Select
+                value={sortBy}
+                onChange={setSortBy}
+                variant="filled"
+                options={[
+                  { value: 'newest', label: 'Mới nhất' },
+                  { value: 'popular', label: 'Tải nhiều nhất' },
+                  { value: 'pages', label: 'Số trang lớn nhất' },
+                ]}
+              />
             </div>
 
             {/* Apply Filter Button */}
@@ -541,9 +538,9 @@ export const Documents: React.FC<DocumentsProps> = ({
             <h3 className="text-xs font-black text-text-primary uppercase tracking-wider border-b border-slate-100 pb-3">
               Thống kê học tập
             </h3>
-            
+
             <div className="grid grid-cols-2 gap-3.5">
-              
+
               <div className="p-3 bg-slate-50/50 border border-slate-100 rounded-2xl flex items-center gap-3">
                 <div className="h-8 w-8 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
                   <Eye size={14} className="stroke-[2.5]" />

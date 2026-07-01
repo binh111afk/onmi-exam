@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { StudyIllustration } from '../components/Illustration';
+import { Checkbox } from '../components/Checkbox';
 
 interface RegisterProps {
   onRegisterSuccess: (name: string, email: string) => void;
@@ -123,18 +124,17 @@ export const Register: React.FC<RegisterProps> = ({ onRegisterSuccess, onViewCha
 
             {/* Checkbox agreement */}
             <div className="flex items-start">
-              <label className="flex items-start gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  className="mt-0.5"
-                  checked={agreeTerms}
-                  onChange={(e) => setAgreeTerms(e.target.checked)}
-                />
-                <span className="text-xs text-text-secondary leading-normal">
-                  Tôi đồng ý với các <span className="text-primary hover:underline">Điều khoản sử dụng</span> và{' '}
-                  <span className="text-primary hover:underline">Chính sách bảo mật</span> của Onmi Exam.
-                </span>
-              </label>
+              <Checkbox
+                checked={agreeTerms}
+                onChange={setAgreeTerms}
+                className="items-start"
+                label={
+                  <span className="text-xs text-text-secondary leading-normal font-semibold">
+                    Tôi đồng ý với các <span className="text-primary hover:underline">Điều khoản sử dụng</span> và{' '}
+                    <span className="text-primary hover:underline">Chính sách bảo mật</span> của Onmi Exam.
+                  </span>
+                }
+              />
             </div>
 
             <button

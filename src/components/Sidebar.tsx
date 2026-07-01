@@ -1,18 +1,21 @@
 import React from 'react';
-import { Home, FileText, BookOpen, Compass, Trophy, Users, Newspaper, MessageSquare } from 'lucide-react';
+import { Home, FileText, BookOpen, Compass, Trophy, Users, Newspaper, ChevronRight, GraduationCap } from 'lucide-react';
 import { Logo } from './Logo';
+import type { User } from '../types';
 
 interface SidebarProps {
   currentView: string;
   onViewChange: (view: string) => void;
+  user: User;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, user }) => {
   const sidebarItems = [
     { label: 'Trang chủ', view: 'home', icon: Home },
     { label: 'Đề thi trắc nghiệm', view: 'exams', icon: FileText },
     { label: 'Tài liệu tự học', view: 'documents', icon: BookOpen },
     { label: 'Lộ trình cá nhân', view: 'about', icon: Compass },
+    { label: 'Giáo viên', view: 'teacher', icon: GraduationCap },
     { label: 'Bảng xếp hạng', view: 'leaderboard', icon: Trophy },
     { label: 'Blog', view: 'blog', icon: Newspaper, isNew: true },
     { label: 'Liên hệ hỗ trợ', view: 'contact', icon: Users },
@@ -20,10 +23,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) =
 
   return (
     <aside className="hidden lg:flex w-64 bg-white border-r border-slate-100 p-6 flex-col h-screen sticky top-0 overflow-y-auto shrink-0 select-none justify-between">
-      
-      <div className="space-y-8">
+
+      <div className="space-y-[30px]">
         {/* Logo at the top of the sidebar */}
-        <div className="pb-2 border-b border-slate-100/60">
+        <div className="pb-1 border-b border-slate-100/60">
           <Logo onViewChange={onViewChange} />
         </div>
 
@@ -31,19 +34,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) =
         <div className="space-y-1.5">
           {sidebarItems.map((item, idx) => {
             const Icon = item.icon;
-            const isActive = currentView === item.view || 
-              (item.view === 'exams' && currentView === 'exam-detail') || 
+            const isActive = currentView === item.view ||
+              (item.view === 'exams' && currentView === 'exam-detail') ||
               (item.view === 'documents' && currentView === 'doc-reader');
 
             return (
               <button
                 key={idx}
                 onClick={() => onViewChange(item.view)}
-                className={`w-full flex items-center justify-between px-4 py-3.5 text-xs font-bold rounded-2xl transition-all duration-200 cursor-pointer ${
-                  isActive
+                className={`w-full flex items-center justify-between px-4 py-3.5 text-xs font-bold rounded-2xl transition-all duration-200 cursor-pointer ${isActive
                     ? 'bg-primary-light text-primary shadow-[0_4px_12px_rgba(108,93,211,0.08)]'
                     : 'text-text-secondary hover:bg-slate-50 hover:text-text-primary'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-3.5">
                   <Icon size={16} className={isActive ? 'text-primary' : 'text-text-secondary/80'} />
@@ -60,27 +62,28 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) =
         </div>
       </div>
 
-      {/* Support widget at the bottom */}
-      <div className="mt-8 bg-slate-50 border border-slate-100 rounded-3xl p-5 relative overflow-hidden text-center flex flex-col items-center">
-        {/* Support Vector Image or Icon */}
-        <div className="relative mb-3.5 flex items-center justify-center bg-primary-light/50 h-12 w-12 rounded-full text-primary">
-          <MessageSquare size={20} className="stroke-[2.5]" />
-          <span className="absolute -top-1.5 -right-1.5 bg-accent text-white font-extrabold text-[8px] px-1.5 py-0.5 rounded-full border border-white">
-            24/7
-          </span>
+      {/* User Profile Card at the bottom */}
+      <button
+        onClick={() => onViewChange('profile')}
+        className="mt-4 w-full flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-primary-light border border-slate-100 hover:border-primary/20 rounded-2xl transition-all duration-200 cursor-pointer group"
+      >
+        {/* Avatar */}
+        <div className="h-9 w-9 rounded-full bg-primary text-white font-black text-sm flex items-center justify-center shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
+          {user.loggedIn ? user.name.charAt(0).toUpperCase() : '?'}
         </div>
-        
-        <h4 className="text-xs font-black text-text-primary mb-1">Cần hỗ trợ?</h4>
-        <p className="text-[10px] text-text-secondary leading-normal mb-3.5 px-1">
-          Bạn gặp khó khăn hay có thắc mắc trong quá trình học?
-        </p>
-        <button
-          onClick={() => onViewChange('contact')}
-          className="w-full py-2 bg-primary hover:bg-primary-hover text-white text-[10px] font-black rounded-xl transition-all duration-200 shadow-sm cursor-pointer"
-        >
-          Liên hệ ngay
-        </button>
-      </div>
+
+        {/* Name + status */}
+        <div className="flex-1 text-left min-w-0">
+          <p className="text-xs font-black text-text-primary truncate group-hover:text-primary transition-colors">
+            {user.loggedIn ? user.name : 'Khách'}
+          </p>
+          <p className="text-[10px] text-text-secondary font-medium truncate">
+            {user.loggedIn ? `${user.xp} XP • Streak ${user.streak} 🔥` : 'Đăng nhập để tiếp tục'}
+          </p>
+        </div>
+
+        <ChevronRight size={14} className="text-slate-300 group-hover:text-primary shrink-0 transition-colors" />
+      </button>
 
     </aside>
   );

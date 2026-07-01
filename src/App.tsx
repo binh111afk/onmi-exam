@@ -13,10 +13,11 @@ import { DocReader } from './pages/DocReader';
 import { Leaderboard } from './pages/Leaderboard';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
-import { About } from './pages/About';
+import { Roadmap } from './pages/Roadmap';
 import { Contact } from './pages/Contact';
 import { Blog } from './pages/Blog';
 import { Profile } from './pages/Profile';
+import { Teacher } from './pages/Teacher';
 
 function App() {
   // Global States
@@ -44,7 +45,7 @@ function App() {
       ...prev,
       loggedIn: false,
     }));
-    setView('home');
+    setView('login');
   };
 
   const handleRegisterSuccess = (name: string, email: string) => {
@@ -165,8 +166,8 @@ function App() {
   const relatedExams = mockExams.filter((x) => x.subject === activeDoc.subject);
   const relatedDocs = mockDocuments.filter((x) => x.subject === activeExam.subject && x.id !== selectedDocId);
 
-  // Hide Top Navigation and Footer inside the CBT Test Simulator
-  const showHeaderFooter = view !== 'active-exam';
+  // Hide Top Navigation and Footer inside the CBT Test Simulator and auth pages
+  const showHeaderFooter = view !== 'active-exam' && view !== 'login' && view !== 'register';
 
   return (
     <div className="min-h-screen flex flex-col bg-bg-base transition-colors duration-default selection:bg-primary-light selection:text-primary">
@@ -184,11 +185,11 @@ function App() {
       {/* Main Container: Split sidebar + viewport */}
       <div className="flex-1 w-full flex overflow-hidden">
         {showHeaderFooter && (
-          <Sidebar currentView={view} onViewChange={handleViewChange} />
+          <Sidebar currentView={view} onViewChange={handleViewChange} user={user} />
         )}
 
         {/* Viewport with its own scrollbar */}
-        <div className="flex-1 overflow-y-auto bg-slate-50/50 flex flex-col h-[calc(100vh-3.5rem)] lg:h-screen">
+        <div className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50/50 flex flex-col h-[calc(100vh-3.5rem)] lg:h-screen">
           <div className="flex-1">
             {view === 'home' && (
               <Home
@@ -257,7 +258,9 @@ function App() {
 
             {view === 'register' && <Register onRegisterSuccess={handleRegisterSuccess} onViewChange={handleViewChange} />}
 
-            {view === 'about' && <About />}
+            {view === 'about' && <Roadmap user={user} onStartExam={handleStartExam} />}
+
+            {view === 'teacher' && <Teacher />}
 
             {view === 'contact' && <Contact />}
 
@@ -268,10 +271,11 @@ function App() {
                 user={user}
                 onUpdateProfile={handleUpdateProfile}
                 onViewChange={handleViewChange}
+                onLogout={handleLogout}
               />
             )}
           </div>
-          
+
           {showHeaderFooter && <Footer onViewChange={handleViewChange} />}
         </div>
       </div>

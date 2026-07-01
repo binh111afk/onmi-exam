@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Search, RefreshCw, BookOpen, Star, Clock, HelpCircle, ArrowRight } from 'lucide-react';
 import type { Exam } from '../types';
+import { Select } from '../components/Select';
+import { Checkbox } from '../components/Checkbox';
 
 interface ExamsProps {
   exams: Exam[];
@@ -10,169 +12,189 @@ interface ExamsProps {
   onSearchChange: (query: string) => void;
 }
 
-// Subject themes for cards
-const subjectThemes: Record<string, { bg: string; tag: string; badgeText: string; btn: string; illustration: string }> = {
+// Subject themes for cards with light pastel backgrounds and matching badges
+const subjectThemes: Record<string, { bg: string; text: string; btn: string; badgeBg: string; badgeText: string }> = {
   'Toán học': {
-    bg: 'linear-gradient(135deg,#EEF2FF 60%,#C7D2FE 100%)',
-    tag: '#4F46E5',
-    badgeText: '#fff',
-    btn: '#4F46E5',
-    illustration: 'toán',
+    bg: 'bg-blue-50/60',
+    text: 'text-blue-600',
+    btn: 'bg-blue-600 hover:bg-blue-700 text-white',
+    badgeBg: 'bg-blue-100/70 text-blue-700',
+    badgeText: 'Toán học',
   },
   'Vật lý': {
-    bg: 'linear-gradient(135deg,#ECFDF5 60%,#A7F3D0 100%)',
-    tag: '#059669',
-    badgeText: '#fff',
-    btn: '#059669',
-    illustration: 'lý',
+    bg: 'bg-teal-50/60',
+    text: 'text-teal-600',
+    btn: 'bg-teal-600 hover:bg-teal-700 text-white',
+    badgeBg: 'bg-teal-100/70 text-teal-700',
+    badgeText: 'Vật lý',
   },
   'Hóa học': {
-    bg: 'linear-gradient(135deg,#FFFBEB 60%,#FDE68A 100%)',
-    tag: '#D97706',
-    badgeText: '#fff',
-    btn: '#D97706',
-    illustration: 'hóa',
+    bg: 'bg-amber-50/60',
+    text: 'text-amber-600',
+    btn: 'bg-amber-600 hover:bg-amber-700 text-white',
+    badgeBg: 'bg-amber-100/70 text-amber-700',
+    badgeText: 'Hóa học',
   },
   'Sinh học': {
-    bg: 'linear-gradient(135deg,#F0FDF4 60%,#BBF7D0 100%)',
-    tag: '#16A34A',
-    badgeText: '#fff',
-    btn: '#16A34A',
-    illustration: 'sinh',
+    bg: 'bg-emerald-50/60',
+    text: 'text-emerald-600',
+    btn: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+    badgeBg: 'bg-emerald-100/70 text-emerald-700',
+    badgeText: 'Sinh học',
   },
   'Tiếng Anh': {
-    bg: 'linear-gradient(135deg,#F5F3FF 60%,#DDD6FE 100%)',
-    tag: '#7C3AED',
-    badgeText: '#fff',
-    btn: '#7C3AED',
-    illustration: 'anh',
+    bg: 'bg-purple-50/60',
+    text: 'text-purple-600',
+    btn: 'bg-purple-600 hover:bg-purple-700 text-white',
+    badgeBg: 'bg-purple-100/70 text-purple-700',
+    badgeText: 'Tiếng Anh',
   },
+};
+
+const defaultTheme = {
+  bg: 'bg-slate-50/60',
+  text: 'text-slate-600',
+  btn: 'bg-slate-600 hover:bg-slate-700 text-white',
+  badgeBg: 'bg-slate-100/70 text-slate-700',
+  badgeText: 'Môn học',
 };
 
 const difficultyStyle: Record<string, { bg: string; color: string }> = {
-  'Dễ': { bg: '#DBEAFE', color: '#1D4ED8' },
-  'Trung bình': { bg: '#D1FAE5', color: '#065F46' },
-  'Khó': { bg: '#FEE2E2', color: '#DC2626' },
+  'Dễ': { bg: 'bg-blue-50 text-blue-600', color: '#2563EB' },
+  'Trung bình': { bg: 'bg-emerald-50 text-emerald-600', color: '#059669' },
+  'Khó': { bg: 'bg-rose-50 text-rose-600', color: '#E11D48' },
 };
 
-// Mini SVG illustrations per subject
+// Mini SVG illustrations per subject, styled to be modern and pastel/soft
 const IllustrationSVG: React.FC<{ subject: string }> = ({ subject }) => {
+  const containerClass = "w-15 h-15 rounded-2xl flex items-center justify-center overflow-hidden shrink-0";
+
   if (subject === 'Toán học') return (
-    <svg viewBox="0 0 80 80" style={{ width: 72, height: 72 }} fill="none">
-      <polygon points="40,8 72,62 8,62" fill="#C7D2FE" stroke="#6366F1" strokeWidth="2" />
-      <polygon points="40,20 62,56 18,56" fill="#E0E7FF" stroke="#6366F1" strokeWidth="1.5" />
-      <line x1="40" y1="20" x2="40" y2="56" stroke="#6366F1" strokeWidth="1.5" strokeDasharray="3,2" />
-    </svg>
+    <div className={`${containerClass} bg-blue-50/60`}>
+      <svg viewBox="0 0 80 80" className="w-11 h-11" fill="none">
+        <polygon points="40,16 68,64 12,64" fill="#C7D2FE" opacity="0.4" stroke="#6366F1" strokeWidth="1.5" />
+        <circle cx="40" cy="46" r="10" fill="#E0E7FF" opacity="0.6" stroke="#4F46E5" strokeWidth="1.5" />
+        <line x1="40" y1="16" x2="40" y2="64" stroke="#6366F1" strokeWidth="1.2" strokeDasharray="3,2" />
+      </svg>
+    </div>
   );
   if (subject === 'Vật lý') return (
-    <svg viewBox="0 0 80 80" style={{ width: 72, height: 72 }} fill="none">
-      <rect x="20" y="28" width="40" height="30" rx="6" fill="#A7F3D0" stroke="#059669" strokeWidth="2" />
-      <line x1="20" y1="38" x2="60" y2="38" stroke="#059669" strokeWidth="1.5" />
-      <path d="M30 38 Q40 22 50 38" stroke="#059669" strokeWidth="2" strokeLinecap="round" fill="none" />
-      <circle cx="40" cy="48" r="5" fill="#059669" opacity="0.3" />
-      <line x1="40" y1="58" x2="40" y2="66" stroke="#059669" strokeWidth="2" strokeLinecap="round" />
-      <line x1="32" y1="66" x2="48" y2="66" stroke="#059669" strokeWidth="2" strokeLinecap="round" />
-    </svg>
+    <div className={`${containerClass} bg-teal-50/60`}>
+      <svg viewBox="0 0 80 80" className="w-11 h-11" fill="none">
+        <rect x="24" y="20" width="32" height="6" rx="2" fill="#A7F3D0" stroke="#059669" strokeWidth="1.5" />
+        <line x1="32" y1="26" x2="32" y2="52" stroke="#059669" strokeWidth="1.2" />
+        <line x1="40" y1="26" x2="40" y2="52" stroke="#059669" strokeWidth="1.2" />
+        <line x1="48" y1="26" x2="48" y2="52" stroke="#059669" strokeWidth="1.2" />
+        <circle cx="32" cy="56" r="4.5" fill="#34D399" opacity="0.5" stroke="#059669" strokeWidth="1.2" />
+        <circle cx="40" cy="56" r="4.5" fill="#34D399" opacity="0.5" stroke="#059669" strokeWidth="1.2" />
+        <circle cx="48" cy="56" r="4.5" fill="#34D399" opacity="0.5" stroke="#059669" strokeWidth="1.2" />
+      </svg>
+    </div>
   );
   if (subject === 'Hóa học') return (
-    <svg viewBox="0 0 80 80" style={{ width: 72, height: 72 }} fill="none">
-      <path d="M30 10 L30 40 L14 66 L66 66 L50 40 L50 10 Z" fill="#FDE68A" stroke="#D97706" strokeWidth="2" strokeLinejoin="round" />
-      <rect x="26" y="8" width="28" height="6" rx="3" fill="#D97706" />
-      <circle cx="38" cy="52" r="8" fill="#F59E0B" opacity="0.6" />
-      <circle cx="28" cy="56" r="5" fill="#FCD34D" opacity="0.7" />
-      <circle cx="48" cy="56" r="5" fill="#FCD34D" opacity="0.7" />
-    </svg>
+    <div className={`${containerClass} bg-amber-50/60`}>
+      <svg viewBox="0 0 80 80" className="w-11 h-11" fill="none">
+        <path d="M32 16 L32 38 L18 62 L62 62 L48 38 L48 16 Z" fill="#FDE68A" opacity="0.4" stroke="#D97706" strokeWidth="1.5" strokeLinejoin="round" />
+        <rect x="28" y="12" width="24" height="4" rx="2" fill="#D97706" />
+        <circle cx="40" cy="50" r="6" fill="#F59E0B" opacity="0.5" />
+        <circle cx="30" cy="54" r="4" fill="#FCD34D" opacity="0.5" />
+        <circle cx="48" cy="52" r="3" fill="#FCD34D" opacity="0.5" />
+      </svg>
+    </div>
   );
   if (subject === 'Sinh học') return (
-    <svg viewBox="0 0 80 80" style={{ width: 72, height: 72 }} fill="none">
-      <path d="M40 10 C25 10 15 22 15 35 C15 55 40 72 40 72 C40 72 65 55 65 35 C65 22 55 10 40 10 Z" fill="#BBF7D0" stroke="#16A34A" strokeWidth="2" />
-      <line x1="40" y1="10" x2="40" y2="72" stroke="#16A34A" strokeWidth="2" strokeDasharray="3,2" />
-      <path d="M25 30 Q32 36 40 30 Q48 24 55 30" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-      <path d="M20 45 Q30 52 40 45 Q50 38 60 45" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round" fill="none" />
-    </svg>
+    <div className={`${containerClass} bg-emerald-50/60`}>
+      <svg viewBox="0 0 80 80" className="w-11 h-11" fill="none">
+        <circle cx="40" cy="40" r="26" fill="#BBF7D0" opacity="0.3" stroke="#16A34A" strokeWidth="1.5" />
+        <path d="M28 32 C28 32 36 24 40 40 C44 56 52 48 52 48" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M28 48 C28 48 36 56 40 40 C44 24 52 32 52 32" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" />
+        <circle cx="34" cy="36" r="2" fill="#047857" />
+        <circle cx="46" cy="44" r="2" fill="#047857" />
+      </svg>
+    </div>
   );
   if (subject === 'Tiếng Anh') return (
-    <svg viewBox="0 0 80 80" style={{ width: 72, height: 72 }} fill="none">
-      <rect x="10" y="14" width="60" height="45" rx="8" fill="#DDD6FE" stroke="#7C3AED" strokeWidth="2" />
-      <text x="40" y="44" textAnchor="middle" fontSize="26" fontWeight="bold" fill="#7C3AED">ABC</text>
-      <line x1="20" y1="52" x2="60" y2="52" stroke="#7C3AED" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
+    <div className={`${containerClass} bg-purple-50/60`}>
+      <svg viewBox="0 0 80 80" className="w-11 h-11" fill="none">
+        <rect x="16" y="20" width="48" height="40" rx="6" fill="#DDD6FE" opacity="0.4" stroke="#7C3AED" strokeWidth="1.5" />
+        <text x="40" y="47" textAnchor="middle" fontSize="22" fontWeight="bold" fill="#7C3AED" opacity="0.7">ABC</text>
+        <line x1="26" y1="52" x2="54" y2="52" stroke="#7C3AED" strokeWidth="1.2" strokeLinecap="round" />
+      </svg>
+    </div>
   );
   return (
-    <svg viewBox="0 0 80 80" style={{ width: 72, height: 72 }} fill="none">
-      <rect x="15" y="10" width="50" height="60" rx="6" fill="#E2E8F0" stroke="#94A3B8" strokeWidth="2" />
-      <line x1="25" y1="28" x2="55" y2="28" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round" />
-      <line x1="25" y1="40" x2="55" y2="40" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round" />
-      <line x1="25" y1="52" x2="42" y2="52" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
+    <div className={`${containerClass} bg-slate-50/60`}>
+      <svg viewBox="0 0 80 80" className="w-11 h-11" fill="none">
+        <rect x="20" y="16" width="40" height="48" rx="4" fill="#E2E8F0" opacity="0.5" stroke="#94A3B8" strokeWidth="1.5" />
+        <line x1="28" y1="30" x2="52" y2="30" stroke="#94A3B8" strokeWidth="1.2" />
+        <line x1="28" y1="40" x2="52" y2="40" stroke="#94A3B8" strokeWidth="1.2" />
+        <line x1="28" y1="50" x2="44" y2="50" stroke="#94A3B8" strokeWidth="1.2" />
+      </svg>
+    </div>
   );
 };
 
 // Styled exam card matching the mockup
 const NewExamCard: React.FC<{ exam: Exam; onSelect: (id: string) => void; onStart: (id: string) => void }> = ({ exam, onSelect, onStart }) => {
-  const theme = subjectThemes[exam.subject] || { bg: '#F8FAFC', tag: '#6366F1', badgeText: '#fff', btn: '#6366F1', illustration: '' };
-  const diff = difficultyStyle[exam.difficulty] || { bg: '#E2E8F0', color: '#475569' };
+  const theme = subjectThemes[exam.subject] || defaultTheme;
+  const diff = difficultyStyle[exam.difficulty] || { bg: 'bg-slate-50 text-slate-600', color: '#475569' };
 
   return (
     <div
       onClick={() => onSelect(exam.id)}
-      style={{
-        background: '#fff',
-        borderRadius: 16,
-        border: '1px solid rgba(226,232,240,0.7)',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-        cursor: 'pointer',
-        overflow: 'hidden',
-        transition: 'box-shadow 0.2s, transform 0.2s',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.10)'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)'; (e.currentTarget as HTMLDivElement).style.transform = 'none'; }}
+      className="bg-white rounded-3xl border border-[#E2E8F0]/60 p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col justify-between h-full relative overflow-hidden group"
     >
-      {/* Card header with gradient bg + illustration */}
-      <div style={{ background: theme.bg, padding: '16px 16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', minHeight: 96 }}>
-        <div>
-          <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-            <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 10px', borderRadius: 20, background: theme.tag, color: theme.badgeText }}>{exam.subject}</span>
-            <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 10px', borderRadius: 6, background: diff.bg, color: diff.color }}>{exam.difficulty}</span>
-          </div>
-          <h3 style={{ fontSize: 13, fontWeight: 700, color: '#1E293B', lineHeight: 1.4, margin: 0, maxWidth: 180 }}>{exam.title}</h3>
+      <div>
+        {/* Badges row */}
+        <div className="flex justify-between items-center gap-2">
+          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${theme.badgeBg}`}>
+            {exam.subject}
+          </span>
+          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-md ${diff.bg}`}>
+            {exam.difficulty}
+          </span>
         </div>
-        <div style={{ flexShrink: 0, marginTop: -4 }}>
-          <IllustrationSVG subject={exam.subject} />
+
+        {/* Title */}
+        <h3 className="text-xs font-black text-[#1E293B] leading-snug mt-3.5 pr-16 line-clamp-2 h-9 group-hover:text-[#6366F1] transition-colors">
+          {exam.title}
+        </h3>
+
+        {/* Info row (question count, duration) */}
+        <div className="flex gap-4 text-[11px] text-[#64748B] mt-2.5">
+          <span className="flex items-center gap-1">
+            <HelpCircle size={13} className="text-slate-300" />
+            {exam.questionCount} câu
+          </span>
+          <span className="flex items-center gap-1">
+            <Clock size={13} className="text-slate-300" />
+            {exam.durationMinutes} phút
+          </span>
         </div>
       </div>
 
-      {/* Card body */}
-      <div style={{ padding: '12px 16px 16px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-        {/* Info row */}
-        <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#64748B', marginBottom: 12 }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <HelpCircle size={13} style={{ color: '#94A3B8' }} /> {exam.questionCount} câu
-          </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Clock size={13} style={{ color: '#94A3B8' }} /> {exam.durationMinutes} phút
-          </span>
-        </div>
+      {/* Illustration (positioned middle-right) */}
+      <div className="absolute right-4 top-1/2 -translate-y-12">
+        <IllustrationSVG subject={exam.subject} />
+      </div>
 
-        {/* Bottom row: views + rating + arrow btn */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 12, color: '#64748B' }}>
-              {exam.tries >= 1000 ? `${(exam.tries / 1000).toFixed(1)}K` : exam.tries} lượt làm
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 700, color: '#1E293B' }}>
-              <Star size={13} style={{ fill: '#FBBF24', color: '#FBBF24' }} /> {exam.rating.toFixed(1)}
-            </span>
-          </div>
-          <button
-            onClick={e => { e.stopPropagation(); onStart(exam.id); }}
-            style={{ width: 34, height: 34, borderRadius: '50%', background: theme.btn, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', flexShrink: 0 }}
-          >
-            <ArrowRight size={15} />
-          </button>
+      {/* Footer row */}
+      <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#E2E8F0]/40">
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] text-[#64748B]">
+            {exam.tries >= 1000 ? `${(exam.tries / 1000).toFixed(1)}K` : exam.tries} lượt làm
+          </span>
+          <span className="flex items-center gap-1 text-[11px] font-bold text-[#1E293B]">
+            <Star size={12} className="fill-[#F59E0B] text-[#F59E0B]" />
+            {exam.rating.toFixed(1)}
+          </span>
         </div>
+        <button
+          onClick={e => { e.stopPropagation(); onStart(exam.id); }}
+          className={`w-7.5 h-7.5 rounded-full flex items-center justify-center cursor-pointer transition-all ${theme.btn} shadow-sm`}
+        >
+          <ArrowRight size={13} />
+        </button>
       </div>
     </div>
   );
@@ -181,15 +203,15 @@ const NewExamCard: React.FC<{ exam: Exam; onSelect: (id: string) => void; onStar
 const subjectCategories = ['Tất cả', 'Toán học', 'Vật lý', 'Hóa học', 'Tiếng Anh', 'Sinh học'];
 
 const subjectIcons: Record<string, React.ReactNode> = {
-  'Tất cả': <svg viewBox="0 0 16 16" style={{ width: 13, height: 13 }} fill="currentColor"><path d="M1 2.5A1.5 1.5 0 012.5 1h3A1.5 1.5 0 017 2.5v3A1.5 1.5 0 015.5 7h-3A1.5 1.5 0 011 5.5v-3zm8 0A1.5 1.5 0 0110.5 1h3A1.5 1.5 0 0115 2.5v3A1.5 1.5 0 0113.5 7h-3A1.5 1.5 0 019 5.5v-3zm-8 8A1.5 1.5 0 012.5 9h3A1.5 1.5 0 017 10.5v3A1.5 1.5 0 015.5 15h-3A1.5 1.5 0 011 13.5v-3zm8 0A1.5 1.5 0 0110.5 9h3a1.5 1.5 0 011.5 1.5v3a1.5 1.5 0 01-1.5 1.5h-3A1.5 1.5 0 019 13.5v-3z"/></svg>,
-  'Toán học': <svg viewBox="0 0 16 16" style={{ width: 13, height: 13 }} fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M1 8h14M8 1l3 7-3 7" strokeLinecap="round" strokeLinejoin="round"/></svg>,
-  'Vật lý': <svg viewBox="0 0 16 16" style={{ width: 13, height: 13 }} fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="5"/><path d="M8 3v5l3 2" strokeLinecap="round"/></svg>,
-  'Hóa học': <svg viewBox="0 0 16 16" style={{ width: 13, height: 13 }} fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M5 2h6v6l3 7H2l3-7V2z" strokeLinejoin="round"/></svg>,
-  'Tiếng Anh': <svg viewBox="0 0 16 16" style={{ width: 13, height: 13 }} fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="2" width="14" height="11" rx="2"/><path d="M4 7h8M4 10h5" strokeLinecap="round"/></svg>,
-  'Sinh học': <svg viewBox="0 0 16 16" style={{ width: 13, height: 13 }} fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M8 1c-4 0-6 3-6 6s2 6 6 6 6-3 6-6-2-6-6-6z"/><path d="M2 8h12M8 1c-2 3-2 9 0 14" strokeLinecap="round"/></svg>,
+  'Tất cả': <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="currentColor"><path d="M1 2.5A1.5 1.5 0 012.5 1h3A1.5 1.5 0 017 2.5v3A1.5 1.5 0 015.5 7h-3A1.5 1.5 0 011 5.5v-3zm8 0A1.5 1.5 0 0110.5 1h3A1.5 1.5 0 0115 2.5v3A1.5 1.5 0 0113.5 7h-3A1.5 1.5 0 019 5.5v-3zm-8 8A1.5 1.5 0 012.5 9h3A1.5 1.5 0 017 10.5v3A1.5 1.5 0 015.5 15h-3A1.5 1.5 0 011 13.5v-3zm8 0A1.5 1.5 0 0110.5 9h3a1.5 1.5 0 011.5 1.5v3a1.5 1.5 0 01-1.5 1.5h-3A1.5 1.5 0 019 13.5v-3z" /></svg>,
+  'Toán học': <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M1 8h14M8 1l3 7-3 7" strokeLinecap="round" strokeLinejoin="round" /></svg>,
+  'Vật lý': <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="5" /><path d="M8 3v5l3 2" strokeLinecap="round" /></svg>,
+  'Hóa học': <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M5 2h6v6l3 7H2l3-7V2z" strokeLinejoin="round" /></svg>,
+  'Tiếng Anh': <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="2" width="14" height="11" rx="2" /><path d="M4 7h8M4 10h5" strokeLinecap="round" /></svg>,
+  'Sinh học': <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M8 1c-4 0-6 3-6 6s2 6 6 6 6-3 6-6-2-6-6-6z" /><path d="M2 8h12M8 1c-2 3-2 9 0 14" strokeLinecap="round" /></svg>,
 };
 
-const ITEMS_PER_PAGE = 6;
+const ITEMS_PER_PAGE = 12;
 
 export const Exams: React.FC<ExamsProps> = ({
   exams,
@@ -246,131 +268,133 @@ export const Exams: React.FC<ExamsProps> = ({
   const totalPages = Math.max(1, Math.ceil(filteredExams.length / ITEMS_PER_PAGE));
   const pagedExams = filteredExams.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-  const cardStyle = { background: '#fff', borderRadius: 16, border: '1px solid rgba(226,232,240,0.7)', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' };
 
-  // Checkbox component
-  const Checkbox: React.FC<{ checked: boolean; label: string; onChange: () => void }> = ({ checked, label, onChange }) => (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#475569', cursor: 'pointer', padding: '2px 0' }}>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={onChange}
-        style={{ width: 14, height: 14, accentColor: '#6366F1', cursor: 'pointer' }}
-      />
-      <span>{label}</span>
-    </label>
-  );
 
-  const FilterSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-    <div style={{ marginBottom: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <span style={{ fontSize: 11, fontWeight: 700, color: '#1E293B', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{title}</span>
-        <svg viewBox="0 0 20 20" style={{ width: 14, height: 14, color: '#94A3B8' }} fill="currentColor">
-          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-        </svg>
+  // FilterSection with toggle capability
+  const FilterSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
+    const [isOpen, setIsOpen] = useState(true);
+    return (
+      <div className="border-b border-slate-100 pb-4 mb-4 last:border-0 last:pb-0 last:mb-0">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="flex items-center justify-between w-full font-bold text-xs text-[#1E293B] uppercase tracking-wider mb-3 cursor-pointer select-none"
+        >
+          <span>{title}</span>
+          <svg
+            viewBox="0 0 20 20"
+            className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+            fill="currentColor"
+          >
+            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+          </svg>
+        </button>
+        {isOpen && (
+          <div className="flex flex-col gap-1.5 transition-all duration-200">
+            {children}
+          </div>
+        )}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>{children}</div>
-    </div>
-  );
+    );
+  };
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", maxWidth: 1200, margin: '0 auto', padding: '28px 20px' }}>
+    <div className="max-w-7xl mx-auto px-4 py-8 antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
 
       {/* ── HEADER ROW ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1E293B', display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 6px' }}>
+          <h1 className="text-2xl font-black text-[#1E293B] flex items-center gap-2">
             Kho đề thi trắc nghiệm
-            <svg viewBox="0 0 24 24" style={{ width: 22, height: 22, color: '#818CF8' }} fill="currentColor">
-              <path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2z" />
-            </svg>
+            <span className="text-[#818CF8]">✨</span>
           </h1>
-          <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>Tập trung luyện tập với hàng ngàn đề thi thử chọn lọc, cập nhật liên tục.</p>
+          <p className="text-xs text-[#64748B] mt-1">Tập trung luyện tập với hàng ngàn đề thi thử chọn lọc, cập nhật liên tục.</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
           {/* Search */}
-          <div style={{ position: 'relative' }}>
-            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+          <div className="relative w-full sm:w-56">
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              placeholder="Tìm kiếm tên đề, môn học..."
+              placeholder="Tìm kiếm đề, môn học..."
               value={searchQuery}
               onChange={e => onSearchChange(e.target.value)}
-              style={{ paddingLeft: 36, paddingRight: 14, paddingTop: 9, paddingBottom: 9, border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 13, color: '#1E293B', outline: 'none', width: 240, background: '#F8FAFC' }}
+              className="pl-9 pr-4 py-2.5 bg-white border border-[#E2E8F0]/80 rounded-xl text-xs text-[#1E293B] placeholder-slate-400 outline-none w-full focus:ring-2 focus:ring-indigo-100 focus:border-[#6366F1] shadow-sm transition-all"
             />
           </div>
           {/* Sort */}
-          <div style={{ position: 'relative' }}>
-            <select
+          <div className="relative w-full sm:w-auto">
+            <Select
               value={sortBy}
-              onChange={e => setSortBy(e.target.value)}
-              style={{ padding: '9px 32px 9px 14px', border: '1px solid #E2E8F0', borderRadius: 12, fontSize: 13, fontWeight: 500, color: '#1E293B', background: '#fff', appearance: 'none', outline: 'none', cursor: 'pointer' }}
-            >
-              <option value="newest">Sắp xếp: Mới nhất</option>
-              <option value="popular">Phổ biến nhất</option>
-              <option value="rating">Đánh giá cao</option>
-              <option value="hardest">Độ khó: Tăng dần</option>
-              <option value="easiest">Độ khó: Giảm dần</option>
-            </select>
-            <svg viewBox="0 0 20 20" fill="currentColor" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: '#94A3B8', pointerEvents: 'none' }}>
-              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
+              onChange={(val) => { setSortBy(val); setCurrentPage(1); }}
+              variant="default"
+              options={[
+                { value: 'newest', label: 'Sắp xếp: Mới nhất' },
+                { value: 'popular', label: 'Phổ biến nhất' },
+                { value: 'rating', label: 'Đánh giá cao' },
+                { value: 'hardest', label: 'Độ khó: Tăng dần' },
+                { value: 'easiest', label: 'Độ khó: Giảm dần' },
+              ]}
+            />
           </div>
         </div>
       </div>
 
       {/* ── CATEGORY PILLS ── */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 24, flexWrap: 'wrap' }}>
+      <div className="flex gap-2.5 mb-6 flex-wrap">
         {subjectCategories.map(cat => {
           const active = activeCategory === cat;
           return (
             <button
               key={cat}
               onClick={() => { setActiveCategory(cat); setCurrentPage(1); }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '8px 18px', borderRadius: 24, fontSize: 13, fontWeight: 500, cursor: 'pointer', border: 'none', transition: 'all 0.15s',
-                background: active ? '#6366F1' : '#fff',
-                color: active ? '#fff' : '#64748B',
-                boxShadow: active ? '0 4px 12px rgba(99,102,241,0.3)' : '0 1px 4px rgba(0,0,0,0.06)',
-                outline: active ? 'none' : '1px solid rgba(226,232,240,0.8)',
-              }}
+              className={`flex items-center gap-2 px-4.5 py-2.5 rounded-full text-xs font-bold cursor-pointer transition-all select-none border ${active
+                  ? 'bg-[#6366F1] text-white border-[#6366F1] shadow-md shadow-indigo-100'
+                  : 'bg-white text-slate-500 border-[#E2E8F0] hover:text-[#1E293B] hover:border-slate-300'
+                }`}
             >
-              {subjectIcons[cat]} {cat}
+              <span className={active ? 'text-white' : 'text-slate-400'}>
+                {subjectIcons[cat]}
+              </span>
+              <span>{cat}</span>
             </button>
           );
         })}
       </div>
 
       {/* ── MAIN LAYOUT: Cards (left) + Filter Sidebar (right) ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 240px', gap: 20, alignItems: 'start' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 items-start">
 
         {/* ── LEFT: EXAM CARDS GRID ── */}
-        <div>
+        <div className="flex flex-col gap-6">
           {pagedExams.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {pagedExams.map(exam => (
                 <NewExamCard key={exam.id} exam={exam} onSelect={onSelectExam} onStart={onStartExam} />
               ))}
             </div>
           ) : (
-            <div style={{ ...cardStyle, padding: 48, textAlign: 'center', marginBottom: 24 }}>
-              <BookOpen size={32} style={{ color: '#CBD5E1', margin: '0 auto 12px' }} />
-              <h3 style={{ fontSize: 15, fontWeight: 600, color: '#1E293B', margin: '0 0 6px' }}>Chưa tìm thấy đề thi phù hợp</h3>
-              <p style={{ fontSize: 13, color: '#64748B', margin: '0 0 16px', lineHeight: 1.6 }}>Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
-              <button onClick={handleReset} style={{ padding: '8px 20px', border: '1px solid #E2E8F0', borderRadius: 10, fontSize: 13, cursor: 'pointer', background: '#fff', color: '#1E293B' }}>Đặt lại bộ lọc</button>
+            <div className="bg-white border border-[#E2E8F0]/50 rounded-3xl p-12 text-center shadow-sm">
+              <BookOpen size={36} className="text-slate-300 mx-auto mb-3" />
+              <h3 className="text-sm font-bold text-[#1E293B] mb-1">Chưa tìm thấy đề thi phù hợp</h3>
+              <p className="text-xs text-[#64748B] mb-4 leading-relaxed">Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
+              <button
+                onClick={handleReset}
+                className="px-4 py-2 border border-[#E2E8F0] rounded-xl text-xs font-semibold cursor-pointer bg-white text-[#1E293B] hover:bg-slate-50 transition-colors"
+              >
+                Đặt lại bộ lọc
+              </button>
             </div>
           )}
 
           {/* ── PAGINATION ── */}
-          {totalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginBottom: 32 }}>
+          {totalPages >= 1 && (
+            <div className="flex justify-center items-center gap-2 mt-2">
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                style={{ width: 36, height: 36, borderRadius: 10, border: '1px solid #E2E8F0', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B', opacity: currentPage === 1 ? 0.4 : 1 }}
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-[#E2E8F0] text-slate-400 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
-                <svg viewBox="0 0 16 16" style={{ width: 12, height: 12 }} fill="currentColor"><path d="M15 8a.5.5 0 00-.5-.5H2.707l3.147-3.146a.5.5 0 10-.708-.708l-4 4a.5.5 0 000 .708l4 4a.5.5 0 00.708-.708L2.707 8.5H14.5A.5.5 0 0015 8z"/></svg>
+                <svg viewBox="0 0 16 16" className="w-3 h-3" fill="currentColor"><path d="M15 8a.5.5 0 00-.5-.5H2.707l3.147-3.146a.5.5 0 10-.708-.708l-4 4a.5.5 0 000 .708l4 4a.5.5 0 00.708-.708L2.707 8.5H14.5A.5.5 0 0015 8z" /></svg>
               </button>
               {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                 const page = i + 1;
@@ -378,52 +402,43 @@ export const Exams: React.FC<ExamsProps> = ({
                   <button
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    style={{ width: 36, height: 36, borderRadius: 10, border: currentPage === page ? 'none' : '1px solid #E2E8F0', background: currentPage === page ? '#6366F1' : '#fff', color: currentPage === page ? '#fff' : '#1E293B', fontWeight: 500, fontSize: 13, cursor: 'pointer', boxShadow: currentPage === page ? '0 4px 10px rgba(99,102,241,0.3)' : 'none' }}
+                    className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer ${currentPage === page
+                        ? 'bg-[#6366F1] text-white shadow-md shadow-indigo-200'
+                        : 'bg-white border border-[#E2E8F0] text-[#1E293B] hover:bg-slate-50'
+                      }`}
                   >
                     {page}
                   </button>
                 );
               })}
-              {totalPages > 5 && <span style={{ color: '#94A3B8', fontSize: 13 }}>...</span>}
+              {totalPages > 5 && <span className="text-slate-400 text-xs px-1">...</span>}
               {totalPages > 5 && (
-                <button onClick={() => setCurrentPage(totalPages)} style={{ width: 36, height: 36, borderRadius: 10, border: '1px solid #E2E8F0', background: '#fff', color: '#1E293B', fontWeight: 500, fontSize: 13, cursor: 'pointer' }}>{totalPages}</button>
+                <button
+                  onClick={() => setCurrentPage(totalPages)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-[#E2E8F0] text-[#1E293B] text-xs font-bold hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  {totalPages}
+                </button>
               )}
               <button
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                style={{ width: 36, height: 36, borderRadius: 10, border: '1px solid #E2E8F0', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B', opacity: currentPage === totalPages ? 0.4 : 1 }}
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-[#E2E8F0] text-slate-400 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
-                <svg viewBox="0 0 16 16" style={{ width: 12, height: 12 }} fill="currentColor"><path d="M1 8a.5.5 0 01.5-.5h11.793l-3.147-3.146a.5.5 0 01.708-.708l4 4a.5.5 0 010 .708l-4 4a.5.5 0 01-.708-.708L13.293 8.5H1.5A.5.5 0 011 8z"/></svg>
+                <svg viewBox="0 0 16 16" className="w-3 h-3" fill="currentColor"><path d="M1 8a.5.5 0 01.5-.5h11.793l-3.147-3.146a.5.5 0 01.708-.708l4 4a.5.5 0 010 .708l-4 4a.5.5 0 01-.708-.708L13.293 8.5H1.5A.5.5 0 011 8z" /></svg>
               </button>
             </div>
           )}
-
-          {/* ── STATS ROW ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-            {[
-              { icon: <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, color: '#6366F1' }} fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>, bg: '#EEF2FF', value: '2,548+', label: 'Đề thi chất lượng' },
-              { icon: <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, color: '#10B981' }} fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>, bg: '#D1FAE5', value: '96,842+', label: 'Lượt làm bài' },
-              { icon: <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, color: '#F59E0B' }} fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, bg: '#FEF3C7', value: '4.7/5', label: 'Đánh giá trung bình' },
-              { icon: <svg viewBox="0 0 24 24" style={{ width: 20, height: 20, color: '#6366F1' }} fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>, bg: '#EEF2FF', value: '12,450+', label: 'Học sinh đang luyện tập' },
-            ].map((stat, i) => (
-              <div key={i} style={{ ...cardStyle, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: stat.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {stat.icon}
-                </div>
-                <div>
-                  <p style={{ fontSize: 16, fontWeight: 700, color: '#1E293B', margin: '0 0 2px' }}>{stat.value}</p>
-                  <p style={{ fontSize: 11, color: '#64748B', margin: 0 }}>{stat.label}</p>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* ── RIGHT: FILTER SIDEBAR ── */}
-        <aside style={{ ...cardStyle, padding: 20, position: 'sticky', top: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #F1F5F9' }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#1E293B' }}>Bộ lọc đề thi</span>
-            <button onClick={handleReset} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#64748B', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}>
+        <aside className="w-full bg-white rounded-3xl p-5 border border-[#E2E8F0]/50 shadow-sm sticky top-6">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+            <span className="text-[13px] font-bold text-[#1E293B]">Bộ lọc đề thi</span>
+            <button
+              onClick={handleReset}
+              className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-[#6366F1] bg-none border-none cursor-pointer font-bold transition-colors"
+            >
               <RefreshCw size={11} /> Đặt lại
             </button>
           </div>
@@ -447,9 +462,9 @@ export const Exams: React.FC<ExamsProps> = ({
 
           <button
             onClick={() => setCurrentPage(1)}
-            style={{ width: '100%', padding: '10px', borderRadius: 12, background: 'linear-gradient(135deg,#6366F1,#8B5CF6)', color: '#fff', fontWeight: 600, fontSize: 13, border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 4 }}
+            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] hover:from-[#4F46E5] hover:to-[#7C3AED] text-white font-bold text-xs border-none cursor-pointer flex items-center justify-center gap-2 mt-4 shadow-sm hover:shadow transition-all"
           >
-            <svg viewBox="0 0 24 24" style={{ width: 14, height: 14 }} fill="none" stroke="currentColor" strokeWidth="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
             Áp dụng bộ lọc
           </button>
         </aside>

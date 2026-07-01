@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { User as UserIcon, Mail, Shield, Award, Flame, CheckCircle2, Eye, EyeOff, Phone, Calendar, School, Milestone, Star, FileText, History, PenTool, Bookmark } from 'lucide-react';
+import { User as UserIcon, Mail, Shield, Award, Flame, CheckCircle2, Eye, EyeOff, Phone, Calendar, School, Milestone, Star, FileText, History, PenTool, Bookmark, LogOut } from 'lucide-react';
 import type { User } from '../types';
 
 interface ProfileProps {
   user: User;
   onUpdateProfile: (updatedData: Partial<User>) => void;
   onViewChange: (view: string) => void;
+  onLogout: () => void;
 }
 
-export const Profile: React.FC<ProfileProps> = ({ user, onUpdateProfile, onViewChange }) => {
+export const Profile: React.FC<ProfileProps> = ({ user, onUpdateProfile, onViewChange, onLogout }) => {
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email);
   const [school, setSchool] = useState('Trường THPT Chuyên Lê Hồng Phong');
@@ -158,6 +159,13 @@ export const Profile: React.FC<ProfileProps> = ({ user, onUpdateProfile, onViewC
                 <p className="text-[10px] sm:text-xs text-white/80 font-medium">
                   Học tập hôm nay, chinh phục ngày mai! 🚀
                 </p>
+                <button
+                  onClick={onLogout}
+                  className="mt-2 flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-[10px] font-black rounded-lg border border-white/20 transition-all cursor-pointer w-fit"
+                >
+                  <LogOut size={11} />
+                  Đăng xuất
+                </button>
               </div>
             </div>
 

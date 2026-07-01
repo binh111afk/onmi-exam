@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { StudyIllustration } from '../components/Illustration';
+import { Checkbox } from '../components/Checkbox';
 
 interface LoginProps {
   onLoginSuccess: (name: string, email: string) => void;
@@ -92,14 +93,11 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onViewChange }) =>
 
             {/* Checkbox and link */}
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                />
-                <span className="text-xs text-text-secondary">Ghi nhớ đăng nhập</span>
-              </label>
+              <Checkbox
+                checked={rememberMe}
+                onChange={setRememberMe}
+                label={<span className="text-xs text-text-secondary font-semibold">Ghi nhớ đăng nhập</span>}
+              />
               
               <button
                 type="button"
