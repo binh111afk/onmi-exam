@@ -14,7 +14,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange }) =
     { label: 'Tài liệu tự học', view: 'documents', icon: BookOpen },
     { label: 'Lộ trình cá nhân', view: 'about', icon: Compass },
     { label: 'Bảng xếp hạng', view: 'leaderboard', icon: Trophy },
-    { label: 'Blog tin tức', view: 'blog', icon: Newspaper, isNew: true },
+    { label: 'Blog', view: 'blog', icon: Newspaper, isNew: true },
     { label: 'Liên hệ hỗ trợ', view: 'contact', icon: Users },
   ];
 
