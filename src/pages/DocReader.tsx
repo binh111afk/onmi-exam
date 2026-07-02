@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   ChevronLeft, ChevronRight, Menu, ZoomIn, ZoomOut, Moon, Sun,
   Bookmark, Download, FileText, MessageSquare, ArrowLeft, 
@@ -8,6 +8,18 @@ import {
   Layers, Network, Droplet, Beaker, GitBranch
 } from 'lucide-react';
 import type { Document, Exam, User } from '../types';
+
+const getDocReaderStateKey = (docId: string) => `omni_doc_reader_${docId}`;
+
+const loadDocReaderState = (docId: string) => {
+  try {
+    const saved = localStorage.getItem(getDocReaderStateKey(docId));
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    localStorage.removeItem(getDocReaderStateKey(docId));
+    return null;
+  }
+};
 
 interface DocReaderProps {
   doc: Document;
@@ -32,18 +44,21 @@ export const DocReader: React.FC<DocReaderProps> = ({
   onSelectDoc,
   onSelectExam,
 }) => {
+  const savedReaderState: any = loadDocReaderState(doc.id);
+  const readerScrollRef = useRef<HTMLDivElement | null>(null);
+
   // Suppress TS6133 unused warnings
   if (false as boolean) {
     console.log(relatedExams, relatedDocs, onSelectDoc, onSelectExam, user);
   }
 
   // Base state controls
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState<number>(savedReaderState?.currentPage ?? 1);
   const totalPages = doc.format === 'Tóm tắt' ? 25 : 32;
-  const [zoomLevel, setZoomLevel] = useState(100);
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
-  const [activeRightTab, setActiveRightTab] = useState<'tools' | 'notes' | 'index'>('tools');
+  const [zoomLevel, setZoomLevel] = useState<number>(savedReaderState?.zoomLevel ?? 100);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(savedReaderState?.isDarkMode ?? false);
+  const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState<boolean>(savedReaderState?.isLeftSidebarOpen ?? true);
+  const [activeRightTab, setActiveRightTab] = useState<'tools' | 'notes' | 'index'>(savedReaderState?.activeRightTab ?? 'tools');
 
   // Annotation and tool states
   const [activeTool, setActiveTool] = useState<'select' | 'hand' | 'highlight' | 'underline' | 'strike' | 'pen' | 'rect' | 'circle' | 'arrow' | 'comment'>('select');
@@ -66,6 +81,36 @@ export const DocReader: React.FC<DocReaderProps> = ({
   ]);
   const [newBioNoteInput, setNewBioNoteInput] = useState('');
   const [showBioNoteForm, setShowBioNoteForm] = useState(false);
+
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      if (readerScrollRef.current) {
+        readerScrollRef.current.scrollTop = savedReaderState?.scrollTop ?? 0;
+      }
+    });
+  }, [doc.id]);
+
+  useEffect(() => {
+    localStorage.setItem(getDocReaderStateKey(doc.id), JSON.stringify({
+      currentPage,
+      zoomLevel,
+      isDarkMode,
+      isLeftSidebarOpen,
+      activeRightTab,
+      scrollTop: readerScrollRef.current?.scrollTop ?? savedReaderState?.scrollTop ?? 0,
+    }));
+  }, [doc.id, currentPage, zoomLevel, isDarkMode, isLeftSidebarOpen, activeRightTab]);
+
+  const handleReaderScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    localStorage.setItem(getDocReaderStateKey(doc.id), JSON.stringify({
+      currentPage,
+      zoomLevel,
+      isDarkMode,
+      isLeftSidebarOpen,
+      activeRightTab,
+      scrollTop: e.currentTarget.scrollTop,
+    }));
+  };
 
   const handleAddNote = (e: React.FormEvent) => {
     e.preventDefault();
@@ -398,7 +443,7 @@ export const DocReader: React.FC<DocReaderProps> = ({
           )}
 
           {/* Middle Workspace Paper Sheet */}
-          <main className="flex-1 overflow-y-auto p-8 flex justify-center relative bg-slate-100/50">
+          <main ref={readerScrollRef} onScroll={handleReaderScroll} className="flex-1 overflow-y-auto p-8 flex justify-center relative bg-slate-100/50">
             <div
               className={`w-[680px] bg-white border border-slate-200 rounded-2xl shadow-lg p-8 sm:p-12 relative flex flex-col justify-between select-text aspect-[1/1.41] origin-top transition-transform duration-200 ${
                 isDarkMode ? 'bg-slate-950 border-slate-800 text-slate-100' : 'bg-white text-text-primary'
@@ -842,7 +887,7 @@ export const DocReader: React.FC<DocReaderProps> = ({
           )}
 
           {/* 3.2 Middle Column: Large Reading Page */}
-          <main className="flex-1 overflow-y-auto p-8 flex justify-center relative bg-slate-100/50">
+          <main ref={readerScrollRef} onScroll={handleReaderScroll} className="flex-1 overflow-y-auto p-8 flex justify-center relative bg-slate-100/50">
             
             <div
               className={`w-[660px] bg-white border border-slate-200 rounded-2xl shadow-lg p-8 sm:p-12 relative flex flex-col justify-between select-text aspect-[1/1.41] origin-top transition-transform duration-200 ${

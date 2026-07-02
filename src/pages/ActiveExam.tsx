@@ -9,6 +9,18 @@ interface ActiveExamProps {
   onExit: () => void;
 }
 
+const getExamSessionKey = (examId: string) => `omni_exam_session_${examId}`;
+
+const loadExamSession = (examId: string) => {
+  try {
+    const saved = localStorage.getItem(getExamSessionKey(examId));
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    localStorage.removeItem(getExamSessionKey(examId));
+    return null;
+  }
+};
+
 // Variation Table SVG for Math exam
 const VariationTable: React.FC = () => (
   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/60 my-4 flex justify-center overflow-x-auto">
@@ -59,19 +71,22 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
   onFinishExam,
   onExit,
 }) => {
+  const savedSession: any = loadExamSession(exam.id);
+
   // 1. Exam States
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, number>>({});
-  const [timeLeft, setTimeLeft] = useState(exam.durationMinutes * 60);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [currentIdx, setCurrentIdx] = useState<number>(savedSession?.currentIdx ?? 0);
+  const [answers, setAnswers] = useState<Record<string, number>>(savedSession?.answers ?? {});
+  const [timeLeft, setTimeLeft] = useState<number>(savedSession?.timeLeft ?? exam.durationMinutes * 60);
+  const [isSubmitted, setIsSubmitted] = useState<boolean>(savedSession?.isSubmitted ?? false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
-  const [showReview, setShowReview] = useState(false);
+  const [showReview, setShowReview] = useState<boolean>(savedSession?.showReview ?? false);
+  const [showResumeDialog, setShowResumeDialog] = useState<boolean>(Boolean(savedSession && !savedSession.isSubmitted));
 
   // Bookmark and Review Later states
-  const [bookmarked, setBookmarked] = useState<string[]>([]);
-  const [reviewLater, setReviewLater] = useState<string[]>([]);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [showSolution, setShowSolution] = useState(false);
+  const [bookmarked, setBookmarked] = useState<string[]>(savedSession?.bookmarked ?? []);
+  const [reviewLater, setReviewLater] = useState<string[]>(savedSession?.reviewLater ?? []);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(savedSession?.isSidebarCollapsed ?? false);
+  const [showSolution, setShowSolution] = useState<boolean>(savedSession?.showSolution ?? false);
 
   // Drawer states for Mobile responsiveness
   const [isLeftDrawerOpen, setIsLeftDrawerOpen] = useState(false);
@@ -79,12 +94,44 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
 
   // Tool popups
   const [activeTool, setActiveTool] = useState<'calculator' | 'formulas' | 'periodic' | 'scratchpad' | null>(null);
-  const [calcDisplay, setCalcDisplay] = useState('');
-  const [scratchText, setScratchText] = useState('');
+  const [calcDisplay, setCalcDisplay] = useState<string>(savedSession?.calcDisplay ?? '');
+  const [scratchText, setScratchText] = useState<string>(savedSession?.scratchText ?? '');
+
+  useEffect(() => {
+    if (isSubmitted) return;
+    localStorage.setItem(getExamSessionKey(exam.id), JSON.stringify({
+      currentIdx,
+      answers,
+      timeLeft,
+      isSubmitted,
+      showReview,
+      bookmarked,
+      reviewLater,
+      isSidebarCollapsed,
+      showSolution,
+      calcDisplay,
+      scratchText,
+    }));
+  }, [exam.id, currentIdx, answers, timeLeft, isSubmitted, showReview, bookmarked, reviewLater, isSidebarCollapsed, showSolution, calcDisplay, scratchText]);
+
+  const handleStartOver = () => {
+    localStorage.removeItem(getExamSessionKey(exam.id));
+    setCurrentIdx(0);
+    setAnswers({});
+    setTimeLeft(exam.durationMinutes * 60);
+    setIsSubmitted(false);
+    setShowReview(false);
+    setBookmarked([]);
+    setReviewLater([]);
+    setShowSolution(false);
+    setCalcDisplay('');
+    setScratchText('');
+    setShowResumeDialog(false);
+  };
 
   // 2. Timer countdown
   useEffect(() => {
-    if (isSubmitted) return;
+    if (isSubmitted || showResumeDialog) return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -98,7 +145,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isSubmitted]);
+  }, [isSubmitted, showResumeDialog]);
 
   // Format time (MM:SS)
   const formatTime = (seconds: number) => {
@@ -178,6 +225,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
 
     const calculatedScore = (correctCount / totalQuestions) * 10;
     setIsSubmitted(true);
+    localStorage.removeItem(getExamSessionKey(exam.id));
 
     const xpReward = Math.round((correctCount / totalQuestions) * 100);
     onFinishExam(exam.id, calculatedScore, xpReward);
@@ -523,6 +571,36 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
 
   return (
     <div className="min-h-screen bg-slate-50/50 flex flex-col font-sans select-none antialiased">
+      {showResumeDialog && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-[#0F172A]/60 backdrop-blur-sm" />
+          <div className="bg-white rounded-3xl w-full max-w-[420px] p-6 shadow-2xl relative z-[101] border border-slate-100 text-center space-y-5">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-primary flex items-center justify-center mx-auto shadow-sm">
+              <AlertTriangle size={22} className="stroke-[2.5]" />
+            </div>
+            <div className="space-y-2 leading-relaxed">
+              <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">Bạn có muốn tiếp tục bài thi?</h3>
+              <p className="text-[11px] text-slate-500 font-bold">
+                Bài thi này chưa nộp. Chúng tôi đã khôi phục câu hiện tại, đáp án, đánh dấu và giấy nháp của bạn.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={handleStartOver}
+                className="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-black rounded-xl transition cursor-pointer"
+              >
+                Làm lại
+              </button>
+              <button
+                onClick={() => setShowResumeDialog(false)}
+                className="flex-1 py-2.5 bg-primary hover:bg-primary-hover text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md shadow-indigo-150"
+              >
+                Tiếp tục
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── HEADER ── */}
       <header className="bg-white border-b border-slate-100 h-16 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">

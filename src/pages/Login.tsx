@@ -24,12 +24,10 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onViewChange }) =>
     // We default to the initial user's details or whatever they typed
     const defaultName = email.includes('admin') ? 'Quản trị viên' : 'Đặng Minh Khôi';
     onLoginSuccess(defaultName, email);
-    onViewChange('home');
   };
 
   const handleThirdPartyLogin = (provider: string) => {
     onLoginSuccess(`Học viên ${provider}`, `${provider.toLowerCase()}@omniexam.edu.vn`);
-    onViewChange('home');
   };
 
   return (

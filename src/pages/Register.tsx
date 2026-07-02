@@ -32,7 +32,6 @@ export const Register: React.FC<RegisterProps> = ({ onRegisterSuccess, onViewCha
 
     // Simulate successful registration
     onRegisterSuccess(name, email);
-    onViewChange('home');
   };
 
   return (

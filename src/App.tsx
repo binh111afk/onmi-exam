@@ -1,4 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useParams,
+} from 'react-router-dom';
 import { initialUser, mockExams, mockDocuments, mockLeaderboard } from './data/mockData';
 import type { User } from './types';
 import { Navbar } from './components/Navbar';
@@ -21,27 +30,101 @@ import { Teacher } from './pages/Teacher';
 import { AssessmentTest } from './pages/AssessmentTest';
 import { OnboardingModal } from './components/OnboardingModal';
 
-function App() {
-  // Global States
-  const [view, setView] = useState<string>('home');
-  const [user, setUser] = useState<User>(initialUser);
-  const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
-  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+const AUTH_STORAGE_KEY = 'omni_auth_user';
+
+const viewToPath: Record<string, string> = {
+  home: '/',
+  exams: '/exams',
+  documents: '/documents',
+  leaderboard: '/leaderboard',
+  login: '/login',
+  register: '/register',
+  about: '/roadmap',
+  teacher: '/teacher',
+  contact: '/contact',
+  blog: '/blog',
+  profile: '/profile',
+  'assessment-test': '/mbti',
+};
+
+const docAliases: Record<string, string> = {
+  'biology-01': 'doc-bio-1',
+};
+
+const loadInitialUser = (): User => {
+  try {
+    const saved = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (saved) {
+      return { ...initialUser, ...JSON.parse(saved), loggedIn: true };
+    }
+  } catch {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  }
+  return initialUser;
+};
+
+const getCurrentView = (pathname: string) => {
+  if (pathname === '/') return 'home';
+  if (pathname === '/login') return 'login';
+  if (pathname === '/register') return 'register';
+  if (pathname === '/mbti' || pathname === '/assessment-test') return 'assessment-test';
+  if (pathname.startsWith('/exams/') && pathname.endsWith('/take')) return 'active-exam';
+  if (pathname.startsWith('/exams/')) return 'exam-detail';
+  if (pathname === '/exams') return 'exams';
+  if (pathname.startsWith('/documents/')) return 'doc-reader';
+  if (pathname === '/documents') return 'documents';
+  if (pathname === '/roadmap' || pathname === '/about') return 'about';
+  if (pathname.startsWith('/teacher')) return 'teacher';
+  if (pathname === '/leaderboard') return 'leaderboard';
+  if (pathname === '/contact') return 'contact';
+  if (pathname === '/blog') return 'blog';
+  if (pathname === '/profile' || pathname === '/settings') return 'profile';
+  return 'home';
+};
+
+const isAuthPage = (pathname: string) => pathname === '/login' || pathname === '/register';
+
+function ProtectedRoute({ user, children }: { user: User; children: React.ReactNode }) {
+  const location = useLocation();
+
+  if (!user.loggedIn) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  return <>{children}</>;
+}
+
+function AppShell() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [user, setUser] = useState<User>(() => loadInitialUser());
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showOnboarding, setShowOnboarding] = useState(false);
 
-  // Authentication handlers
+  const currentView = getCurrentView(location.pathname);
+  const showHeaderFooter = !['active-exam', 'assessment-test', 'login', 'register'].includes(currentView);
+
+  useEffect(() => {
+    if (user.loggedIn) {
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+    }
+  }, [user]);
+
+  const navigateToView = (newView: string) => {
+    navigate(viewToPath[newView] || '/');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleLoginSuccess = (name: string, email: string) => {
     setUser((prev) => ({
       ...prev,
       name,
       email,
       loggedIn: true,
-      // Default to initialUser stats for simulation
       xp: prev.xp === 0 ? 1420 : prev.xp,
       streak: prev.streak === 0 ? 5 : prev.streak,
     }));
-    
+
     const isCompleted = localStorage.getItem('omni_onboarding_completed') === 'true';
     const isDismissed = localStorage.getItem('omni_onboarding_dismissed') === 'true';
     if (!isCompleted && !isDismissed) {
@@ -50,11 +133,12 @@ function App() {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
     setUser((prev) => ({
       ...prev,
       loggedIn: false,
     }));
-    setView('login');
+    navigate('/login');
   };
 
   const handleRegisterSuccess = (name: string, email: string) => {
@@ -62,9 +146,9 @@ function App() {
       name,
       email,
       loggedIn: true,
-      xp: 100, // starting bonus
+      xp: 100,
       streak: 1,
-      badges: ['Tân binh'],
+      badges: ['Tan binh'],
       completedExams: {},
       savedExams: [],
       savedDocs: [],
@@ -74,7 +158,6 @@ function App() {
     setShowOnboarding(true);
   };
 
-  // Content annotations handlers
   const handleSaveNotes = (docId: string, notes: string) => {
     setUser((prev) => ({
       ...prev,
@@ -116,7 +199,6 @@ function App() {
     });
   };
 
-  // Exam completion scoring reward
   const handleFinishExam = (examId: string, score: number, xpGained: number) => {
     setUser((prev) => {
       const isNewCompletion = !prev.completedExams[examId];
@@ -145,46 +227,102 @@ function App() {
     }));
   };
 
-  // View routers
   const handleSelectExam = (id: string) => {
-    setSelectedExamId(id);
-    setView('exam-detail');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleSelectDoc = (id: string) => {
-    setSelectedDocId(id);
-    setView('doc-reader');
+    navigate(`/exams/${id}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleStartExam = (id: string) => {
-    setSelectedExamId(id);
-    setView('active-exam');
+    navigate(`/exams/${id}/take`);
   };
 
-  const handleViewChange = (newView: string) => {
-    setView(newView);
+  const handleSelectDoc = (id: string) => {
+    navigate(`/documents/${id}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Find active data records based on state IDs
-  const activeExam = mockExams.find((x) => x.id === selectedExamId) || mockExams[0];
-  const activeDoc = mockDocuments.find((x) => x.id === selectedDocId) || mockDocuments[0];
+  const buildLoginSuccessHandler = () => {
+    const fromState = location.state as { from?: Location } | null;
+    const fromPath = fromState?.from
+      ? `${fromState.from.pathname}${fromState.from.search}${fromState.from.hash}`
+      : '/';
 
-  // Retrieve matching related resources
-  const relatedExams = mockExams.filter((x) => x.subject === activeDoc.subject);
-  const relatedDocs = mockDocuments.filter((x) => x.subject === activeExam.subject && x.id !== selectedDocId);
+    return (name: string, email: string) => {
+      handleLoginSuccess(name, email);
+      navigate(isAuthPage(fromPath) ? '/' : fromPath, { replace: true });
+    };
+  };
 
-  // Hide Top Navigation and Footer inside the CBT Test Simulator and auth pages
-  const showHeaderFooter = view !== 'active-exam' && view !== 'assessment-test' && view !== 'login' && view !== 'register';
+  const buildRegisterSuccessHandler = () => {
+    const fromState = location.state as { from?: Location } | null;
+    const fromPath = fromState?.from
+      ? `${fromState.from.pathname}${fromState.from.search}${fromState.from.hash}`
+      : '/';
+
+    return (name: string, email: string) => {
+      handleRegisterSuccess(name, email);
+      navigate(isAuthPage(fromPath) ? '/' : fromPath, { replace: true });
+    };
+  };
+
+  const ExamDetailRoute = () => {
+    const { examId } = useParams();
+    const activeExam = mockExams.find((x) => x.id === examId) || mockExams[0];
+
+    return (
+      <ExamDetail
+        exam={activeExam}
+        user={user}
+        onBack={() => navigate('/exams')}
+        onStartExam={handleStartExam}
+        onSaveToggle={handleSaveExamToggle}
+        isSaved={user.savedExams.includes(activeExam.id)}
+      />
+    );
+  };
+
+  const ActiveExamRoute = () => {
+    const { examId } = useParams();
+    const activeExam = mockExams.find((x) => x.id === examId) || mockExams[0];
+
+    return (
+      <ActiveExam
+        exam={activeExam}
+        user={user}
+        onFinishExam={handleFinishExam}
+        onExit={() => navigate(`/exams/${activeExam.id}`)}
+      />
+    );
+  };
+
+  const DocReaderRoute = () => {
+    const { docId = '' } = useParams();
+    const resolvedDocId = docAliases[docId] || docId;
+    const activeDoc = mockDocuments.find((x) => x.id === resolvedDocId) || mockDocuments[0];
+    const relatedExams = mockExams.filter((x) => x.subject === activeDoc.subject);
+    const relatedDocs = mockDocuments.filter((x) => x.subject === activeDoc.subject && x.id !== activeDoc.id);
+
+    return (
+      <DocReader
+        doc={activeDoc}
+        user={user}
+        onBack={() => navigate('/documents')}
+        onSaveNotes={handleSaveNotes}
+        onBookmarkToggle={handleBookmarkToggle}
+        relatedExams={relatedExams}
+        relatedDocs={relatedDocs}
+        onSelectDoc={handleSelectDoc}
+        onSelectExam={handleSelectExam}
+      />
+    );
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-bg-base transition-colors duration-default selection:bg-primary-light selection:text-primary">
       {showHeaderFooter && (
         <Navbar
-          currentView={view}
-          onViewChange={handleViewChange}
+          currentView={currentView}
+          onViewChange={navigateToView}
           user={user}
           onLogout={handleLogout}
           searchQuery={searchQuery}
@@ -192,107 +330,97 @@ function App() {
         />
       )}
 
-      {/* Main Container: Split sidebar + viewport */}
       <div className="flex-1 w-full flex overflow-hidden">
         {showHeaderFooter && (
-          <Sidebar currentView={view} onViewChange={handleViewChange} user={user} />
+          <Sidebar currentView={currentView} onViewChange={navigateToView} user={user} />
         )}
 
-        {/* Viewport with its own scrollbar */}
         <div className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50/50 flex flex-col h-[calc(100vh-3.5rem)] lg:h-screen">
           <div className="flex-1">
-            {view === 'home' && (
-              <Home
-                user={user}
-                onViewChange={handleViewChange}
-                onSelectDoc={handleSelectDoc}
+            <Routes>
+              <Route
+                path="/"
+                element={<Home user={user} onViewChange={navigateToView} onSelectDoc={handleSelectDoc} />}
               />
-            )}
-
-            {view === 'exams' && (
-              <Exams
-                exams={mockExams}
-                onSelectExam={handleSelectExam}
-                onStartExam={handleStartExam}
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
+              <Route
+                path="/exams"
+                element={(
+                  <Exams
+                    exams={mockExams}
+                    onSelectExam={handleSelectExam}
+                    onStartExam={handleStartExam}
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                  />
+                )}
               />
-            )}
-
-            {view === 'exam-detail' && (
-              <ExamDetail
-                exam={activeExam}
-                user={user}
-                onBack={() => handleViewChange('exams')}
-                onStartExam={handleStartExam}
-                onSaveToggle={handleSaveExamToggle}
-                isSaved={user.savedExams.includes(activeExam.id)}
+              <Route path="/exams/:examId" element={<ExamDetailRoute />} />
+              <Route
+                path="/exams/:examId/take"
+                element={(
+                  <ProtectedRoute user={user}>
+                    <ActiveExamRoute />
+                  </ProtectedRoute>
+                )}
               />
-            )}
-
-            {view === 'active-exam' && (
-              <ActiveExam
-                exam={activeExam}
-                user={user}
-                onFinishExam={handleFinishExam}
-                onExit={() => handleSelectExam(activeExam.id)}
+              <Route
+                path="/documents"
+                element={(
+                  <Documents
+                    documents={mockDocuments}
+                    onSelectDoc={handleSelectDoc}
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                  />
+                )}
               />
-            )}
-
-            {view === 'assessment-test' && (
-              <AssessmentTest
-                onBackToHome={() => handleViewChange('home')}
+              <Route path="/documents/:docId" element={<DocReaderRoute />} />
+              <Route path="/leaderboard" element={<Leaderboard entries={mockLeaderboard} />} />
+              <Route path="/login" element={<Login onLoginSuccess={buildLoginSuccessHandler()} onViewChange={navigateToView} />} />
+              <Route path="/register" element={<Register onRegisterSuccess={buildRegisterSuccessHandler()} onViewChange={navigateToView} />} />
+              <Route path="/roadmap" element={<Roadmap user={user} onStartExam={handleStartExam} />} />
+              <Route path="/about" element={<Roadmap user={user} onStartExam={handleStartExam} />} />
+              <Route
+                path="/teacher"
+                element={(
+                  <ProtectedRoute user={user}>
+                    <Teacher />
+                  </ProtectedRoute>
+                )}
               />
-            )}
-
-            {view === 'documents' && (
-              <Documents
-                documents={mockDocuments}
-                onSelectDoc={handleSelectDoc}
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
+              <Route
+                path="/teacher/:mode"
+                element={(
+                  <ProtectedRoute user={user}>
+                    <Teacher />
+                  </ProtectedRoute>
+                )}
               />
-            )}
-
-            {view === 'doc-reader' && (
-              <DocReader
-                doc={activeDoc}
-                user={user}
-                onBack={() => handleViewChange('documents')}
-                onSaveNotes={handleSaveNotes}
-                onBookmarkToggle={handleBookmarkToggle}
-                relatedExams={relatedExams}
-                relatedDocs={relatedDocs}
-                onSelectDoc={handleSelectDoc}
-                onSelectExam={handleSelectExam}
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route
+                path="/profile"
+                element={(
+                  <ProtectedRoute user={user}>
+                    <Profile user={user} onUpdateProfile={handleUpdateProfile} onViewChange={navigateToView} onLogout={handleLogout} />
+                  </ProtectedRoute>
+                )}
               />
-            )}
-
-            {view === 'leaderboard' && <Leaderboard entries={mockLeaderboard} />}
-
-            {view === 'login' && <Login onLoginSuccess={handleLoginSuccess} onViewChange={handleViewChange} />}
-
-            {view === 'register' && <Register onRegisterSuccess={handleRegisterSuccess} onViewChange={handleViewChange} />}
-
-            {view === 'about' && <Roadmap user={user} onStartExam={handleStartExam} />}
-
-            {view === 'teacher' && <Teacher />}
-
-            {view === 'contact' && <Contact />}
-
-            {view === 'blog' && <Blog />}
-
-            {view === 'profile' && (
-              <Profile
-                user={user}
-                onUpdateProfile={handleUpdateProfile}
-                onViewChange={handleViewChange}
-                onLogout={handleLogout}
+              <Route
+                path="/settings"
+                element={(
+                  <ProtectedRoute user={user}>
+                    <Profile user={user} onUpdateProfile={handleUpdateProfile} onViewChange={navigateToView} onLogout={handleLogout} />
+                  </ProtectedRoute>
+                )}
               />
-            )}
+              <Route path="/mbti" element={<AssessmentTest onBackToHome={() => navigate('/')} />} />
+              <Route path="/assessment-test" element={<AssessmentTest onBackToHome={() => navigate('/')} />} />
+              <Route path="*" element={<Home user={user} onViewChange={navigateToView} onSelectDoc={handleSelectDoc} />} />
+            </Routes>
           </div>
 
-          {showHeaderFooter && <Footer onViewChange={handleViewChange} />}
+          {showHeaderFooter && <Footer onViewChange={navigateToView} />}
         </div>
       </div>
 
@@ -300,7 +428,7 @@ function App() {
         <OnboardingModal
           onStart={() => {
             setShowOnboarding(false);
-            setView('assessment-test');
+            navigate('/mbti');
           }}
           onDismiss={() => {
             setShowOnboarding(false);
@@ -309,6 +437,14 @@ function App() {
         />
       )}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AppShell />
+    </BrowserRouter>
   );
 }
 

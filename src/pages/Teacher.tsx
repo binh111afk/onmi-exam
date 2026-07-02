@@ -1,19 +1,53 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { TeacherDashboard } from '../components/teacher/TeacherDashboard';
 import { MethodSelectionModal } from '../components/teacher/MethodSelectionModal';
 import { DocEditorWorkspace } from '../components/teacher/doc-editor/DocEditorWorkspace';
 import { FileUploaderWorkspace } from '../components/teacher/file-uploader/FileUploaderWorkspace';
 import { ExamEditorWorkspace } from '../components/teacher/exam-editor/ExamEditorWorkspace';
 
+type TeacherMode = 'dashboard' | 'editor' | 'upload' | 'exam-editor';
+type ExamSubView = 'edit' | 'config' | 'publish';
+type ExamTab = 'code' | 'quick' | 'bank';
+type ViewportMode = 'desktop' | 'tablet' | 'mobile';
+
+const TEACHER_EXAM_WORKSPACE_KEY = 'omni_teacher_exam_workspace';
+
+const isTeacherMode = (mode: string | undefined): mode is TeacherMode =>
+  mode === 'editor' || mode === 'upload' || mode === 'exam-editor' || mode === 'dashboard';
+
+const loadTeacherExamWorkspace = () => {
+  try {
+    const saved = localStorage.getItem(TEACHER_EXAM_WORKSPACE_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    localStorage.removeItem(TEACHER_EXAM_WORKSPACE_KEY);
+    return null;
+  }
+};
+
 export const Teacher: React.FC = () => {
-  // Mode: 'dashboard', 'editor', 'upload', or 'exam-editor'
-  const [mode, setMode] = useState<'dashboard' | 'editor' | 'upload' | 'exam-editor'>('dashboard');
+  const navigate = useNavigate();
+  const { mode: routeMode } = useParams();
+  const initialMode = isTeacherMode(routeMode) ? routeMode : 'dashboard';
+
+  // Mode is mirrored to the URL so refresh keeps the current Teacher workspace.
+  const [mode, setModeState] = useState<TeacherMode>(initialMode);
+
+  const setMode = (nextMode: TeacherMode) => {
+    setModeState(nextMode);
+    navigate(nextMode === 'dashboard' ? '/teacher' : `/teacher/${nextMode}`);
+  };
+
+  useEffect(() => {
+    setModeState(isTeacherMode(routeMode) ? routeMode : 'dashboard');
+  }, [routeMode]);
 
   // Sub-view within exam editor: 'edit', 'config', 'publish'
-  const [examSubView, setExamSubView] = useState<'edit' | 'config' | 'publish'>('edit');
+  const [examSubView, setExamSubView] = useState<ExamSubView>('edit');
 
   // Exam editor states
-  const [examTab, setExamTab] = useState<'code' | 'quick' | 'bank'>('code');
+  const [examTab, setExamTab] = useState<ExamTab>('code');
   const [examJsonCode, setExamJsonCode] = useState(
 `{
   "version": "1.0",
@@ -130,7 +164,34 @@ export const Teacher: React.FC = () => {
   
   const [selectedQuestionId, setSelectedQuestionId] = useState<number>(1);
   const [examSearchQuery, setExamSearchQuery] = useState('');
-  const [viewportMode, setViewportMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  const [viewportMode, setViewportMode] = useState<ViewportMode>('desktop');
+
+  const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
+
+  useEffect(() => {
+    const savedWorkspace = loadTeacherExamWorkspace();
+    if (savedWorkspace) {
+      setExamSubView(savedWorkspace.examSubView ?? 'edit');
+      setExamTab(savedWorkspace.examTab ?? 'code');
+      setExamJsonCode(savedWorkspace.examJsonCode ?? examJsonCode);
+      setSelectedQuestionId(savedWorkspace.selectedQuestionId ?? 1);
+      setExamSearchQuery(savedWorkspace.examSearchQuery ?? '');
+      setViewportMode(savedWorkspace.viewportMode ?? 'desktop');
+    }
+    setWorkspaceLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!workspaceLoaded) return;
+    localStorage.setItem(TEACHER_EXAM_WORKSPACE_KEY, JSON.stringify({
+      examSubView,
+      examTab,
+      examJsonCode,
+      selectedQuestionId,
+      examSearchQuery,
+      viewportMode,
+    }));
+  }, [workspaceLoaded, examSubView, examTab, examJsonCode, selectedQuestionId, examSearchQuery, viewportMode]);
 
   // Modal selection state
   const [showMethodModal, setShowMethodModal] = useState(false);

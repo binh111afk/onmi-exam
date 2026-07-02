@@ -334,16 +334,31 @@ interface AssessmentTestProps {
   onBackToHome: () => void;
 }
 
+const MBTI_PROGRESS_KEY = 'omni_mbti_progress';
+
+const loadMbtiProgress = () => {
+  try {
+    const saved = localStorage.getItem(MBTI_PROGRESS_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    localStorage.removeItem(MBTI_PROGRESS_KEY);
+    return null;
+  }
+};
+
 export const AssessmentTest: React.FC<AssessmentTestProps> = ({ onBackToHome }) => {
+  const savedProgress: any = loadMbtiProgress();
   const [step, setStep] = useState<2 | 3 | 4>(() => {
     const completed = localStorage.getItem('omni_onboarding_completed') === 'true';
     const savedAnswers = localStorage.getItem('omni_mbti_answers');
-    return completed && savedAnswers ? 4 : 2;
+    if (completed && savedAnswers) return 4;
+    return savedProgress?.step ?? 2;
   });
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(savedProgress?.currentQuestionIndex ?? 0);
   const [answers, setAnswers] = useState<Record<number, number>>(() => {
     const savedAnswers = localStorage.getItem('omni_mbti_answers');
     try {
+      if (savedProgress?.answers) return savedProgress.answers;
       return savedAnswers ? JSON.parse(savedAnswers) : {};
     } catch (e) {
       return {};
@@ -352,7 +367,7 @@ export const AssessmentTest: React.FC<AssessmentTestProps> = ({ onBackToHome }) 
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
 
   // Time tracking (15 minutes 30 seconds count)
-  const [timeLeft, setTimeLeft] = useState(15 * 60 + 30); 
+  const [timeLeft, setTimeLeft] = useState<number>(savedProgress?.timeLeft ?? 15 * 60 + 30);
 
   // UI state: Exit confirmation popup
   const [showExitModal, setShowExitModal] = useState(false);
@@ -360,6 +375,17 @@ export const AssessmentTest: React.FC<AssessmentTestProps> = ({ onBackToHome }) 
   // AI loading analysis text updates
   const [analysisText, setAnalysisText] = useState('🧠 Đang phân tích kết quả...');
   const [progressVal, setProgressVal] = useState(0);
+
+  useEffect(() => {
+    if (step === 2 || step === 3) {
+      localStorage.setItem(MBTI_PROGRESS_KEY, JSON.stringify({
+        step,
+        currentQuestionIndex,
+        answers,
+        timeLeft,
+      }));
+    }
+  }, [step, currentQuestionIndex, answers, timeLeft]);
 
   useEffect(() => {
     if (step === 2) {
@@ -382,6 +408,7 @@ export const AssessmentTest: React.FC<AssessmentTestProps> = ({ onBackToHome }) 
             // Save state to localStorage that assessment is completed
             localStorage.setItem('omni_onboarding_completed', 'true');
             localStorage.setItem('omni_mbti_answers', JSON.stringify(answers));
+            localStorage.removeItem(MBTI_PROGRESS_KEY);
             return 100;
           }
           
@@ -430,6 +457,7 @@ export const AssessmentTest: React.FC<AssessmentTestProps> = ({ onBackToHome }) 
   const handleRetakeTest = () => {
     localStorage.removeItem('omni_onboarding_completed');
     localStorage.removeItem('omni_mbti_answers');
+    localStorage.removeItem(MBTI_PROGRESS_KEY);
     setAnswers({});
     setCurrentQuestionIndex(0);
     setTimeLeft(15 * 60 + 30);
