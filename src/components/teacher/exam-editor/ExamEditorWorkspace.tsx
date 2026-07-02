@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Edit, 
   Cloud, 
@@ -21,12 +21,13 @@ import {
   ChevronLeft,
   AlignLeft,
   RefreshCw,
-  FileCode2,
   Upload
 } from 'lucide-react';
+
 import { ExamSidebar } from './ExamSidebar';
-import { ExamLivePreview } from './ExamLivePreview';
 import { QuestionBankWorkspace } from './QuestionBankWorkspace';
+import { draftService } from '../../../services/draftService';
+
 
 interface ExamEditorWorkspaceProps {
   setMode: (mode: 'dashboard' | 'editor' | 'upload' | 'exam-editor') => void;
@@ -73,8 +74,256 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonFileInputRef = useRef<HTMLInputElement>(null);
+  const lineNumbersRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const quickLineNumbersRef = useRef<HTMLDivElement>(null);
+  const quickTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Parse JSON code safely
+  // Auto-Save States & Unique Tab Instance ID
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [showConfirmNewDialog, setShowConfirmNewDialog] = useState(false);
+  const [pendingDraft, setPendingDraft] = useState<any>(null);
+  const [isCrossTabConflict, setIsCrossTabConflict] = useState(false);
+
+  const tabInstanceId = useRef<string>(Math.random().toString(36).substring(2, 9));
+
+  const DEFAULT_EXAM_CODE = `{
+  "version": "1.0",
+  "info": {
+    "title": "Đề kiểm tra 1 tiết Sinh học 10 — Chương I",
+    "subject": "Sinh học",
+    "grade": 10,
+    "time": 45,
+    "type": "exam",
+    "difficulty": "medium",
+    "description": "Kiểm tra kiến thức về thành phần hóa học của tế bào.",
+    "author": "Nguyễn Thị Bình",
+    "allowReview": true,
+    "shuffle": false
+  },
+  "content": [
+    {
+      "type": "heading",
+      "level": 1,
+      "text": "PHẦN I: TRẮC NGHIỆM (3.0 điểm)"
+    },
+    {
+      "type": "callout",
+      "variant": "info",
+      "icon": "info",
+      "title": "Hướng dẫn",
+      "content": "Chọn **một** đáp án đúng cho mỗi câu. Mỗi câu đúng được **0.25 điểm**."
+    },
+    {
+      "type": "question",
+      "id": 1,
+      "question": "Phát biểu nào sau đây đúng về nước trong tế bào?",
+      "points": 0.25,
+      "difficulty": "easy",
+      "tags": ["nước", "thành phần hóa học"],
+      "options": [
+        { "id": "A", "content": "Nước là dung môi phân cực cực tốt" },
+        { "id": "B", "content": "Nước không tham gia phản ứng sinh hóa" },
+        { "id": "C", "content": "Nước được cấu tạo từ 3 nguyên tử H và 1 nguyên tử O" },
+        { "id": "D", "content": "Nước không có khả năng điều hòa nhiệt độ" }
+      ],
+      "answer": ["A"],
+      "explanation": "Nước là dung môi phân cực cực tốt nên hòa tan được nhiều chất phân cực trong tế bào."
+    },
+    {
+      "type": "question",
+      "id": 2,
+      "question": "Góc liên kết H-O-H trong phân tử nước là bao nhiêu?",
+      "points": 0.25,
+      "difficulty": "medium",
+      "tags": ["nước", "cấu trúc"],
+      "options": [
+        { "id": "A", "content": "104.5°" },
+        { "id": "B", "content": "90°" },
+        { "id": "C", "content": "120°" },
+        { "id": "D", "content": "180°" }
+      ],
+      "answer": ["A"],
+      "explanation": "Do 2 cặp electron tự do trên nguyên tử O đẩy nhau làm góc liên kết nhỏ hơn 109.5°, giá trị thực tế là **104.5°**."
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "heading",
+      "level": 1,
+      "text": "PHẦN II: TỰ LUẬN (7.0 điểm)"
+    },
+    {
+      "type": "paragraph",
+      "text": "Dựa vào bảng dữ liệu và kiến thức đã học, trả lời câu hỏi từ **câu 3** trở đi."
+    },
+    {
+      "type": "table",
+      "caption": "Bảng 1. So sánh tế bào nhân sơ và nhân thực",
+      "headers": ["Đặc điểm", "Tế bào nhân sơ", "Tế bào nhân thực"],
+      "rows": [
+        ["Màng nhân", "Không có", "Có"],
+        ["Kích thước", "1–10 µm", "10–100 µm"],
+        ["Ribosome", "70S", "80S"]
+      ]
+    },
+    {
+      "type": "question",
+      "id": 3,
+      "question": "Nêu **3 điểm khác biệt** cơ bản giữa tế bào nhân sơ và tế bào nhân thực.",
+      "points": 3,
+      "difficulty": "medium",
+      "tags": ["tế bào nhân sơ", "tế bào nhân thực"],
+      "options": [],
+      "answer": [],
+      "explanation": "Học sinh cần nêu đủ: màng nhân, kích thước, ribosome."
+    },
+    {
+      "type": "formula",
+      "latex": "\\\\text{Hiệu suất} = \\\\frac{\\\\text{Năng lượng tích lũy}}{\\\\text{Năng lượng ánh sáng}} \\\\times 100\\\\%",
+      "display": "block"
+    },
+    {
+      "type": "question",
+      "id": 4,
+      "question": "Giải thích tại sao nước được gọi là *\"dung môi của sự sống\"*. Nêu **ít nhất 2 vai trò** của nước trong tế bào.",
+      "points": 4,
+      "difficulty": "hard",
+      "tags": ["nước", "tự luận"],
+      "options": [],
+      "answer": [],
+      "explanation": "Học sinh cần: (1) giải thích tính phân cực → hòa tan được nhiều chất; (2) nêu vai trò: dung môi, tham gia phản ứng hóa học, điều hòa nhiệt."
+    }
+  ]
+}`;
+
+  // Time format helpers
+  const formatSavedTime = (isoString: string | null) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
+  const formatFullSavedTime = (isoString: string | null) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${hours}:${minutes} ${day}/${month}/${year}`;
+  };
+
+  // Restore draft from localStorage on mount
+  useEffect(() => {
+    if (draftService.hasDraft()) {
+      const draft = draftService.loadDraft();
+      if (draft) {
+        setPendingDraft(draft);
+        setShowRestoreDialog(true);
+      }
+    }
+  }, []);
+
+
+  // Sync draft edits across multiple tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'onmi.teacherstudio.exam.draft') {
+        const newDraft = draftService.loadDraft();
+        if (newDraft && newDraft.draftId !== tabInstanceId.current) {
+          setIsCrossTabConflict(true);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  const handleRestoreDraft = () => {
+    if (pendingDraft) {
+      setExamJsonCode(pendingDraft.rawJson);
+      tabInstanceId.current = pendingDraft.draftId;
+      setLastSavedTime(pendingDraft.lastSaved);
+      setSaveStatus('saved');
+    }
+    setShowRestoreDialog(false);
+    setPendingDraft(null);
+  };
+
+  const handleDiscardRestore = () => {
+    draftService.deleteDraft();
+    setShowRestoreDialog(false);
+    setPendingDraft(null);
+  };
+
+  const handleCreateNewExamClick = () => {
+    if (draftService.hasDraft() || examJsonCode !== DEFAULT_EXAM_CODE) {
+      setShowConfirmNewDialog(true);
+    } else {
+      resetEditorToDefault();
+    }
+  };
+
+  const handleConfirmNewExam = () => {
+    draftService.deleteDraft();
+    resetEditorToDefault();
+    setShowConfirmNewDialog(false);
+  };
+
+  const resetEditorToDefault = () => {
+    setExamJsonCode(DEFAULT_EXAM_CODE);
+    setSaveStatus('idle');
+    setLastSavedTime(null);
+    setIsCrossTabConflict(false);
+  };
+
+  const [katexLoaded, setKatexLoaded] = useState(!!(window as any).katex);
+  
+  // Use state variable to trigger component re-render when script loads
+  if (katexLoaded) {
+    // KaTeX is initialized and ready for rendering
+  }
+
+  useEffect(() => {
+    if ((window as any).katex) return;
+
+    // Load stylesheet
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css';
+    document.head.appendChild(link);
+
+    // Load script
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js';
+    script.async = true;
+    script.onload = () => {
+      setKatexLoaded(true);
+    };
+    document.head.appendChild(script);
+  }, []);
+
+  const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (lineNumbersRef.current) {
+      lineNumbersRef.current.scrollTop = e.currentTarget.scrollTop;
+    }
+  };
+
+  const handleQuickScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (quickLineNumbersRef.current) {
+      quickLineNumbersRef.current.scrollTop = e.currentTarget.scrollTop;
+    }
+  };
+
+  // ── OML v1.0 PARSER ────────────────────────────────────────────
   let parsedData: any = null;
   let parseError: string | null = null;
   try {
@@ -83,51 +332,364 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
     parseError = e.message;
   }
 
-  const previewQuestions = parsedData?.questions || [
-    {
-      id: 1,
-      question: "Phát biểu nào sau đây đúng về nước?",
-      options: [
-        { key: "A", content: "Nước là dung môi phân cực cực tốt" },
-        { key: "B", content: "Nước không tham gia phản ứng sinh hóa" },
-        { key: "C", content: "Nước được cấu tạo từ 3 nguyên tử H và 1 nguyên tử O" },
-        { key: "D", content: "Nước không có khả năng điều hòa nhiệt độ" }
-      ],
-      answer: "A",
-      explanation: "Nước là dung môi phân cực cực tốt nên hòa tan được nhiều chất phân cực trong tế bào.",
-      level: "easy",
-      tags: ["nước", "thành phần hóa học"]
-    },
-    {
-      id: 2,
-      question: "Cho hình vẽ cấu trúc của phân tử nước. Góc liên kết H-O-H là bao nhiêu?",
-      options: [
-        { key: "A", content: "104.5°" },
-        { key: "B", content: "90°" },
-        { key: "C", content: "120°" },
-        { key: "D", content: "180°" }
-      ],
-      answer: "A",
-      explanation: "Do 2 cặp electron tự do trên nguyên tử O đẩy nhau làm góc liên kết nhỏ hơn 109.5°, giá trị thực tế là 104.5°.",
-      level: "medium",
-      tags: ["nước", "cấu trúc"]
-    }
-  ];
+  // Extract blocks array from OML content[] or fall back to legacy questions[]
+  const omlBlocks: any[] = parsedData?.content ?? [];
 
-  const infoMeta = parsedData?.info || {
-    title: 'Đề cương ôn tập Sinh học 10 học kỳ 2',
-    subject: "Sinh học",
+  // Collect all question blocks from content[] for stats / sidebar
+  const previewQuestions: any[] = omlBlocks.length > 0
+    ? omlBlocks.filter((b: any) => b.type === 'question')
+    : (parsedData?.questions ?? []);
+
+  const infoMeta = parsedData?.info ?? {
+    title: 'Đề thi chưa có tiêu đề',
+    subject: 'Không rõ',
     grade: 10,
-    time: 90,
-    totalQuestion: 50,
-    type: "trac_nghiem"
+    time: 45,
+    type: 'exam',
+    difficulty: 'medium',
+  };
+
+  // Debounced auto-save effect (placed here to safely read infoMeta)
+  useEffect(() => {
+    if (examTab !== 'code') return;
+
+    const saved = draftService.loadDraft();
+    if (saved && saved.rawJson === examJsonCode) {
+      setLastSavedTime(saved.lastSaved);
+      setSaveStatus('saved');
+      return;
+    }
+
+    setSaveStatus('saving');
+
+    const handler = setTimeout(() => {
+      const now = new Date().toISOString();
+      const title = infoMeta.title || 'Đề thi chưa có tiêu đề';
+      const subject = infoMeta.subject || 'Sinh học';
+
+      const success = draftService.saveDraft({
+        version: '1.0',
+        editorMode: 'json',
+        rawJson: examJsonCode,
+        lastSaved: now,
+        examTitle: title,
+        subject: subject,
+        draftId: tabInstanceId.current,
+      });
+
+      if (success) {
+        setSaveStatus('saved');
+        setLastSavedTime(now);
+      } else {
+        setSaveStatus('error');
+      }
+    }, 500);
+
+    return () => clearTimeout(handler);
+  }, [examJsonCode, examTab, infoMeta.title, infoMeta.subject]);
+
+  // ── INLINE MARKDOWN renderer (bold / italic / highlight / inline formula) ──
+  const renderInlineMarkdown = (text: string) => {
+    if (!text) return null;
+    // Simple replacements for display — no external dep needed
+    let html = text
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/==(.+?)==/g, '<mark class="bg-yellow-100 rounded px-0.5">$1</mark>')
+      .replace(/`(.+?)`/g, '<code class="bg-slate-100 rounded px-1 font-mono text-[10px]">$1</code>');
+
+    // Render inline LaTeX using KaTeX if loaded, fallback to code tag
+    html = html.replace(/\$(.+?)\$/g, (_, latex) => {
+      const katex = (window as any).katex;
+      if (katex) {
+        try {
+          return katex.renderToString(latex, { displayMode: false, throwOnError: false });
+        } catch (e) {
+          // fallback
+        }
+      }
+      return `<code class="bg-purple-50 text-purple-700 rounded px-1 font-mono text-[10px]">${latex}</code>`;
+    });
+    
+    return <span dangerouslySetInnerHTML={{ __html: html }} />;
+  };
+
+  // ── OML BLOCK RENDERER ─────────────────────────────────────────
+  const renderOmlBlock = (block: any, idx: number) => {
+    if (!block || !block.type) return null;
+
+    switch (block.type) {
+      // ── heading ──────────────────────────────────────────────
+      case 'heading': {
+        const sizes: Record<number, string> = {
+          1: 'text-sm font-black text-slate-800 uppercase tracking-wide border-b border-slate-100 pb-2',
+          2: 'text-xs font-black text-slate-700 uppercase tracking-wider',
+          3: 'text-[11px] font-black text-slate-600 uppercase tracking-wider',
+        };
+        return (
+          <div key={idx} className={`${sizes[block.level] ?? sizes[3]} mt-5 mb-1`}>
+            {block.text}
+          </div>
+        );
+      }
+
+      // ── paragraph ────────────────────────────────────────────
+      case 'paragraph':
+        return (
+          <p key={idx} className="text-[11px] text-slate-655 leading-relaxed font-medium">
+            {renderInlineMarkdown(block.text)}
+          </p>
+        );
+
+      // ── divider ──────────────────────────────────────────────
+      case 'divider':
+        return <hr key={idx} className="border-slate-100 my-3" />;
+
+      // ── quote ────────────────────────────────────────────────
+      case 'quote':
+        return (
+          <blockquote key={idx} className="border-l-4 border-primary/30 pl-3 italic text-[11px] text-slate-600 my-2">
+            {renderInlineMarkdown(block.text)}
+          </blockquote>
+        );
+
+      // ── callout ──────────────────────────────────────────────
+      case 'callout': {
+        const variantStyle: Record<string, string> = {
+          info:    'bg-indigo-50/70 border-indigo-100 text-indigo-800',
+          warning: 'bg-amber-50/70 border-amber-100 text-amber-800',
+          success: 'bg-emerald-50/70 border-emerald-100 text-emerald-800',
+          error:   'bg-red-50/70 border-red-100 text-red-800',
+        };
+        const v = block.variant ?? 'info';
+        return (
+          <div key={idx} className={`border rounded-xl p-3 flex gap-2.5 items-start ${variantStyle[v] ?? variantStyle.info}`}>
+            <span className="text-base leading-none shrink-0 mt-0.5">ℹ️</span>
+            <div className="text-[10px] leading-relaxed">
+              {block.title && <div className="font-black mb-0.5">{block.title}</div>}
+              {renderInlineMarkdown(block.content)}
+            </div>
+          </div>
+        );
+      }
+
+      // ── image ────────────────────────────────────────────────
+      case 'image':
+        return (
+          <figure key={idx} className="flex flex-col items-center gap-1.5 my-2">
+            <img
+              src={block.src}
+              alt={block.alt ?? block.caption ?? ''}
+              className="rounded-xl border border-slate-100 max-w-full object-contain"
+              style={{ maxWidth: block.width ?? 480 }}
+            />
+            {block.caption && (
+              <figcaption className="text-[9px] text-slate-400 font-bold italic">{block.caption}</figcaption>
+            )}
+          </figure>
+        );
+
+      // ── formula ──────────────────────────────────────────────
+      case 'formula': {
+        const katex = (window as any).katex;
+        if (katex) {
+          try {
+            const displayMode = block.display !== 'inline';
+            const html = katex.renderToString(block.latex, { displayMode, throwOnError: false });
+            return (
+              <div 
+                key={idx} 
+                className={`my-3 overflow-x-auto ${displayMode ? 'w-full flex justify-center' : 'inline-block'}`}
+                dangerouslySetInnerHTML={{ __html: html }} 
+              />
+            );
+          } catch (e) {
+            // fallback
+          }
+        }
+        return (
+          <div key={idx} className={`my-2 ${block.display === 'inline' ? 'inline-block' : 'flex justify-center'}`}>
+            <code className="font-mono text-[11px] bg-purple-50 text-purple-700 border border-purple-100 rounded-xl px-4 py-2 select-text">
+              {block.latex}
+            </code>
+          </div>
+        );
+      }
+
+      // ── table ────────────────────────────────────────────────
+      case 'table':
+        return (
+          <div key={idx} className="my-3 overflow-x-auto">
+            {block.caption && (
+              <p className="text-[9px] text-slate-400 font-bold mb-1 italic">{block.caption}</p>
+            )}
+            <table className="w-full text-[10px] border-collapse">
+              <thead>
+                <tr className="bg-slate-50">
+                  {(block.headers ?? []).map((h: string, hi: number) => (
+                    <th key={hi} className="px-3 py-2 text-left font-black text-slate-700 border border-slate-100">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(block.rows ?? []).map((row: string[], ri: number) => (
+                  <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
+                    {row.map((cell: string, ci: number) => (
+                      <td key={ci} className="px-3 py-1.5 text-slate-600 font-medium border border-slate-100">{cell}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+
+      // ── list ─────────────────────────────────────────────────
+      case 'list': {
+        const Tag = block.ordered ? 'ol' : 'ul';
+        return (
+          <Tag key={idx} className={`text-[11px] text-slate-655 leading-relaxed space-y-1 pl-4 ${block.ordered ? 'list-decimal' : 'list-disc'}`}>
+            {(block.items ?? []).map((item: string, ii: number) => (
+              <li key={ii}>{renderInlineMarkdown(item)}</li>
+            ))}
+          </Tag>
+        );
+      }
+
+      // ── question ─────────────────────────────────────────────
+      case 'question': {
+        // Validate required fields
+        const missingFields: string[] = [];
+        if (!block.question) missingFields.push('question (string)');
+        if (!block.options)  missingFields.push('options (array)');
+        if (!block.answer)   missingFields.push('answer (array)');
+
+        if (missingFields.length > 0) {
+          return (
+            <div key={idx} className="border border-amber-200 bg-amber-50/50 rounded-xl p-3 text-[10px] text-amber-700 font-bold">
+              ⚠️ <strong>Câu {block.id ?? idx + 1}</strong> — Thiếu field bắt buộc:
+              <ul className="list-disc pl-4 mt-1 font-medium">
+                {missingFields.map(f => <li key={f}>{f}</li>)}
+              </ul>
+            </div>
+          );
+        }
+
+        const isActive = selectedQuestionId === block.id;
+        const hasOptions = block.options && block.options.length > 0;
+        const diffColor: Record<string, string> = {
+          easy: 'text-emerald-500', medium: 'text-amber-500', hard: 'text-red-500'
+        };
+        const diffLabel: Record<string, string> = { easy: 'Dễ', medium: 'Trung bình', hard: 'Khó' };
+
+        return (
+          <div
+            key={idx}
+            onClick={() => setSelectedQuestionId(block.id)}
+            className={`p-4 border rounded-xl transition duration-150 cursor-pointer ${
+              isActive ? 'border-primary/30 bg-primary-light/5 shadow-sm' : 'border-slate-100 hover:border-slate-200 bg-white'
+            }`}
+          >
+            {/* Question header row */}
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="text-[11px] leading-relaxed font-bold flex-1">
+                <span className="font-black text-primary">Câu {block.id}.</span>{' '}
+                {renderInlineMarkdown(block.question)}
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {block.points !== undefined && (
+                  <span className="text-[8px] font-black bg-indigo-50 text-primary border border-primary/10 px-1.5 py-0.5 rounded-lg">
+                    {block.points}đ
+                  </span>
+                )}
+                {block.difficulty && (
+                  <span className={`text-[8px] font-black uppercase ${diffColor[block.difficulty] ?? ''}`}>
+                    {diffLabel[block.difficulty] ?? block.difficulty}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Image (if present) */}
+            {block.image?.src && (
+              <figure className="flex flex-col items-center gap-1 mb-2 bg-slate-50/50 rounded-xl p-2 border border-slate-100">
+                <img src={block.image.src} alt={block.image.alt ?? ''} className="max-w-full rounded-lg object-contain" style={{ maxHeight: 180 }} />
+                {block.image.caption && <figcaption className="text-[9px] text-slate-400 italic">{block.image.caption}</figcaption>}
+              </figure>
+            )}
+
+            {/* Options (multiple-choice) */}
+            {hasOptions && (
+              <div className="mt-3 space-y-2 font-sans">
+                {block.options.map((opt: any) => {
+                  const isCorrect = Array.isArray(block.answer) && block.answer.includes(opt.id);
+                  return (
+                    <div
+                      key={opt.id}
+                      className={`flex items-center gap-3 p-3 border rounded-2xl text-xs transition ${
+                        isCorrect
+                          ? 'border-primary/40 bg-primary/5 text-primary'
+                          : 'border-slate-100 bg-white hover:border-slate-200'
+                      }`}
+                    >
+                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 border ${
+                        isCorrect ? 'bg-primary text-white border-primary' : 'bg-slate-100 text-slate-600 border-slate-200'
+                      }`}>{opt.id}</span>
+                      <span className="font-semibold text-slate-700 leading-relaxed flex-1">
+                        {renderInlineMarkdown(opt.content)}
+                      </span>
+                      {isCorrect && (
+                        <svg viewBox="0 0 24 24" className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Essay placeholder (no options) */}
+            {!hasOptions && (
+              <div className="mt-2 px-3 py-2 bg-slate-50 border border-dashed border-slate-200 rounded-xl">
+                <span className="text-[9px] text-slate-400 font-bold">[ Câu tự luận — Học sinh trả lời trực tiếp ]</span>
+              </div>
+            )}
+
+            {/* Answer tags */}
+            {Array.isArray(block.tags) && block.tags.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {block.tags.map((tag: string) => (
+                  <span key={tag} className="text-[8px] font-black px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">{tag}</span>
+                ))}
+              </div>
+            )}
+
+            {/* Explanation */}
+            {block.explanation && (
+              <div className="mt-3 p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+                <div className="text-[9px] font-black text-primary mb-0.5">Giải thích:</div>
+                <p className="text-[10px] text-slate-600 leading-relaxed font-medium">
+                  {renderInlineMarkdown(block.explanation)}
+                </p>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // ── unknown block ─────────────────────────────────────────
+      default:
+        return (
+          <div key={idx} className="border border-dashed border-slate-300 rounded-xl p-3 text-[10px] text-slate-400 font-bold">
+            🔷 <strong>Unknown Block:</strong> "{block.type}"
+            <div className="text-[9px] font-medium mt-0.5 text-slate-300">Block type này chưa được hỗ trợ trong OML v1.0</div>
+          </div>
+        );
+    }
   };
 
   const codeLines = examJsonCode.split('\n');
-
-  // Height calculations to ensure exactly 1 scrollbar in editor columns
-  const codeEditorHeight = Math.max(codeLines.length * 20 + 32, 480);
-  const quickEditorHeight = Math.max(codeLines.length * 18 + 32, 480);
 
   const handleCheckCode = () => {
     try {
@@ -144,6 +706,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
   const handlePublishExam = () => {
     alert('Đăng tải đề thi thành công!');
+    draftService.deleteDraft();
     setMode('dashboard');
   };
 
@@ -251,9 +814,39 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
           {/* Actions buttons */}
           <div className="flex items-center gap-2">
+            {/* Auto Save Status Indicator */}
+            {examTab === 'code' && saveStatus !== 'idle' && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-555 select-none mr-1">
+                {saveStatus === 'saving' && (
+                  <>
+                    <RefreshCw size={11} className="text-primary animate-spin" />
+                    <span>Đang lưu...</span>
+                  </>
+                )}
+                {saveStatus === 'saved' && (
+                  <>
+                    <CheckCircle2 size={11} className="text-emerald-500 stroke-[2.5]" />
+                    <span className="text-slate-600">Đã lưu lúc {formatSavedTime(lastSavedTime)}</span>
+                  </>
+                )}
+                {saveStatus === 'error' && (
+                  <>
+                    <span className="text-red-500">⚠️</span>
+                    <span className="text-red-500">Không thể lưu bản nháp</span>
+                  </>
+                )}
+              </div>
+            )}
+
+            <button 
+              onClick={handleCreateNewExamClick}
+              className="px-3.5 py-1.5 border border-red-200 text-red-500 hover:bg-red-50 text-[10px] font-bold rounded-xl flex items-center gap-1.5 transition cursor-pointer font-sans bg-white shadow-sm"
+            >
+              <File size={12} /> Tạo đề mới
+            </button>
             <button 
               onClick={handleSaveExam}
-              className="px-3.5 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer font-sans"
+              className="px-3.5 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer font-sans bg-white shadow-sm"
             >
               <Save size={12} /> Lưu
             </button>
@@ -266,7 +859,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                   setShowLivePreview(!showLivePreview);
                 }
               }}
-              className={`px-3.5 py-1.5 border text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer font-sans ${
+              className={`px-3.5 py-1.5 border text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer font-sans bg-white shadow-sm ${
                 (examSubView === 'edit' && showLivePreview) 
                   ? 'bg-primary-light border-primary/20 text-primary hover:bg-primary-light/80' 
                   : 'border-slate-200 text-slate-650 hover:bg-slate-50'
@@ -318,6 +911,30 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
           <div className="flex-1 flex overflow-hidden animate-fadeIn">
             {/* LEFT COLUMN: Code Editor */}
             <div className={`${showLivePreview ? 'w-1/2 border-r border-slate-100' : 'w-full'} bg-white flex flex-col overflow-hidden transition-all duration-300`}>
+              {/* CROSS TAB CONFLICT BANNER */}
+              {isCrossTabConflict && (
+                <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center justify-between text-amber-800 text-[10px] font-bold shrink-0 animate-fadeIn select-none">
+                  <div className="flex items-center gap-1.5">
+                    <span>⚠️</span>
+                    <span>Bản nháp đã được cập nhật ở một cửa sổ khác.</span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      const draft = draftService.loadDraft();
+                      if (draft) {
+                        setExamJsonCode(draft.rawJson);
+                        tabInstanceId.current = draft.draftId;
+                        setLastSavedTime(draft.lastSaved);
+                        setIsCrossTabConflict(false);
+                        setSaveStatus('saved');
+                      }
+                    }}
+                    className="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-lg transition cursor-pointer text-[9px] font-black font-sans"
+                  >
+                    Tải lại bản nháp
+                  </button>
+                </div>
+              )}
               <div className="h-10 px-4 border-b border-slate-50 flex items-center justify-between shrink-0 bg-slate-50/20">
                 <span className="text-[10px] font-black text-text-primary uppercase tracking-wider">Soạn đề bằng mã</span>
                 <button className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1 transition">
@@ -326,24 +943,25 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
               </div>
 
               {/* Editor Workspace */}
-              <div className="flex-1 p-4 overflow-y-auto bg-slate-50/10">
-                <div className="flex font-mono text-[11px] bg-slate-50/70 border border-slate-100 rounded-2xl overflow-hidden min-h-[480px]">
+              <div className="flex-1 p-4 bg-slate-50/10 flex flex-col">
+                <div className="flex font-mono text-[11px] bg-slate-50/70 border border-slate-100 rounded-2xl overflow-hidden h-[550px] relative">
                   {/* Line numbers */}
                   <div 
-                    className="bg-slate-100/50 text-[#A3AED0] select-none text-right px-3 py-4 border-r border-slate-200/50 flex flex-col font-mono leading-[20px] tracking-wide shrink-0"
-                    style={{ height: `${codeEditorHeight}px` }}
+                    ref={lineNumbersRef}
+                    className="bg-slate-100/50 text-[#A3AED0] select-none text-right px-3 py-4 border-r border-slate-200/50 flex flex-col font-mono leading-[20px] tracking-wide shrink-0 overflow-hidden h-full"
                   >
                     {codeLines.map((_, idx) => (
-                      <span key={idx} className="min-w-[24px]">{idx + 1}</span>
+                      <span key={idx} className="min-w-[24px] h-[20px] block">{idx + 1}</span>
                     ))}
                   </div>
 
                   {/* Textarea */}
                   <textarea
+                    ref={textareaRef}
                     value={examJsonCode}
                     onChange={(e) => setExamJsonCode(e.target.value)}
-                    className="flex-1 p-4 bg-transparent outline-none border-none resize-none leading-[20px] font-mono text-slate-800 focus:ring-0 focus:outline-none overflow-hidden"
-                    style={{ height: `${codeEditorHeight}px` }}
+                    onScroll={handleScroll}
+                    className="flex-1 p-4 bg-transparent outline-none border-none resize-none leading-[20px] font-mono text-slate-800 focus:ring-0 focus:outline-none overflow-y-auto h-full"
                     spellCheck={false}
                   />
                 </div>
@@ -364,22 +982,45 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                   </span>
                 ) : (
                   <div className="flex items-center gap-4 text-[10px] text-slate-400 font-bold font-sans">
-                    <span>{infoMeta.totalQuestion || 50} câu hỏi</span>
-                    <span>{infoMeta.time || 90} phút</span>
-                    <span className="px-1.5 py-0.5 rounded bg-slate-50 border border-slate-100 text-[8px] font-extrabold uppercase">Trắc nghiệm</span>
+                    <span>{previewQuestions.length} câu hỏi</span>
+                    <span>{infoMeta.time ?? 45} phút</span>
+                    {parsedData?.version && (
+                      <span className="px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-[8px] font-extrabold uppercase text-primary">OML v{parsedData.version}</span>
+                    )}
                   </div>
                 )}
               </div>
             </div>
 
-            {/* RIGHT COLUMN: Live Preview */}
+            {/* RIGHT COLUMN: OML Live Preview */}
             {showLivePreview && (
-              <ExamLivePreview 
-                infoMeta={infoMeta}
-                previewQuestions={previewQuestions}
-                selectedQuestionId={selectedQuestionId}
-                setSelectedQuestionId={setSelectedQuestionId}
-              />
+              <div className="flex-1 flex flex-col overflow-hidden bg-[#F8FAFC] transition-all duration-300">
+                <div className="h-10 px-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+                  <span className="text-[10px] font-black text-text-primary uppercase tracking-wider">Xem trước đề thi</span>
+                  {parsedData?.version && (
+                    <span className="text-[8px] font-black text-primary bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">OML v{parsedData.version}</span>
+                  )}
+                </div>
+                <div className="flex-1 overflow-y-auto p-5 flex justify-center items-start">
+                  <div className="w-full bg-white border border-slate-100 rounded-2xl p-6 shadow-sm space-y-4">
+                    {/* Paper Header */}
+                    <div className="pb-4 border-b border-slate-100">
+                      <h2 className="text-sm font-black text-text-primary uppercase tracking-wide">{infoMeta.title}</h2>
+                      <div className="flex flex-wrap items-center gap-3 text-[10px] text-slate-400 font-bold mt-2 font-sans">
+                        <span>{infoMeta.subject} • Khối {infoMeta.grade}</span>
+                        <span>{infoMeta.time} phút</span>
+                        <span>{previewQuestions.length} câu hỏi</span>
+                        {infoMeta.author && <span>GV: {infoMeta.author}</span>}
+                      </div>
+                    </div>
+                    {/* Render OML blocks */}
+                    {omlBlocks.length > 0
+                      ? omlBlocks.map((block: any, idx: number) => renderOmlBlock(block, idx))
+                      : previewQuestions.map((q: any, idx: number) => renderOmlBlock({ ...q, type: 'question' }, idx))
+                    }
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -672,20 +1313,21 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                   </div>
 
                   {/* JSON Editor body */}
-                  <div className="flex-1 overflow-y-auto flex font-mono text-[11px] bg-white">
+                  <div className="flex-1 flex font-mono text-[11px] bg-white overflow-hidden relative">
                     <div 
-                      className="bg-slate-50/60 text-[#A3AED0] select-none text-right px-2.5 py-4 border-r border-slate-100 flex flex-col leading-[18px] shrink-0 font-mono"
-                      style={{ height: `${quickEditorHeight}px` }}
+                      ref={quickLineNumbersRef}
+                      className="bg-slate-50/60 text-[#A3AED0] select-none text-right px-2.5 py-4 border-r border-slate-100 flex flex-col leading-[18px] shrink-0 font-mono overflow-hidden h-full"
                     >
                       {codeLines.map((_, idx) => (
-                        <span key={idx} className="min-w-[20px]">{idx + 1}</span>
+                        <span key={idx} className="min-w-[20px] h-[18px] block">{idx + 1}</span>
                       ))}
                     </div>
                     <textarea
+                      ref={quickTextareaRef}
                       value={examJsonCode}
                       onChange={(e) => setExamJsonCode(e.target.value)}
-                      className="flex-1 p-4 bg-transparent outline-none border-none resize-none leading-[18px] font-mono text-slate-800 focus:ring-0 focus:outline-none overflow-hidden"
-                      style={{ height: `${quickEditorHeight}px` }}
+                      onScroll={handleQuickScroll}
+                      className="flex-1 p-4 bg-transparent outline-none border-none resize-none leading-[18px] font-mono text-slate-800 focus:ring-0 focus:outline-none overflow-y-auto h-full"
                       spellCheck={false}
                     />
                   </div>
@@ -700,138 +1342,34 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                   </div>
                 </div>
 
-                {/* COLUMN 3: Live Preview (≈40%) */}
+                {/* COLUMN 3: OML Live Preview (≈40%) */}
                 {showLivePreview && (
-                  <div className="flex-1 flex flex-col overflow-hidden bg-white transition-all duration-300">
+                  <div className="flex-1 flex flex-col overflow-hidden bg-[#F8FAFC] transition-all duration-300">
                     {/* Header bar */}
-                    <div className="h-11 border-b border-slate-200 px-4 flex items-center justify-between shrink-0 bg-slate-50/50">
+                    <div className="h-11 border-b border-slate-200 px-4 flex items-center justify-between shrink-0 bg-white">
                       <span className="text-[10px] font-black text-slate-700 tracking-wider">XEM TRƯỚC ĐỀ THI</span>
+                      {parsedData?.version && (
+                        <span className="text-[8px] font-black text-primary bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">OML v{parsedData.version}</span>
+                      )}
                     </div>
 
-                    <div className="flex-1 overflow-y-auto bg-slate-50/30 p-5 md:p-6 flex justify-center items-start">
-                      <div className="w-full bg-white border border-slate-200 rounded-xl p-6 sm:p-8 shadow-sm flex flex-col h-fit">
-                        {/* Paper Header inside the simulator */}
-                        <div className="border-b border-slate-150 pb-4 mb-6">
-                          <h2 className="text-sm font-black text-text-primary uppercase tracking-wide">
-                            {infoMeta.title}
-                          </h2>
-                          <div className="flex items-center gap-4 text-[10px] text-slate-400 font-bold mt-2 font-sans">
-                            <span className="flex items-center gap-1">
-                              <FileCode2 size={12} /> {previewQuestions.length} câu hỏi
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <HelpCircle size={12} /> {infoMeta.time || 90} phút
-                            </span>
-                            <span className="px-1.5 py-0.5 rounded bg-slate-50 border border-slate-100 text-[8px] font-extrabold uppercase tracking-wider">
-                              TRẮC NGHIỆM
-                            </span>
+                    <div className="flex-1 overflow-y-auto p-5 flex justify-center items-start">
+                      <div className="w-full bg-white border border-slate-100 rounded-2xl p-6 shadow-sm space-y-4">
+                        {/* Paper Header */}
+                        <div className="pb-4 border-b border-slate-100">
+                          <h2 className="text-sm font-black text-text-primary uppercase tracking-wide">{infoMeta.title}</h2>
+                          <div className="flex flex-wrap items-center gap-3 text-[10px] text-slate-400 font-bold mt-2 font-sans">
+                            <span>{infoMeta.subject} • Khối {infoMeta.grade}</span>
+                            <span>{infoMeta.time} phút</span>
+                            <span>{previewQuestions.length} câu hỏi</span>
+                            {infoMeta.author && <span>GV: {infoMeta.author}</span>}
                           </div>
                         </div>
-
-                        {/* Questions Render List */}
-                        <div className="space-y-6">
-                          {previewQuestions.map((q: any, qIdx: number) => {
-                            const isActive = selectedQuestionId === q.id;
-                            return (
-                              <div 
-                                key={q.id || qIdx}
-                                onClick={() => setSelectedQuestionId(q.id)}
-                                className={`p-4 border rounded-xl transition duration-150 cursor-pointer ${
-                                  isActive 
-                                    ? 'border-primary/30 bg-primary-light/5 shadow-sm' 
-                                    : 'border-slate-100 hover:border-slate-200 bg-white'
-                                }`}
-                              >
-                                <div className="text-[11px] leading-relaxed font-bold">
-                                  <span className="font-black text-primary">Câu {q.id}.</span> {q.question}
-                                </div>
-
-                                {/* Water molecule SVG */}
-                                {q.id === 2 && (
-                                  <div className="flex justify-center py-4 my-3 bg-slate-50/50 rounded-xl border border-slate-100">
-                                    <svg width="220" height="130" viewBox="0 0 220 130" className="overflow-visible select-none">
-                                      {/* Covalent bonds */}
-                                      <line x1="110" y1="50" x2="60" y2="96" stroke="#1E293B" strokeWidth="2.5" />
-                                      <line x1="110" y1="50" x2="160" y2="96" stroke="#1E293B" strokeWidth="2.5" />
-
-                                      {/* Oxygen atom */}
-                                      <circle cx="110" cy="50" r="18" fill="white" stroke="#6C5DD3" strokeWidth="2.5" />
-                                      <text x="110" y="54" textAnchor="middle" fontSize="12" fontWeight="black" fill="#6C5DD3" fontFamily="sans-serif">O</text>
-
-                                      {/* Hydrogen left */}
-                                      <circle cx="60" cy="96" r="12" fill="white" stroke="#1E293B" strokeWidth="2" />
-                                      <text x="60" y="100" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#1E293B" fontFamily="sans-serif">H</text>
-
-                                      {/* Hydrogen right */}
-                                      <circle cx="160" cy="96" r="12" fill="white" stroke="#1E293B" strokeWidth="2" />
-                                      <text x="160" y="100" textAnchor="middle" fontSize="9" fontWeight="bold" fill="#1E293B" fontFamily="sans-serif">H</text>
-
-                                      {/* Lone pairs */}
-                                      <circle cx="102" cy="26" r="2.2" fill="#6C5DD3" />
-                                      <circle cx="108" cy="22" r="2.2" fill="#6C5DD3" />
-                                      <circle cx="118" cy="22" r="2.2" fill="#6C5DD3" />
-                                      <circle cx="124" cy="26" r="2.2" fill="#6C5DD3" />
-
-                                      {/* Angle curve */}
-                                      <path d="M 98,62 A 16,16 0 0,0 122,62" fill="none" stroke="#6C5DD3" strokeWidth="1" strokeDasharray="2 1.5" />
-                                      <text x="110" y="78" textAnchor="middle" fontSize="8" fontWeight="bold" fill="#6C5DD3" fontFamily="sans-serif">104.5°</text>
-                                    </svg>
-                                  </div>
-                                )}
-
-                                {/* Options grid */}
-                                <div className={`mt-3.5 space-y-2.5 font-sans ${q.id === 2 ? 'grid grid-cols-2 gap-3 space-y-0' : ''}`}>
-                                  {q.options?.map((opt: any) => {
-                                    const isChecked = q.answer === opt.key;
-                                    const letter = opt.key;
-                                    
-                                    let optClass = 'border-[#E8EAF3] bg-white hover:border-[#6366F1]/40 hover:bg-[#6366F1]/5';
-                                    let badgeClass = 'bg-slate-100 text-[#64748B] border border-slate-200';
-
-                                    if (isChecked) {
-                                      optClass = 'border-[#6366F1] bg-[#6366F1]/10 text-primary';
-                                      badgeClass = 'bg-[#6366F1] text-white border-[#6366F1]';
-                                    }
-
-                                    return (
-                                      <div 
-                                        key={opt.key}
-                                        className={`w-full flex items-center justify-between gap-3 p-3.5 border rounded-2xl text-left text-xs transition duration-150 ${optClass}`}
-                                      >
-                                        <div className="flex items-center gap-3">
-                                          <span className={`w-6.5 h-6.5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${badgeClass}`}>
-                                            {letter}
-                                          </span>
-                                          <span className="font-semibold text-slate-700 leading-relaxed">{opt.content}</span>
-                                        </div>
-                                        {isChecked && (
-                                          <div className="w-5 h-5 rounded-full bg-[#6366F1] flex items-center justify-center text-white shrink-0">
-                                            <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                                              <polyline points="20 6 9 17 4 12" />
-                                            </svg>
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-
-                                {/* Explanation and difficulty */}
-                                <div className="mt-4 p-3 bg-slate-50 border border-slate-100 rounded-xl space-y-1.5 text-[9px]">
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-black text-primary">Giải thích:</span>
-                                    <span className={`font-black text-[8px] ${q.level === 'easy' ? 'text-success' : 'text-amber-500'}`}>
-                                      Độ khó: {q.level === 'easy' ? 'Dễ' : 'Trung bình'}
-                                    </span>
-                                  </div>
-                                  <p className="text-text-secondary leading-relaxed font-bold">
-                                    {q.explanation}
-                                  </p>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
+                        {/* Render OML blocks in order */}
+                        {omlBlocks.length > 0
+                          ? omlBlocks.map((block: any, idx: number) => renderOmlBlock(block, idx))
+                          : previewQuestions.map((q: any, idx: number) => renderOmlBlock({ ...q, type: 'question' }, idx))
+                        }
                       </div>
                     </div>
                   </div>
@@ -1079,6 +1617,79 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
           </div>
         )}
       </main>
+
+      {/* ── RESTORE DRAFT DIALOG ── */}
+      {showRestoreDialog && pendingDraft && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-[#0F172A]/60 backdrop-blur-sm transition-opacity duration-300" onClick={handleRestoreDraft} />
+          <div className="bg-white rounded-3xl w-full max-w-[420px] p-6 shadow-2xl relative overflow-hidden flex flex-col z-[101] border border-slate-100 animate-scaleUp text-center space-y-5">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-primary flex items-center justify-center mx-auto shadow-sm">
+              <RefreshCw size={22} className="text-primary animate-spin" />
+            </div>
+            
+            <div className="space-y-2 leading-relaxed">
+              <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">Khôi phục bản nháp?</h3>
+              <p className="text-[11px] text-slate-500 font-bold">
+                Chúng tôi phát hiện bạn còn một bản nháp chưa hoàn thành. Bạn muốn tiếp tục chỉnh sửa hay tạo đề mới?
+              </p>
+              {pendingDraft.lastSaved && (
+                <div className="text-[10px] text-slate-400 font-semibold bg-slate-50 py-1.5 px-3 rounded-lg inline-block mt-2">
+                  Lưu lần cuối: <span className="font-bold text-slate-655">{formatFullSavedTime(pendingDraft.lastSaved)}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+              <button
+                onClick={handleDiscardRestore}
+                className="w-full sm:flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-black rounded-xl transition cursor-pointer"
+              >
+                Tạo đề mới
+              </button>
+              <button
+                onClick={handleRestoreDraft}
+                className="w-full sm:flex-1 py-2.5 bg-primary hover:bg-primary-hover text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md shadow-indigo-150"
+              >
+                Tiếp tục chỉnh sửa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CONFIRM NEW EXAM DIALOG ── */}
+      {showConfirmNewDialog && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-[#0F172A]/60 backdrop-blur-sm transition-opacity duration-300" onClick={() => setShowConfirmNewDialog(false)} />
+          <div className="bg-white rounded-3xl w-full max-w-[420px] p-6 shadow-2xl relative overflow-hidden flex flex-col z-[101] border border-slate-100 animate-scaleUp text-center space-y-5">
+            <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center mx-auto shadow-sm">
+              <X size={22} className="stroke-[2.5]" />
+            </div>
+            
+            <div className="space-y-2 leading-relaxed">
+              <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">Tạo đề mới?</h3>
+              <p className="text-[11px] text-slate-500 font-bold">
+                Bạn có chắc muốn tạo đề mới? Bản nháp hiện tại sẽ bị xóa.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={() => setShowConfirmNewDialog(false)}
+                className="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-black rounded-xl transition cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleConfirmNewExam}
+                className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md shadow-red-100"
+              >
+                Tiếp tục
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -335,9 +335,20 @@ interface AssessmentTestProps {
 }
 
 export const AssessmentTest: React.FC<AssessmentTestProps> = ({ onBackToHome }) => {
-  const [step, setStep] = useState<2 | 3 | 4>(2); // 2 = Testing, 3 = Analyzing, 4 = Results
+  const [step, setStep] = useState<2 | 3 | 4>(() => {
+    const completed = localStorage.getItem('omni_onboarding_completed') === 'true';
+    const savedAnswers = localStorage.getItem('omni_mbti_answers');
+    return completed && savedAnswers ? 4 : 2;
+  });
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [answers, setAnswers] = useState<Record<number, number>>(() => {
+    const savedAnswers = localStorage.getItem('omni_mbti_answers');
+    try {
+      return savedAnswers ? JSON.parse(savedAnswers) : {};
+    } catch (e) {
+      return {};
+    }
+  });
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
 
   // Time tracking (15 minutes 30 seconds count)
@@ -370,6 +381,7 @@ export const AssessmentTest: React.FC<AssessmentTestProps> = ({ onBackToHome }) 
             setStep(4);
             // Save state to localStorage that assessment is completed
             localStorage.setItem('omni_onboarding_completed', 'true');
+            localStorage.setItem('omni_mbti_answers', JSON.stringify(answers));
             return 100;
           }
           
@@ -413,6 +425,18 @@ export const AssessmentTest: React.FC<AssessmentTestProps> = ({ onBackToHome }) 
   const handleExitTestConfirm = () => {
     setShowExitModal(false);
     onBackToHome();
+  };
+
+  const handleRetakeTest = () => {
+    localStorage.removeItem('omni_onboarding_completed');
+    localStorage.removeItem('omni_mbti_answers');
+    setAnswers({});
+    setCurrentQuestionIndex(0);
+    setTimeLeft(15 * 60 + 30);
+    setSelectedAnswer(null);
+    setProgressVal(0);
+    setAnalysisText('🧠 Đang phân tích kết quả...');
+    setStep(2);
   };
 
   // Calculations for step 4 (Results)
@@ -1190,12 +1214,19 @@ export const AssessmentTest: React.FC<AssessmentTestProps> = ({ onBackToHome }) 
 
           </div>
 
-          <div className="flex justify-center pt-2 select-none">
+          <div className="flex justify-center items-center gap-6 pt-2 select-none">
             <button 
               onClick={onBackToHome}
-              className="text-slate-400 hover:text-slate-600 text-xs font-black flex items-center gap-1 cursor-pointer"
+              className="text-slate-400 hover:text-slate-600 text-xs font-black flex items-center gap-1 cursor-pointer bg-transparent border-none focus:outline-none"
             >
               <ArrowLeft size={12} /> Quay lại trang chủ
+            </button>
+            <span className="text-slate-200">|</span>
+            <button 
+              onClick={handleRetakeTest}
+              className="text-primary hover:text-primary-hover text-xs font-black flex items-center gap-1.5 cursor-pointer bg-transparent border-none focus:outline-none"
+            >
+              <RotateCw size={12} /> Làm lại bài đánh giá
             </button>
           </div>
         </div>
