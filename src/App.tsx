@@ -18,6 +18,8 @@ import { Contact } from './pages/Contact';
 import { Blog } from './pages/Blog';
 import { Profile } from './pages/Profile';
 import { Teacher } from './pages/Teacher';
+import { AssessmentTest } from './pages/AssessmentTest';
+import { OnboardingModal } from './components/OnboardingModal';
 
 function App() {
   // Global States
@@ -26,6 +28,7 @@ function App() {
   const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Authentication handlers
   const handleLoginSuccess = (name: string, email: string) => {
@@ -38,6 +41,12 @@ function App() {
       xp: prev.xp === 0 ? 1420 : prev.xp,
       streak: prev.streak === 0 ? 5 : prev.streak,
     }));
+    
+    const isCompleted = localStorage.getItem('omni_onboarding_completed') === 'true';
+    const isDismissed = localStorage.getItem('omni_onboarding_dismissed') === 'true';
+    if (!isCompleted && !isDismissed) {
+      setShowOnboarding(true);
+    }
   };
 
   const handleLogout = () => {
@@ -62,6 +71,7 @@ function App() {
       bookmarks: {},
       notes: {},
     });
+    setShowOnboarding(true);
   };
 
   // Content annotations handlers
@@ -167,7 +177,7 @@ function App() {
   const relatedDocs = mockDocuments.filter((x) => x.subject === activeExam.subject && x.id !== selectedDocId);
 
   // Hide Top Navigation and Footer inside the CBT Test Simulator and auth pages
-  const showHeaderFooter = view !== 'active-exam' && view !== 'login' && view !== 'register';
+  const showHeaderFooter = view !== 'active-exam' && view !== 'assessment-test' && view !== 'login' && view !== 'register';
 
   return (
     <div className="min-h-screen flex flex-col bg-bg-base transition-colors duration-default selection:bg-primary-light selection:text-primary">
@@ -229,6 +239,12 @@ function App() {
               />
             )}
 
+            {view === 'assessment-test' && (
+              <AssessmentTest
+                onBackToHome={() => handleViewChange('home')}
+              />
+            )}
+
             {view === 'documents' && (
               <Documents
                 documents={mockDocuments}
@@ -279,6 +295,19 @@ function App() {
           {showHeaderFooter && <Footer onViewChange={handleViewChange} />}
         </div>
       </div>
+
+      {showOnboarding && (
+        <OnboardingModal
+          onStart={() => {
+            setShowOnboarding(false);
+            setView('assessment-test');
+          }}
+          onDismiss={() => {
+            setShowOnboarding(false);
+            localStorage.setItem('omni_onboarding_dismissed', 'true');
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Flame, ChevronLeft, ChevronRight, Download, X } from 'lucide-react';
+import { Search, Flame, ChevronLeft, ChevronRight, Download, X, Brain } from 'lucide-react';
 import type { User } from '../types';
 import { Checkbox } from '../components/Checkbox';
 
@@ -540,6 +540,33 @@ export const Home: React.FC<HomeProps> = ({
                 );
               })}
             </div>
+          </section>
+
+          {/* 3. Khám phá năng lực Card */}
+          <section className="bg-white border border-slate-100 rounded-card p-6 space-y-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[#EEF2FF] text-[#6366F1] flex items-center justify-center shrink-0 border border-[#E0E7FF]">
+                <Brain size={14} className="stroke-[2.5]" />
+              </div>
+              <h3 className="text-xs font-black text-text-primary uppercase tracking-wide">
+                Khám phá năng lực
+              </h3>
+            </div>
+            
+            <p className="text-[10px] text-text-secondary font-bold leading-relaxed">
+              {localStorage.getItem('omni_onboarding_completed') === 'true'
+                ? "Xem lại hồ sơ tính cách MBTI, biểu đồ 8 nhóm năng lực cốt lõi và các gợi ý định hướng nghề nghiệp từ AI."
+                : "Làm bài trắc nghiệm 30 câu hỏi để khám phá tiềm năng bản thân, tính cách MBTI và nhận gợi ý lộ trình học tập phù hợp."}
+            </p>
+
+            <button
+              onClick={() => onViewChange('assessment-test')}
+              className="w-full py-2.5 bg-primary hover:bg-primary-hover text-white text-xs font-black rounded-xl transition cursor-pointer shadow-sm shadow-indigo-150"
+            >
+              {localStorage.getItem('omni_onboarding_completed') === 'true'
+                ? "Xem kết quả đánh giá"
+                : "Bắt đầu bài đánh giá"}
+            </button>
           </section>
         </div>
       </div>
