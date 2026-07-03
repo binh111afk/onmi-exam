@@ -21,7 +21,12 @@ import {
   ChevronLeft,
   AlignLeft,
   RefreshCw,
-  Upload
+  Upload,
+  Maximize2,
+  Minimize2,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw
 } from 'lucide-react';
 
 import { ExamSidebar } from './ExamSidebar';
@@ -65,6 +70,10 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   const [isOcrLoading, setIsOcrLoading] = useState(false);
   const [showLivePreview, setShowLivePreview] = useState(true);
   const [showLeftSidebar, setShowLeftSidebar] = useState(true);
+  const [isPreviewFullscreenOpen, setIsPreviewFullscreenOpen] = useState(false);
+  const [isPreviewFullscreenClosing, setIsPreviewFullscreenClosing] = useState(false);
+  const [previewZoom, setPreviewZoom] = useState<50 | 75 | 100 | 125 | 150 | 200>(100);
+  const [isPreviewFitWidth, setIsPreviewFitWidth] = useState(false);
 
   // Local OCR upload file state
   const [uploadedFile, setUploadedFile] = useState<{ name: string; size: string } | null>({
@@ -78,6 +87,10 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const quickLineNumbersRef = useRef<HTMLDivElement>(null);
   const quickTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const previewScrollRef = useRef<HTMLDivElement>(null);
+  const fullscreenPreviewScrollRef = useRef<HTMLDivElement>(null);
+  const savedPreviewScrollTopRef = useRef(0);
+  const previewCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Auto-Save States & Unique Tab Instance ID
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -323,6 +336,64 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
     }
   };
 
+  const previewZoomLevels = [50, 75, 100, 125, 150, 200] as const;
+
+  const openPreviewFullscreen = () => {
+    savedPreviewScrollTopRef.current = previewScrollRef.current?.scrollTop ?? savedPreviewScrollTopRef.current;
+    if (previewCloseTimerRef.current) clearTimeout(previewCloseTimerRef.current);
+    setIsPreviewFullscreenClosing(true);
+    setIsPreviewFullscreenOpen(true);
+    requestAnimationFrame(() => {
+      setIsPreviewFullscreenClosing(false);
+      if (fullscreenPreviewScrollRef.current) {
+        fullscreenPreviewScrollRef.current.scrollTop = savedPreviewScrollTopRef.current;
+      }
+    });
+  };
+
+  const closePreviewFullscreen = () => {
+    savedPreviewScrollTopRef.current = fullscreenPreviewScrollRef.current?.scrollTop ?? savedPreviewScrollTopRef.current;
+    setIsPreviewFullscreenClosing(true);
+    if (previewCloseTimerRef.current) clearTimeout(previewCloseTimerRef.current);
+    previewCloseTimerRef.current = setTimeout(() => {
+      setIsPreviewFullscreenOpen(false);
+      setIsPreviewFullscreenClosing(false);
+      requestAnimationFrame(() => {
+        if (previewScrollRef.current) {
+          previewScrollRef.current.scrollTop = savedPreviewScrollTopRef.current;
+        }
+      });
+    }, 200);
+  };
+
+  const applyPreviewZoom = (zoom: typeof previewZoomLevels[number]) => {
+    setPreviewZoom(zoom);
+    setIsPreviewFitWidth(false);
+  };
+
+  const stepPreviewZoom = (direction: -1 | 1) => {
+    const currentIndex = previewZoomLevels.indexOf(previewZoom);
+    const nextIndex = Math.min(previewZoomLevels.length - 1, Math.max(0, currentIndex + direction));
+    applyPreviewZoom(previewZoomLevels[nextIndex]);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (previewCloseTimerRef.current) clearTimeout(previewCloseTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isPreviewFullscreenOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closePreviewFullscreen();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPreviewFullscreenOpen]);
+
   // ── OML v1.0 PARSER ────────────────────────────────────────────
   let parsedData: any = null;
   let parseError: string | null = null;
@@ -335,9 +406,17 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   // Extract blocks array from OML content[] or fall back to legacy questions[]
   const omlBlocks: any[] = parsedData?.content ?? [];
 
+  const collectQuestionBlocks = (blocks: any[]): any[] => {
+    return blocks.flatMap((block: any) => {
+      if (block?.type === 'question') return [block];
+      if (block?.type === 'question-group') return block.questions ?? [];
+      return [];
+    });
+  };
+
   // Collect all question blocks from content[] for stats / sidebar
   const previewQuestions: any[] = omlBlocks.length > 0
-    ? omlBlocks.filter((b: any) => b.type === 'question')
+    ? collectQuestionBlocks(omlBlocks)
     : (parsedData?.questions ?? []);
 
   const infoMeta = parsedData?.info ?? {
@@ -414,6 +493,79 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
     return <span dangerouslySetInnerHTML={{ __html: html }} />;
   };
 
+  const getImageSizeClass = (size?: string) => {
+    const sizeMap: Record<string, string> = {
+      small: 'w-full max-w-xs mx-auto',
+      medium: 'w-full max-w-xl mx-auto',
+      full: 'w-full max-w-full',
+    };
+
+    return sizeMap[size ?? 'medium'] ?? sizeMap.medium;
+  };
+
+  const getImageStyle = (image: any, fallback?: React.CSSProperties): React.CSSProperties | undefined => {
+    if (image?.size) return undefined;
+    if (image?.width) return { maxWidth: image.width };
+    return fallback;
+  };
+
+  const getImageGroupLayoutClass = (layout?: string) => {
+    const layoutMap: Record<string, string> = {
+      horizontal: 'grid grid-cols-1 sm:grid-cols-2 gap-4',
+      vertical: 'flex flex-col gap-4',
+      'grid-2x2': 'grid grid-cols-1 sm:grid-cols-2 gap-4',
+    };
+
+    return layoutMap[layout ?? 'vertical'] ?? layoutMap.vertical;
+  };
+
+  const getFillBlankUnits = (block: any): string[] => {
+    if (Array.isArray(block.blankUnits)) return block.blankUnits;
+    if (Array.isArray(block.units)) return block.units;
+    if (typeof block.unit === 'string') return [block.unit];
+    return [];
+  };
+
+  const getBlankCount = (block: any): number => {
+    const tokens = String(block.question ?? '').match(/\[blank-\d+\]/g) ?? [];
+    const answerCount = Array.isArray(block.answer) ? block.answer.length : 0;
+    return Math.max(tokens.length, answerCount, 1);
+  };
+
+  const TableComponent: React.FC<{ block: any }> = ({ block }) => (
+    <figure className="my-3">
+      <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white">
+        <table className="w-full text-[10px] border-collapse">
+          <thead>
+            <tr className="bg-indigo-50/60 border-b border-indigo-100">
+              {(block.headers ?? []).map((header: string, headerIdx: number) => (
+                <th key={headerIdx} className="px-4 py-2.5 text-left font-semibold text-slate-800 border border-indigo-100/70">
+                  {renderInlineMarkdown(String(header))}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {(block.rows ?? []).map((row: string[], rowIdx: number) => (
+              <tr key={rowIdx} className={rowIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
+                {row.map((cell: string, cellIdx: number) => (
+                  <td key={cellIdx} className="px-3 py-1.5 text-slate-600 font-medium border border-slate-100">
+                    {renderInlineMarkdown(String(cell))}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {block.caption && (
+        <figcaption className="mt-2 text-center text-sm font-medium text-gray-500">
+          {renderInlineMarkdown(block.caption)}
+        </figcaption>
+      )}
+    </figure>
+  );
+
   // ── OML BLOCK RENDERER ─────────────────────────────────────────
   const renderOmlBlock = (block: any, idx: number) => {
     if (!block || !block.type) return null;
@@ -476,17 +628,40 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
       // ── image ────────────────────────────────────────────────
       case 'image':
         return (
-          <figure key={idx} className="flex flex-col items-center gap-1.5 my-2">
+          <figure key={idx} className="my-3 flex flex-col items-center gap-2">
             <img
               src={block.src}
               alt={block.alt ?? block.caption ?? ''}
-              className="rounded-xl border border-slate-100 max-w-full object-contain"
-              style={{ maxWidth: block.width ?? 480 }}
+              className={`rounded-t-2xl rounded-b-none border border-slate-100 object-cover shadow-sm ${getImageSizeClass(block.size)}`}
+              style={getImageStyle(block, { maxWidth: 480 })}
             />
             {block.caption && (
               <figcaption className="text-[9px] text-slate-400 font-bold italic">{block.caption}</figcaption>
             )}
           </figure>
+        );
+
+      // ── image group ──────────────────────────────────────────
+      case 'image-group':
+        return (
+          <div key={idx} className="my-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+            <div className={getImageGroupLayoutClass(block.layout)}>
+              {(block.items ?? []).map((item: any, itemIdx: number) => (
+                <figure key={`${item.src ?? itemIdx}-${itemIdx}`} className="group flex flex-col overflow-hidden border border-slate-100 bg-white shadow-sm transition duration-200 hover:scale-[1.01] hover:shadow-md">
+                  <div className="overflow-hidden bg-slate-100">
+                    <img
+                      src={item.src}
+                      alt={item.alt ?? item.caption ?? ''}
+                      className={`aspect-video rounded-t-2xl rounded-b-none object-cover transition duration-200 ${getImageSizeClass(item.size)}`}
+                    />
+                  </div>
+                  {item.caption && (
+                    <figcaption className="px-2 pt-1.5 pb-2 text-center text-[9px] font-bold italic text-slate-400">{item.caption}</figcaption>
+                  )}
+                </figure>
+              ))}
+            </div>
+          </div>
         );
 
       // ── formula ──────────────────────────────────────────────
@@ -518,31 +693,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
       // ── table ────────────────────────────────────────────────
       case 'table':
-        return (
-          <div key={idx} className="my-3 overflow-x-auto">
-            {block.caption && (
-              <p className="text-[9px] text-slate-400 font-bold mb-1 italic">{block.caption}</p>
-            )}
-            <table className="w-full text-[10px] border-collapse">
-              <thead>
-                <tr className="bg-slate-50">
-                  {(block.headers ?? []).map((h: string, hi: number) => (
-                    <th key={hi} className="px-3 py-2 text-left font-black text-slate-700 border border-slate-100">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {(block.rows ?? []).map((row: string[], ri: number) => (
-                  <tr key={ri} className={ri % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
-                    {row.map((cell: string, ci: number) => (
-                      <td key={ci} className="px-3 py-1.5 text-slate-600 font-medium border border-slate-100">{cell}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        );
+        return <TableComponent key={idx} block={block} />;
 
       // ── list ─────────────────────────────────────────────────
       case 'list': {
@@ -556,13 +707,37 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
         );
       }
 
+      // ── question group ───────────────────────────────────────
+      case 'question-group':
+        return (
+          <section key={idx} className="my-5 space-y-5">
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-5 shadow-sm">
+              <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm shadow-sm">📖</span>
+                <span>Ngữ liệu</span>
+              </div>
+              <div className="space-y-3 text-slate-700">
+                {(block.context ?? []).map((contextBlock: any, contextIdx: number) => (
+                  renderOmlBlock(contextBlock, Number(`${idx}${contextIdx}`))
+                ))}
+              </div>
+            </div>
+            <div className="space-y-3">
+              {(block.questions ?? []).map((question: any, questionIdx: number) => (
+                renderOmlBlock({ ...question, type: 'question' }, Number(`${idx}${questionIdx + 10}`))
+              ))}
+            </div>
+          </section>
+        );
+
       // ── question ─────────────────────────────────────────────
       case 'question': {
         // Validate required fields
+        const subType = block.subType ?? 'choice';
         const missingFields: string[] = [];
         if (!block.question) missingFields.push('question (string)');
-        if (!block.options)  missingFields.push('options (array)');
-        if (!block.answer)   missingFields.push('answer (array)');
+        if (subType !== 'fill-blank' && !Array.isArray(block.options)) missingFields.push('options (array)');
+        if (!Array.isArray(block.answer)) missingFields.push('answer (array)');
 
         if (missingFields.length > 0) {
           return (
@@ -575,45 +750,57 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
           );
         }
 
-        const isActive = selectedQuestionId === block.id;
-        const hasOptions = block.options && block.options.length > 0;
-        const diffColor: Record<string, string> = {
-          easy: 'text-emerald-500', medium: 'text-amber-500', hard: 'text-red-500'
-        };
+        const numericQuestionId = Number(block.id);
+        const isActive = String(selectedQuestionId) === String(block.id);
+        const hasOptions = Array.isArray(block.options) && block.options.length > 0;
+        const subTypeLabel: Record<string, string> = { choice: 'Trắc nghiệm', 'true-false': 'Đúng/Sai', 'fill-blank': 'Điền khuyết' };
+        const questionText = subType === 'fill-blank'
+          ? String(block.question).replace(/\[blank-\d+\]/g, '______________')
+          : block.question;
         const diffLabel: Record<string, string> = { easy: 'Dễ', medium: 'Trung bình', hard: 'Khó' };
+        const blankUnits = getFillBlankUnits(block);
+        const blankCount = getBlankCount(block);
+        const showFillBlankAnswer = subType === 'fill-blank' && block.showAnswer !== false && Array.isArray(block.answer) && block.answer.length > 0;
+        const metaTags = [
+          subTypeLabel[subType] ?? subType,
+          block.points !== undefined ? `${block.points}đ` : null,
+          block.difficulty ? (diffLabel[block.difficulty] ?? block.difficulty) : null,
+        ].filter(Boolean) as string[];
 
         return (
           <div
             key={idx}
-            onClick={() => setSelectedQuestionId(block.id)}
+            onClick={() => Number.isFinite(numericQuestionId) && setSelectedQuestionId(numericQuestionId)}
             className={`p-4 border rounded-xl transition duration-150 cursor-pointer ${
               isActive ? 'border-primary/30 bg-primary-light/5 shadow-sm' : 'border-slate-100 hover:border-slate-200 bg-white'
             }`}
           >
-            {/* Question header row */}
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <div className="text-[11px] leading-relaxed font-bold flex-1">
-                <span className="font-black text-primary">Câu {block.id}.</span>{' '}
-                {renderInlineMarkdown(block.question)}
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                {block.points !== undefined && (
-                  <span className="text-[8px] font-black bg-indigo-50 text-primary border border-primary/10 px-1.5 py-0.5 rounded-lg">
-                    {block.points}đ
+            {/* Question metadata tags */}
+            {metaTags.length > 0 && (
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                {metaTags.map((tag) => (
+                  <span key={tag} className="rounded-lg border border-primary/10 bg-indigo-50 px-2 py-1 text-[8px] font-black text-primary">
+                    {tag}
                   </span>
-                )}
-                {block.difficulty && (
-                  <span className={`text-[8px] font-black uppercase ${diffColor[block.difficulty] ?? ''}`}>
-                    {diffLabel[block.difficulty] ?? block.difficulty}
-                  </span>
-                )}
+                ))}
               </div>
+            )}
+
+            {/* Question text */}
+            <div className="mb-2 text-[11px] leading-relaxed font-bold">
+              <span className="font-black text-primary">Câu {block.id}.</span>{' '}
+              {renderInlineMarkdown(questionText)}
             </div>
 
             {/* Image (if present) */}
             {block.image?.src && (
-              <figure className="flex flex-col items-center gap-1 mb-2 bg-slate-50/50 rounded-xl p-2 border border-slate-100">
-                <img src={block.image.src} alt={block.image.alt ?? ''} className="max-w-full rounded-lg object-contain" style={{ maxHeight: 180 }} />
+              <figure className="mb-3 flex flex-col items-center gap-1.5 rounded-2xl border border-slate-100 bg-slate-50/50 p-2 shadow-sm">
+                <img
+                  src={block.image.src}
+                  alt={block.image.alt ?? block.image.caption ?? ''}
+                  className={`rounded-t-2xl rounded-b-none object-cover ${getImageSizeClass(block.image.size)}`}
+                  style={block.image.size ? { maxHeight: 220 } : { maxHeight: 220, maxWidth: 420 }}
+                />
                 {block.image.caption && <figcaption className="text-[9px] text-slate-400 italic">{block.image.caption}</figcaption>}
               </figure>
             )}
@@ -626,7 +813,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                   return (
                     <div
                       key={opt.id}
-                      className={`flex items-center gap-3 p-3 border rounded-2xl text-xs transition ${
+                      className={`flex items-center gap-3 p-3 pr-6 border rounded-2xl text-xs transition ${
                         isCorrect
                           ? 'border-primary/40 bg-primary/5 text-primary'
                           : 'border-slate-100 bg-white hover:border-slate-200'
@@ -639,7 +826,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                         {renderInlineMarkdown(opt.content)}
                       </span>
                       {isCorrect && (
-                        <svg viewBox="0 0 24 24" className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <svg viewBox="0 0 24 24" className="w-4 h-4 text-primary shrink-0 self-center" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
                       )}
@@ -649,8 +836,48 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
               </div>
             )}
 
+            {/* Fill-blank preview / review */}
+            {subType === 'fill-blank' && (
+              showFillBlankAnswer ? (
+                <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-[10px] leading-relaxed">
+                  <div className="font-black text-slate-500">Đáp án:</div>
+                  <div className="mt-1 space-y-1 font-bold text-primary">
+                    {block.answer.map((answer: string, answerIdx: number) => {
+                      const unit = blankUnits[answerIdx] ?? blankUnits[0];
+                      return (
+                        <div key={`${answer}-${answerIdx}`}>
+                          {blankCount > 1 && <span className="text-slate-500">Ô {answerIdx + 1}: </span>}
+                          {renderInlineMarkdown(unit ? `${answer} ${unit}` : answer)}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-3 space-y-2">
+                  {Array.from({ length: blankCount }).map((_, blankIdx) => {
+                    const unit = blankUnits[blankIdx] ?? blankUnits[0];
+                    return (
+                      <div key={blankIdx} className="flex max-w-md items-center gap-3">
+                        {blankCount > 1 && (
+                          <span className="w-8 shrink-0 text-[10px] font-black text-slate-500">Ô {blankIdx + 1}</span>
+                        )}
+                        <input
+                          readOnly
+                          aria-label={`Nhập đáp án ô ${blankIdx + 1}`}
+                          placeholder="Nhập đáp án..."
+                          className="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-700 outline-none placeholder:text-slate-400"
+                        />
+                        {unit && <span className="shrink-0 text-[11px] font-bold text-slate-700">{unit}</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            )}
+
             {/* Essay placeholder (no options) */}
-            {!hasOptions && (
+            {!hasOptions && subType !== 'fill-blank' && (
               <div className="mt-2 px-3 py-2 bg-slate-50 border border-dashed border-slate-200 rounded-xl">
                 <span className="text-[9px] text-slate-400 font-bold">[ Câu tự luận — Học sinh trả lời trực tiếp ]</span>
               </div>
@@ -683,10 +910,134 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
         return (
           <div key={idx} className="border border-dashed border-slate-300 rounded-xl p-3 text-[10px] text-slate-400 font-bold">
             🔷 <strong>Unknown Block:</strong> "{block.type}"
-            <div className="text-[9px] font-medium mt-0.5 text-slate-300">Block type này chưa được hỗ trợ trong OML v1.0</div>
+            <div className="text-[9px] font-medium mt-0.5 text-slate-300">Block chưa được renderer hiện tại hỗ trợ; đang dùng fallback an toàn</div>
           </div>
         );
     }
+  };
+
+  const renderExamPreviewPaper = (className = 'w-full', style?: React.CSSProperties) => (
+    <div className={`${className} bg-white border border-slate-100 rounded-2xl p-6 shadow-sm space-y-4 shrink-0`} style={style}>
+      {/* Paper Header */}
+      <div className="pb-4 border-b border-slate-100">
+        <h2 className="text-sm font-black text-text-primary uppercase tracking-wide">{infoMeta.title}</h2>
+        <div className="flex flex-wrap items-center gap-3 text-[10px] text-slate-400 font-bold mt-2 font-sans">
+          <span>{infoMeta.subject} • Khối {infoMeta.grade}</span>
+          <span>{infoMeta.time} phút</span>
+          <span>{previewQuestions.length} câu hỏi</span>
+          {infoMeta.author && <span>GV: {infoMeta.author}</span>}
+        </div>
+      </div>
+      {/* Render OML blocks */}
+      {omlBlocks.length > 0
+        ? omlBlocks.map((block: any, blockIdx: number) => renderOmlBlock(block, blockIdx))
+        : previewQuestions.map((q: any, questionIdx: number) => renderOmlBlock({ ...q, type: 'question' }, questionIdx))
+      }
+    </div>
+  );
+
+  const renderExamPreviewColumn = (title = 'Xem trước đề thi') => (
+    <div className="flex-1 flex flex-col overflow-hidden bg-[#F8FAFC] transition-all duration-300">
+      <div className="h-10 px-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+        <span className="text-[10px] font-black text-text-primary uppercase tracking-wider">{title}</span>
+        <div className="flex items-center gap-2">
+          {parsedData?.version && (
+            <span className="text-[8px] font-black text-primary bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">OML v{parsedData.version}</span>
+          )}
+          <button
+            type="button"
+            title="Phóng to Preview"
+            aria-label="Phóng to Preview"
+            onClick={openPreviewFullscreen}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-primary hover:bg-indigo-50 transition cursor-pointer"
+          >
+            <Maximize2 size={13} />
+          </button>
+        </div>
+      </div>
+      <div ref={previewScrollRef} className="flex-1 overflow-y-auto p-5 flex justify-center items-start">
+        {isPreviewFullscreenOpen ? (
+          <div className="w-full rounded-2xl border border-dashed border-slate-200 bg-white/70 p-6 text-center text-[10px] font-bold text-slate-400">
+            Preview đang mở ở chế độ phóng to
+          </div>
+        ) : renderExamPreviewPaper()}
+      </div>
+    </div>
+  );
+
+  const renderPreviewFullscreenOverlay = () => {
+    if (!isPreviewFullscreenOpen) return null;
+
+    const paperWidth = isPreviewFitWidth ? '100%' : `${Math.round(840 * previewZoom / 100)}px`;
+
+    return (
+      <div
+        className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm transition-opacity duration-200 ${isPreviewFullscreenClosing ? 'opacity-0' : 'opacity-100'}`}
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) closePreviewFullscreen();
+        }}
+      >
+        <section
+          role="dialog"
+          aria-modal="true"
+          aria-label="Phóng to Preview"
+          className={`flex h-[94vh] w-[96vw] flex-col overflow-hidden rounded-[18px] bg-white shadow-2xl transition-all duration-200 ${isPreviewFullscreenClosing ? 'scale-[0.98] opacity-0' : 'scale-100 opacity-100'}`}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <div className="h-14 shrink-0 border-b border-slate-200 bg-white px-4 flex items-center justify-between gap-4">
+            <div className="min-w-0 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={closePreviewFullscreen}
+                className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"
+                aria-label="Đóng Preview"
+                title="Đóng"
+              >
+                <X size={18} />
+              </button>
+              <div className="min-w-0">
+                <div className="truncate text-xs font-black uppercase tracking-wide text-slate-800">{infoMeta.title}</div>
+                <div className="mt-0.5 flex items-center gap-2 text-[9px] font-bold text-slate-400">
+                  <span>{infoMeta.subject} • Khối {infoMeta.grade}</span>
+                  {parsedData?.version && (
+                    <span className="rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[8px] font-black text-primary">OML v{parsedData.version}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-1.5 text-slate-500">
+              <button type="button" onClick={() => stepPreviewZoom(-1)} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" title="Thu nhỏ" aria-label="Thu nhỏ">
+                <ZoomOut size={16} />
+              </button>
+              <span className="w-12 text-center text-[10px] font-black text-slate-700">{isPreviewFitWidth ? 'Fit' : `${previewZoom}%`}</span>
+              <button type="button" onClick={() => stepPreviewZoom(1)} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" title="Phóng to" aria-label="Phóng to">
+                <ZoomIn size={16} />
+              </button>
+              <button type="button" onClick={() => applyPreviewZoom(100)} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" title="Reset Zoom" aria-label="Reset Zoom">
+                <RotateCcw size={16} />
+              </button>
+              <button type="button" onClick={() => setIsPreviewFitWidth(true)} className={`px-3 py-2 rounded-xl text-[10px] font-black transition cursor-pointer ${isPreviewFitWidth ? 'bg-indigo-50 text-primary' : 'hover:bg-slate-100 hover:text-slate-900'}`} title="Fit Width" aria-label="Fit Width">
+                Fit Width
+              </button>
+              <button type="button" onClick={closePreviewFullscreen} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" title="Thu nhỏ Preview" aria-label="Thu nhỏ Preview">
+                <Minimize2 size={16} />
+              </button>
+            </div>
+          </div>
+
+          <div ref={fullscreenPreviewScrollRef} className="flex-1 overflow-auto bg-slate-100/80 p-6">
+            <div className="flex min-h-full justify-center items-start">
+              {renderExamPreviewPaper('', { width: paperWidth })}
+            </div>
+          </div>
+
+          <div className="h-10 shrink-0 border-t border-slate-200 bg-white px-5 flex items-center text-[10px] font-bold text-slate-500">
+            Trang 1 / 1
+          </div>
+        </section>
+      </div>
+    );
   };
 
   const codeLines = examJsonCode.split('\n');
@@ -733,7 +1084,9 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
       .replace(/-+/g, '-');
   };
 
-  const questionsList = Array.from({ length: 12 }, (_, i) => i + 1);
+  const questionsList = previewQuestions
+    .map((question: any) => Number(question.id))
+    .filter((id: number) => Number.isFinite(id));
   const filteredQuestions = questionsList.filter(qNum => 
     examSearchQuery === '' || `Câu ${qNum}`.toLowerCase().includes(examSearchQuery.toLowerCase())
   );
@@ -993,35 +1346,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
             </div>
 
             {/* RIGHT COLUMN: OML Live Preview */}
-            {showLivePreview && (
-              <div className="flex-1 flex flex-col overflow-hidden bg-[#F8FAFC] transition-all duration-300">
-                <div className="h-10 px-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
-                  <span className="text-[10px] font-black text-text-primary uppercase tracking-wider">Xem trước đề thi</span>
-                  {parsedData?.version && (
-                    <span className="text-[8px] font-black text-primary bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">OML v{parsedData.version}</span>
-                  )}
-                </div>
-                <div className="flex-1 overflow-y-auto p-5 flex justify-center items-start">
-                  <div className="w-full bg-white border border-slate-100 rounded-2xl p-6 shadow-sm space-y-4">
-                    {/* Paper Header */}
-                    <div className="pb-4 border-b border-slate-100">
-                      <h2 className="text-sm font-black text-text-primary uppercase tracking-wide">{infoMeta.title}</h2>
-                      <div className="flex flex-wrap items-center gap-3 text-[10px] text-slate-400 font-bold mt-2 font-sans">
-                        <span>{infoMeta.subject} • Khối {infoMeta.grade}</span>
-                        <span>{infoMeta.time} phút</span>
-                        <span>{previewQuestions.length} câu hỏi</span>
-                        {infoMeta.author && <span>GV: {infoMeta.author}</span>}
-                      </div>
-                    </div>
-                    {/* Render OML blocks */}
-                    {omlBlocks.length > 0
-                      ? omlBlocks.map((block: any, idx: number) => renderOmlBlock(block, idx))
-                      : previewQuestions.map((q: any, idx: number) => renderOmlBlock({ ...q, type: 'question' }, idx))
-                    }
-                  </div>
-                </div>
-              </div>
-            )}
+            {showLivePreview && renderExamPreviewColumn('Xem trước đề thi')}
           </div>
         )}
 
@@ -1343,37 +1668,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                 </div>
 
                 {/* COLUMN 3: OML Live Preview (≈40%) */}
-                {showLivePreview && (
-                  <div className="flex-1 flex flex-col overflow-hidden bg-[#F8FAFC] transition-all duration-300">
-                    {/* Header bar */}
-                    <div className="h-11 border-b border-slate-200 px-4 flex items-center justify-between shrink-0 bg-white">
-                      <span className="text-[10px] font-black text-slate-700 tracking-wider">XEM TRƯỚC ĐỀ THI</span>
-                      {parsedData?.version && (
-                        <span className="text-[8px] font-black text-primary bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">OML v{parsedData.version}</span>
-                      )}
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto p-5 flex justify-center items-start">
-                      <div className="w-full bg-white border border-slate-100 rounded-2xl p-6 shadow-sm space-y-4">
-                        {/* Paper Header */}
-                        <div className="pb-4 border-b border-slate-100">
-                          <h2 className="text-sm font-black text-text-primary uppercase tracking-wide">{infoMeta.title}</h2>
-                          <div className="flex flex-wrap items-center gap-3 text-[10px] text-slate-400 font-bold mt-2 font-sans">
-                            <span>{infoMeta.subject} • Khối {infoMeta.grade}</span>
-                            <span>{infoMeta.time} phút</span>
-                            <span>{previewQuestions.length} câu hỏi</span>
-                            {infoMeta.author && <span>GV: {infoMeta.author}</span>}
-                          </div>
-                        </div>
-                        {/* Render OML blocks in order */}
-                        {omlBlocks.length > 0
-                          ? omlBlocks.map((block: any, idx: number) => renderOmlBlock(block, idx))
-                          : previewQuestions.map((q: any, idx: number) => renderOmlBlock({ ...q, type: 'question' }, idx))
-                        }
-                      </div>
-                    </div>
-                  </div>
-                )}
+                {showLivePreview && renderExamPreviewColumn('XEM TRƯỚC ĐỀ THI')}
               </div>
             )}
           </>
@@ -1690,6 +1985,9 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
           </div>
         </div>
       )}
+
+      {renderPreviewFullscreenOverlay()}
     </div>
   );
 };
+

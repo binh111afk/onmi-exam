@@ -1,0 +1,102 @@
+{
+  "version": "2.0",
+  "info": {
+    "title": "Đề đọc hiểu Sinh học 10 - OML v2.0",
+    "subject": "Sinh học",
+    "grade": 10,
+    "time": 45,
+    "type": "exam",
+    "difficulty": "medium",
+    "description": "Ví dụ đặc tả OML v2.0 với image-group, question-group và image sizing.",
+    "author": "Onmi Exam Research Team",
+    "allowReview": true,
+    "shuffle": false
+  },
+  "content": [
+    {
+      "type": "paragraph",
+      "text": "OML v2.0 giữ cấu trúc **block phẳng** tại `content[]`, đồng thời bổ sung container ảnh và câu hỏi chùm để mô tả đề thi thực tế linh hoạt hơn."
+    },
+    {
+      "type": "image-group",
+      "layout": "horizontal",
+      "items": [
+        {
+          "src": "/images/cell-membrane-a.png",
+          "caption": "Hình 1. Mô hình màng sinh chất",
+          "size": "medium"
+        },
+        {
+          "src": "/images/cell-membrane-b.png",
+          "caption": "Hình 2. Sự vận chuyển qua màng",
+          "size": "medium"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "caption": "Bảng 1. Ảnh hưởng của nhiệt độ đến tốc độ phản ứng enzyme",
+      "headers": ["Điều kiện", "Nhiệt độ $^{\\circ}C$", "$v_{max}$", "Đơn vị"],
+      "rows": [
+        ["Mẫu A", "$25^{\\circ}C$", "$v_{max} = 12.5$", "$\\mu mol/s$"],
+        ["Mẫu B", "$37^{\\circ}C$", "$v_{max} = 18.2$", "$\\mu mol/s$"]
+      ]
+    },
+    {
+      "type": "question-group",
+      "id": "reading-1",
+      "context": [
+        {
+          "type": "paragraph",
+          "text": "Đọc đoạn thông tin sau: Màng sinh chất có cấu trúc khảm động, gồm lớp kép phospholipid và các protein màng. Một số chất có thể khuếch tán trực tiếp qua lớp lipid, trong khi các phân tử phân cực thường cần protein vận chuyển."
+        },
+        {
+          "type": "image",
+          "src": "/images/membrane-transport.png",
+          "caption": "Sơ đồ các con đường vận chuyển qua màng",
+          "size": "full"
+        }
+      ],
+      "questions": [
+        {
+          "type": "question",
+          "id": 1,
+          "subType": "choice",
+          "question": "Thành phần nào tạo nên lớp kép cơ bản của màng sinh chất?",
+          "points": 0.5,
+          "difficulty": "easy",
+          "options": [
+            { "id": "A", "content": "Phospholipid" },
+            { "id": "B", "content": "Tinh bột" },
+            { "id": "C", "content": "DNA" },
+            { "id": "D", "content": "Cellulose" }
+          ],
+          "answer": ["A"],
+          "image": {
+            "src": "/images/phospholipid.png",
+            "caption": "Một phân tử phospholipid",
+            "size": "small"
+          },
+          "explanation": "Lớp kép phospholipid là khung cấu trúc cơ bản của màng sinh chất."
+        },
+        {
+          "type": "question",
+          "id": 2,
+          "subType": "true-false",
+          "question": "Dựa vào đoạn đọc, hãy xác định các nhận định đúng.",
+          "points": 0.5,
+          "difficulty": "medium",
+          "options": [
+            { "id": "a", "content": "Màng sinh chất có tính khảm động." },
+            { "id": "b", "content": "Mọi chất đều đi qua màng mà không cần protein." },
+            { "id": "c", "content": "Một số phân tử phân cực cần protein vận chuyển." },
+            { "id": "d", "content": "Lớp kép phospholipid không liên quan đến cấu trúc màng." }
+          ],
+          "answer": ["a", "c"],
+          "explanation": "Các ý a và c đúng theo thông tin trong ngữ cảnh; b và d trái với đoạn đọc."
+        }
+      ]
+    }
+  ]
+}
+
