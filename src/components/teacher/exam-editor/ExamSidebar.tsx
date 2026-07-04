@@ -23,8 +23,8 @@ export const ExamSidebar: React.FC<ExamSidebarProps> = ({
   filteredQuestions,
 }) => {
   return (
-    <aside className="w-64 bg-white border-r border-slate-100 flex flex-col justify-between shrink-0 overflow-y-auto">
-      <div className="p-5 flex flex-col gap-6">
+    <aside className="w-64 bg-white border-r border-slate-100 flex flex-col shrink-0 min-h-0 h-full overflow-hidden">
+      <div className="p-5 flex flex-col gap-6 flex-1 min-h-0">
         {/* Back Button */}
         <button 
           onClick={() => setMode('dashboard')}
@@ -73,11 +73,11 @@ export const ExamSidebar: React.FC<ExamSidebarProps> = ({
 
         {/* Danh sách câu hỏi */}
         {examSubView === 'edit' && (
-          <div className="space-y-3 pt-2 animate-fadeIn">
-            <div className="text-[10px] font-black text-[#A3AED0] uppercase tracking-wider px-2">Danh sách câu hỏi</div>
+          <div className="flex-1 min-h-0 flex flex-col space-y-3 pt-2 animate-fadeIn">
+            <div className="text-[10px] font-black text-[#A3AED0] uppercase tracking-wider px-2 shrink-0">Danh sách câu hỏi</div>
             
             {/* Search */}
-            <div className="relative">
+            <div className="relative shrink-0">
               <input 
                 type="text"
                 placeholder="Tìm câu hỏi..."
@@ -89,7 +89,7 @@ export const ExamSidebar: React.FC<ExamSidebarProps> = ({
             </div>
 
             {/* Question list items */}
-            <div className="space-y-1 max-h-[220px] overflow-y-auto pr-1">
+            <div className="space-y-1 flex-1 min-h-0 overflow-y-auto pr-1">
               {filteredQuestions.map((qNum) => {
                 const isSelected = selectedQuestionId === qNum;
                 return (
@@ -113,7 +113,7 @@ export const ExamSidebar: React.FC<ExamSidebarProps> = ({
             </div>
 
             {/* Add question button */}
-            <button className="w-full py-2 border border-dashed border-slate-200 text-slate-500 hover:border-primary hover:text-primary transition rounded-xl text-[10px] font-black cursor-pointer">
+            <button className="w-full py-2 border border-dashed border-slate-200 text-slate-500 hover:border-primary hover:text-primary transition rounded-xl text-[10px] font-black cursor-pointer shrink-0">
               + Thêm câu hỏi
             </button>
           </div>

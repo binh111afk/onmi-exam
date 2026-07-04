@@ -32,6 +32,9 @@ import {
 import { ExamSidebar } from './ExamSidebar';
 import { QuestionBankWorkspace } from './QuestionBankWorkspace';
 import { draftService } from '../../../services/draftService';
+import { OmlPreviewPaper } from '../../ExamEditor/OmlRenderer/OmlPreviewPaper';
+import { parseOML } from '../../ExamEditor/OmlRenderer/parser';
+import { OmlGuideModal } from './OmlGuideModal';
 
 
 interface ExamEditorWorkspaceProps {
@@ -101,6 +104,75 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   const [isCrossTabConflict, setIsCrossTabConflict] = useState(false);
 
   const tabInstanceId = useRef<string>(Math.random().toString(36).substring(2, 9));
+
+  // Parser and validation states
+  const [lastValidOml, setLastValidOml] = useState<any>(() => {
+    const result = parseOML(examJsonCode);
+    return result.success ? result.data : null;
+  });
+  const [lastValidMetadata, setLastValidMetadata] = useState<any>(() => {
+    const result = parseOML(examJsonCode);
+    return result.metadata;
+  });
+  const [validationErrors, setValidationErrors] = useState<any[]>(() => {
+    const result = parseOML(examJsonCode);
+    return result.success ? [] : result.errors;
+  });
+  const [isJsonInvalid, setIsJsonInvalid] = useState<boolean>(() => {
+    const result = parseOML(examJsonCode);
+    return !result.success;
+  });
+  const [validationDialog, setValidationDialog] = useState<any>({
+    isOpen: false,
+    title: '',
+    success: false,
+    type: 'success',
+  });
+  const [compileStatus, setCompileStatus] = useState<'unchecked' | 'compiling' | 'success' | 'error'>(() => {
+    const result = parseOML(examJsonCode);
+    return result.success ? 'success' : 'error';
+  });
+  const [showGuideModal, setShowGuideModal] = useState<boolean>(false);
+
+  const getErrorNumberSymbol = (idx: number): string => {
+    const symbols = ['①', '②', '③', '④', '⑤', '⑥', '⑦', '⑧', '⑨', '⑩'];
+    return symbols[idx] ?? `${idx + 1}.`;
+  };
+
+  const highlightLineInTextarea = (lineNum: number) => {
+    const textarea = textareaRef.current || quickTextareaRef.current;
+    if (!textarea) return;
+    const lines = textarea.value.split('\n');
+    if (lineNum > lines.length) return;
+    let startOffset = 0;
+    for (let i = 0; i < lineNum - 1; i++) {
+      startOffset += lines[i].length + (textarea.value.includes('\r\n') ? 2 : 1);
+    }
+    const endOffset = startOffset + lines[lineNum - 1].length;
+    textarea.focus();
+    textarea.setSelectionRange(startOffset, endOffset);
+    const rowHeight = 20;
+    textarea.scrollTop = Math.max(0, (lineNum - 5) * rowHeight);
+  };
+
+  // Real-time parsed OML sync with Debounce (300-500ms)
+  useEffect(() => {
+    setCompileStatus('unchecked');
+
+    const handler = setTimeout(() => {
+      const result = parseOML(examJsonCode);
+      if (result.success) {
+        setLastValidOml(result.data);
+        setLastValidMetadata(result.metadata);
+        setValidationErrors([]);
+        setIsJsonInvalid(false);
+      } else {
+        setValidationErrors(result.errors);
+        setIsJsonInvalid(true);
+      }
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [examJsonCode]);
 
   const DEFAULT_EXAM_CODE = `{
   "version": "1.0",
@@ -404,7 +476,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   }
 
   // Extract blocks array from OML content[] or fall back to legacy questions[]
-  const omlBlocks: any[] = parsedData?.content ?? [];
+  const omlBlocks: any[] = lastValidOml?.content ?? [];
 
   const collectQuestionBlocks = (blocks: any[]): any[] => {
     return blocks.flatMap((block: any) => {
@@ -415,11 +487,11 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   };
 
   // Collect all question blocks from content[] for stats / sidebar
-  const previewQuestions: any[] = omlBlocks.length > 0
-    ? collectQuestionBlocks(omlBlocks)
-    : (parsedData?.questions ?? []);
+  const previewQuestions: any[] = lastValidOml
+    ? (lastValidOml.content ? collectQuestionBlocks(lastValidOml.content) : (lastValidOml.questions ?? []))
+    : [];
 
-  const infoMeta = parsedData?.info ?? {
+  const infoMeta = lastValidOml?.info ?? {
     title: 'Đề thi chưa có tiêu đề',
     subject: 'Không rõ',
     grade: 10,
@@ -443,8 +515,8 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
     const handler = setTimeout(() => {
       const now = new Date().toISOString();
-      const title = infoMeta.title || 'Đề thi chưa có tiêu đề';
-      const subject = infoMeta.subject || 'Sinh học';
+      const title = lastValidMetadata.title || 'Đề thi chưa có tiêu đề';
+      const subject = lastValidMetadata.subject || 'Sinh học';
 
       const success = draftService.saveDraft({
         version: '1.0',
@@ -467,482 +539,15 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
     return () => clearTimeout(handler);
   }, [examJsonCode, examTab, infoMeta.title, infoMeta.subject]);
 
-  // ── INLINE MARKDOWN renderer (bold / italic / highlight / inline formula) ──
-  const renderInlineMarkdown = (text: string) => {
-    if (!text) return null;
-    // Simple replacements for display — no external dep needed
-    let html = text
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/==(.+?)==/g, '<mark class="bg-yellow-100 rounded px-0.5">$1</mark>')
-      .replace(/`(.+?)`/g, '<code class="bg-slate-100 rounded px-1 font-mono text-[10px]">$1</code>');
-
-    // Render inline LaTeX using KaTeX if loaded, fallback to code tag
-    html = html.replace(/\$(.+?)\$/g, (_, latex) => {
-      const katex = (window as any).katex;
-      if (katex) {
-        try {
-          return katex.renderToString(latex, { displayMode: false, throwOnError: false });
-        } catch (e) {
-          // fallback
-        }
-      }
-      return `<code class="bg-purple-50 text-purple-700 rounded px-1 font-mono text-[10px]">${latex}</code>`;
-    });
-    
-    return <span dangerouslySetInnerHTML={{ __html: html }} />;
-  };
-
-  const getImageSizeClass = (size?: string) => {
-    const sizeMap: Record<string, string> = {
-      small: 'w-full max-w-xs mx-auto',
-      medium: 'w-full max-w-xl mx-auto',
-      full: 'w-full max-w-full',
-    };
-
-    return sizeMap[size ?? 'medium'] ?? sizeMap.medium;
-  };
-
-  const getImageStyle = (image: any, fallback?: React.CSSProperties): React.CSSProperties | undefined => {
-    if (image?.size) return undefined;
-    if (image?.width) return { maxWidth: image.width };
-    return fallback;
-  };
-
-  const getImageGroupLayoutClass = (layout?: string) => {
-    const layoutMap: Record<string, string> = {
-      horizontal: 'grid grid-cols-1 sm:grid-cols-2 gap-4',
-      vertical: 'flex flex-col gap-4',
-      'grid-2x2': 'grid grid-cols-1 sm:grid-cols-2 gap-4',
-    };
-
-    return layoutMap[layout ?? 'vertical'] ?? layoutMap.vertical;
-  };
-
-  const getFillBlankUnits = (block: any): string[] => {
-    if (Array.isArray(block.blankUnits)) return block.blankUnits;
-    if (Array.isArray(block.units)) return block.units;
-    if (typeof block.unit === 'string') return [block.unit];
-    return [];
-  };
-
-  const getBlankCount = (block: any): number => {
-    const tokens = String(block.question ?? '').match(/\[blank-\d+\]/g) ?? [];
-    const answerCount = Array.isArray(block.answer) ? block.answer.length : 0;
-    return Math.max(tokens.length, answerCount, 1);
-  };
-
-  const TableComponent: React.FC<{ block: any }> = ({ block }) => (
-    <figure className="my-3">
-      <div className="overflow-x-auto rounded-2xl border border-slate-100 bg-white">
-        <table className="w-full text-[10px] border-collapse">
-          <thead>
-            <tr className="bg-indigo-50/60 border-b border-indigo-100">
-              {(block.headers ?? []).map((header: string, headerIdx: number) => (
-                <th key={headerIdx} className="px-4 py-2.5 text-left font-semibold text-slate-800 border border-indigo-100/70">
-                  {renderInlineMarkdown(String(header))}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {(block.rows ?? []).map((row: string[], rowIdx: number) => (
-              <tr key={rowIdx} className={rowIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
-                {row.map((cell: string, cellIdx: number) => (
-                  <td key={cellIdx} className="px-3 py-1.5 text-slate-600 font-medium border border-slate-100">
-                    {renderInlineMarkdown(String(cell))}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {block.caption && (
-        <figcaption className="mt-2 text-center text-sm font-medium text-gray-500">
-          {renderInlineMarkdown(block.caption)}
-        </figcaption>
-      )}
-    </figure>
-  );
-
-  // ── OML BLOCK RENDERER ─────────────────────────────────────────
-  const renderOmlBlock = (block: any, idx: number) => {
-    if (!block || !block.type) return null;
-
-    switch (block.type) {
-      // ── heading ──────────────────────────────────────────────
-      case 'heading': {
-        const sizes: Record<number, string> = {
-          1: 'text-sm font-black text-slate-800 uppercase tracking-wide border-b border-slate-100 pb-2',
-          2: 'text-xs font-black text-slate-700 uppercase tracking-wider',
-          3: 'text-[11px] font-black text-slate-600 uppercase tracking-wider',
-        };
-        return (
-          <div key={idx} className={`${sizes[block.level] ?? sizes[3]} mt-5 mb-1`}>
-            {block.text}
-          </div>
-        );
-      }
-
-      // ── paragraph ────────────────────────────────────────────
-      case 'paragraph':
-        return (
-          <p key={idx} className="text-[11px] text-slate-655 leading-relaxed font-medium">
-            {renderInlineMarkdown(block.text)}
-          </p>
-        );
-
-      // ── divider ──────────────────────────────────────────────
-      case 'divider':
-        return <hr key={idx} className="border-slate-100 my-3" />;
-
-      // ── quote ────────────────────────────────────────────────
-      case 'quote':
-        return (
-          <blockquote key={idx} className="border-l-4 border-primary/30 pl-3 italic text-[11px] text-slate-600 my-2">
-            {renderInlineMarkdown(block.text)}
-          </blockquote>
-        );
-
-      // ── callout ──────────────────────────────────────────────
-      case 'callout': {
-        const variantStyle: Record<string, string> = {
-          info:    'bg-indigo-50/70 border-indigo-100 text-indigo-800',
-          warning: 'bg-amber-50/70 border-amber-100 text-amber-800',
-          success: 'bg-emerald-50/70 border-emerald-100 text-emerald-800',
-          error:   'bg-red-50/70 border-red-100 text-red-800',
-        };
-        const v = block.variant ?? 'info';
-        return (
-          <div key={idx} className={`border rounded-xl p-3 flex gap-2.5 items-start ${variantStyle[v] ?? variantStyle.info}`}>
-            <span className="text-base leading-none shrink-0 mt-0.5">ℹ️</span>
-            <div className="text-[10px] leading-relaxed">
-              {block.title && <div className="font-black mb-0.5">{block.title}</div>}
-              {renderInlineMarkdown(block.content)}
-            </div>
-          </div>
-        );
-      }
-
-      // ── image ────────────────────────────────────────────────
-      case 'image':
-        return (
-          <figure key={idx} className="my-3 flex flex-col items-center gap-2">
-            <img
-              src={block.src}
-              alt={block.alt ?? block.caption ?? ''}
-              className={`rounded-t-2xl rounded-b-none border border-slate-100 object-cover shadow-sm ${getImageSizeClass(block.size)}`}
-              style={getImageStyle(block, { maxWidth: 480 })}
-            />
-            {block.caption && (
-              <figcaption className="text-[9px] text-slate-400 font-bold italic">{block.caption}</figcaption>
-            )}
-          </figure>
-        );
-
-      // ── image group ──────────────────────────────────────────
-      case 'image-group':
-        return (
-          <div key={idx} className="my-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-            <div className={getImageGroupLayoutClass(block.layout)}>
-              {(block.items ?? []).map((item: any, itemIdx: number) => (
-                <figure key={`${item.src ?? itemIdx}-${itemIdx}`} className="group flex flex-col overflow-hidden border border-slate-100 bg-white shadow-sm transition duration-200 hover:scale-[1.01] hover:shadow-md">
-                  <div className="overflow-hidden bg-slate-100">
-                    <img
-                      src={item.src}
-                      alt={item.alt ?? item.caption ?? ''}
-                      className={`aspect-video rounded-t-2xl rounded-b-none object-cover transition duration-200 ${getImageSizeClass(item.size)}`}
-                    />
-                  </div>
-                  {item.caption && (
-                    <figcaption className="px-2 pt-1.5 pb-2 text-center text-[9px] font-bold italic text-slate-400">{item.caption}</figcaption>
-                  )}
-                </figure>
-              ))}
-            </div>
-          </div>
-        );
-
-      // ── formula ──────────────────────────────────────────────
-      case 'formula': {
-        const katex = (window as any).katex;
-        if (katex) {
-          try {
-            const displayMode = block.display !== 'inline';
-            const html = katex.renderToString(block.latex, { displayMode, throwOnError: false });
-            return (
-              <div 
-                key={idx} 
-                className={`my-3 overflow-x-auto ${displayMode ? 'w-full flex justify-center' : 'inline-block'}`}
-                dangerouslySetInnerHTML={{ __html: html }} 
-              />
-            );
-          } catch (e) {
-            // fallback
-          }
-        }
-        return (
-          <div key={idx} className={`my-2 ${block.display === 'inline' ? 'inline-block' : 'flex justify-center'}`}>
-            <code className="font-mono text-[11px] bg-purple-50 text-purple-700 border border-purple-100 rounded-xl px-4 py-2 select-text">
-              {block.latex}
-            </code>
-          </div>
-        );
-      }
-
-      // ── table ────────────────────────────────────────────────
-      case 'table':
-        return <TableComponent key={idx} block={block} />;
-
-      // ── list ─────────────────────────────────────────────────
-      case 'list': {
-        const Tag = block.ordered ? 'ol' : 'ul';
-        return (
-          <Tag key={idx} className={`text-[11px] text-slate-655 leading-relaxed space-y-1 pl-4 ${block.ordered ? 'list-decimal' : 'list-disc'}`}>
-            {(block.items ?? []).map((item: string, ii: number) => (
-              <li key={ii}>{renderInlineMarkdown(item)}</li>
-            ))}
-          </Tag>
-        );
-      }
-
-      // ── question group ───────────────────────────────────────
-      case 'question-group':
-        return (
-          <section key={idx} className="my-5 space-y-5">
-            <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-5 shadow-sm">
-              <div className="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-500">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-sm shadow-sm">📖</span>
-                <span>Ngữ liệu</span>
-              </div>
-              <div className="space-y-3 text-slate-700">
-                {(block.context ?? []).map((contextBlock: any, contextIdx: number) => (
-                  renderOmlBlock(contextBlock, Number(`${idx}${contextIdx}`))
-                ))}
-              </div>
-            </div>
-            <div className="space-y-3">
-              {(block.questions ?? []).map((question: any, questionIdx: number) => (
-                renderOmlBlock({ ...question, type: 'question' }, Number(`${idx}${questionIdx + 10}`))
-              ))}
-            </div>
-          </section>
-        );
-
-      // ── question ─────────────────────────────────────────────
-      case 'question': {
-        // Validate required fields
-        const subType = block.subType ?? 'choice';
-        const missingFields: string[] = [];
-        if (!block.question) missingFields.push('question (string)');
-        if (subType !== 'fill-blank' && !Array.isArray(block.options)) missingFields.push('options (array)');
-        if (!Array.isArray(block.answer)) missingFields.push('answer (array)');
-
-        if (missingFields.length > 0) {
-          return (
-            <div key={idx} className="border border-amber-200 bg-amber-50/50 rounded-xl p-3 text-[10px] text-amber-700 font-bold">
-              ⚠️ <strong>Câu {block.id ?? idx + 1}</strong> — Thiếu field bắt buộc:
-              <ul className="list-disc pl-4 mt-1 font-medium">
-                {missingFields.map(f => <li key={f}>{f}</li>)}
-              </ul>
-            </div>
-          );
-        }
-
-        const numericQuestionId = Number(block.id);
-        const isActive = String(selectedQuestionId) === String(block.id);
-        const hasOptions = Array.isArray(block.options) && block.options.length > 0;
-        const subTypeLabel: Record<string, string> = { choice: 'Trắc nghiệm', 'true-false': 'Đúng/Sai', 'fill-blank': 'Điền khuyết' };
-        const questionText = subType === 'fill-blank'
-          ? String(block.question).replace(/\[blank-\d+\]/g, '______________')
-          : block.question;
-        const diffLabel: Record<string, string> = { easy: 'Dễ', medium: 'Trung bình', hard: 'Khó' };
-        const blankUnits = getFillBlankUnits(block);
-        const blankCount = getBlankCount(block);
-        const showFillBlankAnswer = subType === 'fill-blank' && block.showAnswer !== false && Array.isArray(block.answer) && block.answer.length > 0;
-        const metaTags = [
-          subTypeLabel[subType] ?? subType,
-          block.points !== undefined ? `${block.points}đ` : null,
-          block.difficulty ? (diffLabel[block.difficulty] ?? block.difficulty) : null,
-        ].filter(Boolean) as string[];
-
-        return (
-          <div
-            key={idx}
-            onClick={() => Number.isFinite(numericQuestionId) && setSelectedQuestionId(numericQuestionId)}
-            className={`p-4 border rounded-xl transition duration-150 cursor-pointer ${
-              isActive ? 'border-primary/30 bg-primary-light/5 shadow-sm' : 'border-slate-100 hover:border-slate-200 bg-white'
-            }`}
-          >
-            {/* Question metadata tags */}
-            {metaTags.length > 0 && (
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                {metaTags.map((tag) => (
-                  <span key={tag} className="rounded-lg border border-primary/10 bg-indigo-50 px-2 py-1 text-[8px] font-black text-primary">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Question text */}
-            <div className="mb-2 text-[11px] leading-relaxed font-bold">
-              <span className="font-black text-primary">Câu {block.id}.</span>{' '}
-              {renderInlineMarkdown(questionText)}
-            </div>
-
-            {/* Image (if present) */}
-            {block.image?.src && (
-              <figure className="mb-3 flex flex-col items-center gap-1.5 rounded-2xl border border-slate-100 bg-slate-50/50 p-2 shadow-sm">
-                <img
-                  src={block.image.src}
-                  alt={block.image.alt ?? block.image.caption ?? ''}
-                  className={`rounded-t-2xl rounded-b-none object-cover ${getImageSizeClass(block.image.size)}`}
-                  style={block.image.size ? { maxHeight: 220 } : { maxHeight: 220, maxWidth: 420 }}
-                />
-                {block.image.caption && <figcaption className="text-[9px] text-slate-400 italic">{block.image.caption}</figcaption>}
-              </figure>
-            )}
-
-            {/* Options (multiple-choice) */}
-            {hasOptions && (
-              <div className="mt-3 space-y-2 font-sans">
-                {block.options.map((opt: any) => {
-                  const isCorrect = Array.isArray(block.answer) && block.answer.includes(opt.id);
-                  return (
-                    <div
-                      key={opt.id}
-                      className={`flex items-center gap-3 p-3 pr-6 border rounded-2xl text-xs transition ${
-                        isCorrect
-                          ? 'border-primary/40 bg-primary/5 text-primary'
-                          : 'border-slate-100 bg-white hover:border-slate-200'
-                      }`}
-                    >
-                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 border ${
-                        isCorrect ? 'bg-primary text-white border-primary' : 'bg-slate-100 text-slate-600 border-slate-200'
-                      }`}>{opt.id}</span>
-                      <span className="font-semibold text-slate-700 leading-relaxed flex-1">
-                        {renderInlineMarkdown(opt.content)}
-                      </span>
-                      {isCorrect && (
-                        <svg viewBox="0 0 24 24" className="w-4 h-4 text-primary shrink-0 self-center" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12" />
-                        </svg>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Fill-blank preview / review */}
-            {subType === 'fill-blank' && (
-              showFillBlankAnswer ? (
-                <div className="mt-3 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-[10px] leading-relaxed">
-                  <div className="font-black text-slate-500">Đáp án:</div>
-                  <div className="mt-1 space-y-1 font-bold text-primary">
-                    {block.answer.map((answer: string, answerIdx: number) => {
-                      const unit = blankUnits[answerIdx] ?? blankUnits[0];
-                      return (
-                        <div key={`${answer}-${answerIdx}`}>
-                          {blankCount > 1 && <span className="text-slate-500">Ô {answerIdx + 1}: </span>}
-                          {renderInlineMarkdown(unit ? `${answer} ${unit}` : answer)}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-3 space-y-2">
-                  {Array.from({ length: blankCount }).map((_, blankIdx) => {
-                    const unit = blankUnits[blankIdx] ?? blankUnits[0];
-                    return (
-                      <div key={blankIdx} className="flex max-w-md items-center gap-3">
-                        {blankCount > 1 && (
-                          <span className="w-8 shrink-0 text-[10px] font-black text-slate-500">Ô {blankIdx + 1}</span>
-                        )}
-                        <input
-                          readOnly
-                          aria-label={`Nhập đáp án ô ${blankIdx + 1}`}
-                          placeholder="Nhập đáp án..."
-                          className="h-11 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-700 outline-none placeholder:text-slate-400"
-                        />
-                        {unit && <span className="shrink-0 text-[11px] font-bold text-slate-700">{unit}</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-              )
-            )}
-
-            {/* Essay placeholder (no options) */}
-            {!hasOptions && subType !== 'fill-blank' && (
-              <div className="mt-2 px-3 py-2 bg-slate-50 border border-dashed border-slate-200 rounded-xl">
-                <span className="text-[9px] text-slate-400 font-bold">[ Câu tự luận — Học sinh trả lời trực tiếp ]</span>
-              </div>
-            )}
-
-            {/* Answer tags */}
-            {Array.isArray(block.tags) && block.tags.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1">
-                {block.tags.map((tag: string) => (
-                  <span key={tag} className="text-[8px] font-black px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">{tag}</span>
-                ))}
-              </div>
-            )}
-
-            {/* Explanation */}
-            {block.explanation && (
-              <div className="mt-3 p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
-                <div className="text-[9px] font-black text-primary mb-0.5">Giải thích:</div>
-                <p className="text-[10px] text-slate-600 leading-relaxed font-medium">
-                  {renderInlineMarkdown(block.explanation)}
-                </p>
-              </div>
-            )}
-          </div>
-        );
-      }
-
-      // ── unknown block ─────────────────────────────────────────
-      default:
-        return (
-          <div key={idx} className="border border-dashed border-slate-300 rounded-xl p-3 text-[10px] text-slate-400 font-bold">
-            🔷 <strong>Unknown Block:</strong> "{block.type}"
-            <div className="text-[9px] font-medium mt-0.5 text-slate-300">Block chưa được renderer hiện tại hỗ trợ; đang dùng fallback an toàn</div>
-          </div>
-        );
-    }
-  };
-
-  const renderExamPreviewPaper = (className = 'w-full', style?: React.CSSProperties) => (
-    <div className={`${className} bg-white border border-slate-100 rounded-2xl p-6 shadow-sm space-y-4 shrink-0`} style={style}>
-      {/* Paper Header */}
-      <div className="pb-4 border-b border-slate-100">
-        <h2 className="text-sm font-black text-text-primary uppercase tracking-wide">{infoMeta.title}</h2>
-        <div className="flex flex-wrap items-center gap-3 text-[10px] text-slate-400 font-bold mt-2 font-sans">
-          <span>{infoMeta.subject} • Khối {infoMeta.grade}</span>
-          <span>{infoMeta.time} phút</span>
-          <span>{previewQuestions.length} câu hỏi</span>
-          {infoMeta.author && <span>GV: {infoMeta.author}</span>}
-        </div>
-      </div>
-      {/* Render OML blocks */}
-      {omlBlocks.length > 0
-        ? omlBlocks.map((block: any, blockIdx: number) => renderOmlBlock(block, blockIdx))
-        : previewQuestions.map((q: any, questionIdx: number) => renderOmlBlock({ ...q, type: 'question' }, questionIdx))
-      }
-    </div>
-  );
+  // Render OML Preview Paper is now handled by the modular OmlPreviewPaper component.
 
   const renderExamPreviewColumn = (title = 'Xem trước đề thi') => (
     <div className="flex-1 flex flex-col overflow-hidden bg-[#F8FAFC] transition-all duration-300">
       <div className="h-10 px-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
         <span className="text-[10px] font-black text-text-primary uppercase tracking-wider">{title}</span>
         <div className="flex items-center gap-2">
-          {parsedData?.version && (
-            <span className="text-[8px] font-black text-primary bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">OML v{parsedData.version}</span>
+          {lastValidMetadata?.version && (
+            <span className="text-[8px] font-black text-primary bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">OML v{lastValidMetadata.version}</span>
           )}
           <button
             type="button"
@@ -960,7 +565,14 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
           <div className="w-full rounded-2xl border border-dashed border-slate-200 bg-white/70 p-6 text-center text-[10px] font-bold text-slate-400">
             Preview đang mở ở chế độ phóng to
           </div>
-        ) : renderExamPreviewPaper()}
+        ) : (
+          <OmlPreviewPaper
+            omlBlocks={omlBlocks}
+            infoMeta={infoMeta}
+            selectedQuestionId={selectedQuestionId}
+            setSelectedQuestionId={setSelectedQuestionId}
+          />
+        )}
       </div>
     </div>
   );
@@ -968,7 +580,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   const renderPreviewFullscreenOverlay = () => {
     if (!isPreviewFullscreenOpen) return null;
 
-    const paperWidth = isPreviewFitWidth ? '100%' : `${Math.round(840 * previewZoom / 100)}px`;
+    const paperWidth = isPreviewFitWidth ? '105%' : `${Math.round(840 * previewZoom / 100)}px`;
 
     return (
       <div
@@ -977,65 +589,75 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
           if (event.target === event.currentTarget) closePreviewFullscreen();
         }}
       >
-        <section
-          role="dialog"
-          aria-modal="true"
-          aria-label="Phóng to Preview"
+        <div
           className={`flex h-[94vh] w-[96vw] flex-col overflow-hidden rounded-[18px] bg-white shadow-2xl transition-all duration-200 ${isPreviewFullscreenClosing ? 'scale-[0.98] opacity-0' : 'scale-100 opacity-100'}`}
           onMouseDown={(event) => event.stopPropagation()}
         >
-          <div className="h-14 shrink-0 border-b border-slate-200 bg-white px-4 flex items-center justify-between gap-4">
-            <div className="min-w-0 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={closePreviewFullscreen}
-                className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"
-                aria-label="Đóng Preview"
-                title="Đóng"
-              >
-                <X size={18} />
-              </button>
-              <div className="min-w-0">
-                <div className="truncate text-xs font-black uppercase tracking-wide text-slate-800">{infoMeta.title}</div>
-                <div className="mt-0.5 flex items-center gap-2 text-[9px] font-bold text-slate-400">
-                  <span>{infoMeta.subject} • Khối {infoMeta.grade}</span>
-                  {parsedData?.version && (
-                    <span className="rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[8px] font-black text-primary">OML v{parsedData.version}</span>
-                  )}
-                </div>
-              </div>
+          {/* Header */}
+          <div className="h-14 border-b border-slate-100 px-6 flex items-center justify-between shrink-0 bg-slate-50/20">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-black text-text-primary uppercase tracking-wider">
+                Xem trước đề thi phóng to
+              </span>
+              {lastValidMetadata?.version && (
+                <span className="text-[8px] font-black text-primary bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full">
+                  OML v{lastValidMetadata.version}
+                </span>
+              )}
             </div>
+            <div className="flex items-center gap-3">
+              {/* Zoom controls */}
+              <div className="flex items-center bg-slate-100/80 rounded-xl p-0.5 border border-slate-200/40">
+                <button 
+                  onClick={() => stepPreviewZoom(-1)}
+                  className="p-1.5 hover:bg-white text-slate-500 hover:text-slate-700 rounded-lg transition cursor-pointer"
+                >
+                  <ZoomOut size={13} />
+                </button>
+                <span className="text-[9px] font-black text-slate-600 min-w-[36px] text-center font-mono">
+                  {previewZoom}%
+                </span>
+                <button 
+                  onClick={() => stepPreviewZoom(1)}
+                  className="p-1.5 hover:bg-white text-slate-500 hover:text-slate-700 rounded-lg transition cursor-pointer"
+                >
+                  <ZoomIn size={13} />
+                </button>
+                <div className="w-px h-3.5 bg-slate-250 mx-1" />
+                <button 
+                  onClick={() => setIsPreviewFitWidth(!isPreviewFitWidth)}
+                  className={`px-2 py-1 rounded-lg text-[8px] font-black transition cursor-pointer ${
+                    isPreviewFitWidth 
+                      ? 'bg-primary text-white shadow-sm' 
+                      : 'text-slate-500 hover:bg-white hover:text-slate-700'
+                  }`}
+                >
+                  Vừa trang
+                </button>
+              </div>
 
-            <div className="flex shrink-0 items-center gap-1.5 text-slate-500">
-              <button type="button" onClick={() => stepPreviewZoom(-1)} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" title="Thu nhỏ" aria-label="Thu nhỏ">
-                <ZoomOut size={16} />
-              </button>
-              <span className="w-12 text-center text-[10px] font-black text-slate-700">{isPreviewFitWidth ? 'Fit' : `${previewZoom}%`}</span>
-              <button type="button" onClick={() => stepPreviewZoom(1)} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" title="Phóng to" aria-label="Phóng to">
-                <ZoomIn size={16} />
-              </button>
-              <button type="button" onClick={() => applyPreviewZoom(100)} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" title="Reset Zoom" aria-label="Reset Zoom">
-                <RotateCcw size={16} />
-              </button>
-              <button type="button" onClick={() => setIsPreviewFitWidth(true)} className={`px-3 py-2 rounded-xl text-[10px] font-black transition cursor-pointer ${isPreviewFitWidth ? 'bg-indigo-50 text-primary' : 'hover:bg-slate-100 hover:text-slate-900'}`} title="Fit Width" aria-label="Fit Width">
-                Fit Width
-              </button>
-              <button type="button" onClick={closePreviewFullscreen} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" title="Thu nhỏ Preview" aria-label="Thu nhỏ Preview">
-                <Minimize2 size={16} />
+              <button
+                onClick={closePreviewFullscreen}
+                className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-xl transition cursor-pointer"
+              >
+                <X size={16} />
               </button>
             </div>
           </div>
 
+          {/* Content */}
           <div ref={fullscreenPreviewScrollRef} className="flex-1 overflow-auto bg-slate-100/80 p-6">
             <div className="flex min-h-full justify-center items-start">
-              {renderExamPreviewPaper('', { width: paperWidth })}
+              <OmlPreviewPaper
+                omlBlocks={omlBlocks}
+                infoMeta={infoMeta}
+                selectedQuestionId={selectedQuestionId}
+                setSelectedQuestionId={setSelectedQuestionId}
+                style={{ width: paperWidth }}
+              />
             </div>
           </div>
-
-          <div className="h-10 shrink-0 border-t border-slate-200 bg-white px-5 flex items-center text-[10px] font-bold text-slate-500">
-            Trang 1 / 1
-          </div>
-        </section>
+        </div>
       </div>
     );
   };
@@ -1043,12 +665,43 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   const codeLines = examJsonCode.split('\n');
 
   const handleCheckCode = () => {
-    try {
-      JSON.parse(examJsonCode);
-      alert('Cú pháp JSON hoàn toàn hợp lệ!');
-    } catch (e: any) {
-      alert('Lỗi cú pháp JSON: ' + e.message);
-    }
+    if (compileStatus === 'compiling') return;
+    setCompileStatus('compiling');
+    
+    setTimeout(() => {
+      const result = parseOML(examJsonCode);
+      if (result.success) {
+        setCompileStatus('success');
+        setLastValidOml(result.data);
+        setLastValidMetadata(result.metadata);
+        setValidationErrors([]);
+        setIsJsonInvalid(false);
+        setValidationDialog({
+          isOpen: true,
+          title: 'Kiểm tra thành công',
+          success: true,
+          type: 'success',
+          errors: [],
+          metadata: result.metadata,
+        });
+
+        setTimeout(() => {
+          setValidationDialog((prev: any) => ({ ...prev, isOpen: false }));
+        }, 2000);
+      } else {
+        setCompileStatus('error');
+        setValidationErrors(result.errors);
+        setIsJsonInvalid(true);
+        setValidationDialog({
+          isOpen: true,
+          title: 'Không thể biên dịch OML',
+          success: false,
+          type: result.errors[0]?.type === 'syntax' ? 'syntax' : 'schema',
+          errors: result.errors,
+          metadata: result.metadata,
+        });
+      }
+    }, 600);
   };
 
   const handleSaveExam = () => {
@@ -1132,7 +785,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#F8FAFC] flex overflow-hidden font-sans text-text-primary select-none animate-fadeIn">
+    <div className="fixed inset-0 z-50 bg-[#F8FAFC] flex overflow-hidden font-sans text-text-primary select-none animate-fadeIn min-h-0">
       {/* LEFT SIDEBAR */}
       <ExamSidebar 
         examSubView={examSubView}
@@ -1146,13 +799,13 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
       />
 
       {/* MAIN WORKSPACE AREA */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden min-h-0">
         {/* Top Header Bar */}
         <header className="h-16 bg-white border-b border-slate-100 px-6 flex items-center justify-between shrink-0 shadow-sm z-10">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
               <h1 className="text-xs font-black text-[#1E293B] truncate max-w-xs sm:max-w-md">
-                Tạo đề: {infoMeta.title}
+                Tạo đề: {lastValidMetadata.title}
               </h1>
               <button className="p-1 text-slate-400 hover:text-slate-655 rounded transition cursor-pointer font-sans">
                 <Edit size={12} />
@@ -1261,9 +914,9 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
         {/* Main workspace layout */}
         {examSubView === 'edit' && examTab === 'code' && (
-          <div className="flex-1 flex overflow-hidden animate-fadeIn">
+          <div className="flex-1 flex overflow-hidden animate-fadeIn min-h-0">
             {/* LEFT COLUMN: Code Editor */}
-            <div className={`${showLivePreview ? 'w-1/2 border-r border-slate-100' : 'w-full'} bg-white flex flex-col overflow-hidden transition-all duration-300`}>
+            <div className={`${showLivePreview ? 'w-1/2 border-r border-slate-100' : 'w-full'} bg-white flex flex-col overflow-hidden transition-all duration-300 min-h-0`}>
               {/* CROSS TAB CONFLICT BANNER */}
               {isCrossTabConflict && (
                 <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center justify-between text-amber-800 text-[10px] font-bold shrink-0 animate-fadeIn select-none">
@@ -1290,18 +943,21 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
               )}
               <div className="h-10 px-4 border-b border-slate-50 flex items-center justify-between shrink-0 bg-slate-50/20">
                 <span className="text-[10px] font-black text-text-primary uppercase tracking-wider">Soạn đề bằng mã</span>
-                <button className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1 transition">
+                <button 
+                  onClick={() => setShowGuideModal(true)}
+                  className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1 transition cursor-pointer"
+                >
                   <HelpCircle size={12} /> Hướng dẫn
                 </button>
               </div>
 
               {/* Editor Workspace */}
-              <div className="flex-1 p-4 bg-slate-50/10 flex flex-col">
-                <div className="flex font-mono text-[11px] bg-slate-50/70 border border-slate-100 rounded-2xl overflow-hidden h-[550px] relative">
+              <div className="flex-1 px-4 pt-4 bg-slate-50/10 flex flex-col min-h-0 overflow-hidden">
+                <div className="flex-1 flex font-mono text-[11px] bg-slate-50/70 border border-slate-100 rounded-2xl overflow-hidden min-h-0 relative">
                   {/* Line numbers */}
                   <div 
                     ref={lineNumbersRef}
-                    className="bg-slate-100/50 text-[#A3AED0] select-none text-right px-3 py-4 border-r border-slate-200/50 flex flex-col font-mono leading-[20px] tracking-wide shrink-0 overflow-hidden h-full"
+                    className="bg-slate-100/50 text-[#A3AED0] select-none text-right px-3 py-4 border-r border-slate-200/50 flex flex-col font-mono leading-[20px] tracking-wide shrink-0 overflow-hidden"
                   >
                     {codeLines.map((_, idx) => (
                       <span key={idx} className="min-w-[24px] h-[20px] block">{idx + 1}</span>
@@ -1314,7 +970,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                     value={examJsonCode}
                     onChange={(e) => setExamJsonCode(e.target.value)}
                     onScroll={handleScroll}
-                    className="flex-1 p-4 bg-transparent outline-none border-none resize-none leading-[20px] font-mono text-slate-800 focus:ring-0 focus:outline-none overflow-y-auto h-full"
+                    className="flex-1 p-4 bg-transparent outline-none border-none resize-none leading-[20px] font-mono text-slate-800 focus:ring-0 focus:outline-none overflow-y-auto"
                     spellCheck={false}
                   />
                 </div>
@@ -1322,25 +978,76 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
               {/* Editor Footer Status */}
               <div className="h-11 border-t border-slate-50 px-4 flex items-center justify-between shrink-0 bg-white">
-                <button 
-                  onClick={handleCheckCode}
-                  className="px-3 py-1.5 bg-[#ECFDF5] hover:bg-[#D1FAE5] text-success text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer font-sans"
-                >
-                  <Check size={12} /> Kiểm tra mã
-                </button>
-                
-                {parseError ? (
-                  <span className="text-[10px] font-black text-red-500 truncate max-w-[200px] font-sans">
-                    Lỗi cú pháp JSON!
-                  </span>
+                {/* LEFT: Action Button */}
+                {compileStatus === 'compiling' ? (
+                  <button 
+                    disabled
+                    className="px-3 py-1.5 bg-slate-100 text-slate-400 text-[10px] font-bold rounded-xl flex items-center gap-1.5 select-none"
+                  >
+                    <RefreshCw size={12} className="animate-spin text-slate-400" />
+                    <span>Đang biên dịch...</span>
+                  </button>
                 ) : (
-                  <div className="flex items-center gap-4 text-[10px] text-slate-400 font-bold font-sans">
-                    <span>{previewQuestions.length} câu hỏi</span>
-                    <span>{infoMeta.time ?? 45} phút</span>
-                    {parsedData?.version && (
-                      <span className="px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-[8px] font-extrabold uppercase text-primary">OML v{parsedData.version}</span>
-                    )}
+                  <button 
+                    onClick={handleCheckCode}
+                    className="px-3 py-1.5 bg-[#ECFDF5] hover:bg-[#D1FAE5] text-success text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer font-sans"
+                  >
+                    <Check size={12} /> Kiểm tra mã
+                  </button>
+                )}
+                
+                {/* RIGHT: Status Badge */}
+                {compileStatus === 'unchecked' && (
+                  <div className="flex items-center gap-2 text-right">
+                    <div>
+                      <div className="text-[10px] font-black text-slate-500 flex items-center gap-1 justify-end">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                        Chưa biên dịch
+                      </div>
+                      <div className="text-[8px] text-slate-400 font-bold -mt-0.5">Có thay đổi chưa được kiểm tra.</div>
+                    </div>
                   </div>
+                )}
+
+                {compileStatus === 'compiling' && (
+                  <div className="flex items-center gap-2 text-right">
+                    <div>
+                      <div className="text-[10px] font-black text-slate-500 flex items-center gap-1 justify-end">
+                        <RefreshCw size={10} className="animate-spin text-slate-400" />
+                        Đang biên dịch...
+                      </div>
+                      <div className="text-[8px] text-slate-400 font-bold -mt-0.5">Đang xử lý dữ liệu OML...</div>
+                    </div>
+                  </div>
+                )}
+
+                {compileStatus === 'success' && (
+                  <div className="flex items-center gap-2 text-right">
+                    <div>
+                      <div className="text-[10px] font-black text-emerald-600 flex items-center gap-1 justify-end">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        ✓ Biên dịch thành công
+                      </div>
+                      <div className="text-[8px] text-slate-400 font-bold -mt-0.5">Không phát hiện lỗi.</div>
+                    </div>
+                  </div>
+                )}
+
+                {compileStatus === 'error' && (
+                  <button 
+                    onClick={() => setValidationDialog((prev) => ({ ...prev, isOpen: true }))}
+                    className="flex items-center gap-2 text-right hover:opacity-90 active:scale-[0.98] transition cursor-pointer border-none bg-transparent p-0 outline-none"
+                  >
+                    <div>
+                      <div className="text-[10px] font-black text-red-500 flex items-center gap-1 justify-end">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                        ✕ Không thể biên dịch
+                      </div>
+                      <div className="text-[8px] text-red-400 font-bold -mt-0.5">
+                        {validationErrors.length} lỗi {validationErrors[0]?.type === 'syntax' ? 'cú pháp JSON' : 'cấu trúc OML'} (Click xem chi tiết)
+                      </div>
+                    </div>
+                  </button>
                 )}
               </div>
             </div>
@@ -1638,7 +1345,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                   </div>
 
                   {/* JSON Editor body */}
-                  <div className="flex-1 flex font-mono text-[11px] bg-white overflow-hidden relative">
+                  <div className="flex-1 flex font-mono text-[11px] bg-white overflow-hidden relative min-h-0">
                     <div 
                       ref={quickLineNumbersRef}
                       className="bg-slate-50/60 text-[#A3AED0] select-none text-right px-2.5 py-4 border-r border-slate-100 flex flex-col leading-[18px] shrink-0 font-mono overflow-hidden h-full"
@@ -1658,11 +1365,11 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                   </div>
 
                   {/* Footer message */}
-                  <div className="h-8 border-t border-slate-150 shrink-0 flex items-center justify-between text-[9px] text-[#A3AED0] font-bold px-4 bg-slate-50/20">
-                    {parseError ? (
-                      <span className="text-red-500">Lỗi cú pháp JSON! {parseError}</span>
+                  <div className="h-8 border-t border-slate-150 shrink-0 flex items-center justify-between text-[9px] font-bold px-4 bg-slate-50/20">
+                    {isJsonInvalid ? (
+                      <span className="text-red-500 font-black">🔴 JSON đang có lỗi cú pháp</span>
                     ) : (
-                      <span className="text-emerald-500">✓ Cú pháp hợp lệ. Tự động lưu bản nháp.</span>
+                      <span className="text-emerald-500 font-black">🟢 OML hợp lệ. Tự động lưu bản nháp.</span>
                     )}
                   </div>
                 </div>
@@ -1781,7 +1488,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                   <div className="space-y-2">
                     <h3 className="text-xs font-black tracking-wider uppercase opacity-75">Thống kê điểm số</h3>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-black">{previewQuestions.length}</span>
+                      <span className="text-4xl font-black">{lastValidMetadata.questionCount}</span>
                       <span className="text-xs font-bold opacity-75">câu hỏi</span>
                     </div>
                   </div>
@@ -1791,7 +1498,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                   <div className="space-y-1">
                     <span className="text-[10px] font-black tracking-wider opacity-75">Điểm mỗi câu</span>
                     <div className="text-lg font-black font-mono">
-                      {(10 / previewQuestions.length).toFixed(2)} điểm
+                      {(10 / lastValidMetadata.questionCount).toFixed(2)} điểm
                     </div>
                     <p className="text-[9px] opacity-75 font-medium leading-relaxed pt-1 font-sans">
                       Hệ thống tự động phân chia đều điểm số của tất cả các câu hỏi trên thang điểm 10 chuẩn.
@@ -1831,9 +1538,9 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                     <div>Môn học: <span className="text-text-primary">{infoMeta.subject}</span></div>
                     <div>Khối lớp: <span className="text-text-primary">Khối {infoMeta.grade || 10}</span></div>
                     <div>Thời gian: <span className="text-text-primary">{infoMeta.time || 90} phút</span></div>
-                    <div>Số câu hỏi: <span className="text-text-primary">{previewQuestions.length} câu</span></div>
+                    <div>Số câu hỏi: <span className="text-text-primary">{lastValidMetadata.questionCount} câu</span></div>
                     <div>Độ khó: <span className="text-text-primary font-black uppercase text-primary text-[8px] px-1.5 py-0.5 rounded bg-primary-light border border-primary/10">{infoMeta.level === 'easy' ? 'Dễ' : infoMeta.level === 'hard' ? 'Khó' : 'Trung bình'}</span></div>
-                    <div>Điểm mỗi câu: <span className="text-text-primary font-mono">{(10 / previewQuestions.length).toFixed(2)} đ</span></div>
+                    <div>Điểm mỗi câu: <span className="text-text-primary font-mono">{(10 / lastValidMetadata.questionCount).toFixed(2)} đ</span></div>
                   </div>
 
                   <p className="text-[10px] text-text-secondary leading-relaxed font-medium font-sans">
@@ -1985,6 +1692,103 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
           </div>
         </div>
       )}
+
+      {validationDialog.isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fadeIn">
+          <div 
+            className="fixed inset-0 bg-[#0F172A]/60 backdrop-blur-sm transition-opacity duration-300" 
+            onClick={() => setValidationDialog((prev: any) => ({ ...prev, isOpen: false }))} 
+          />
+          <div className="bg-white rounded-3xl w-full max-w-[460px] p-6 shadow-2xl relative overflow-hidden flex flex-col z-[101] border border-slate-100 animate-scaleUp text-left space-y-5">
+            {validationDialog.success ? (
+              <>
+                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center mx-auto shadow-sm">
+                  <CheckCircle2 size={24} className="stroke-[2.5]" />
+                </div>
+                <div className="space-y-2 text-center">
+                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">
+                    {validationDialog.title}
+                  </h3>
+                  <div className="text-[11px] text-slate-500 font-bold space-y-1">
+                    <p className="text-emerald-600 font-black">✓ JSON hợp lệ</p>
+                    <p className="text-emerald-600 font-black">✓ OML hợp lệ</p>
+                    <p className="text-slate-700">{validationDialog.metadata?.questionCount ?? 0} câu hỏi</p>
+                    <p className="text-slate-400">0 lỗi</p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center mx-auto shadow-sm">
+                  <X size={24} className="stroke-[2.5]" />
+                </div>
+                <div className="space-y-3">
+                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide text-center">
+                    {validationDialog.title}
+                  </h3>
+                  
+                  <div className="text-[11px] text-slate-600 font-medium leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3">
+                    <p className="font-bold text-red-600">Đã phát hiện {validationDialog.errors?.length ?? 0} lỗi:</p>
+                    
+                    <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
+                      {validationDialog.errors?.map((err, idx) => (
+                        <div key={idx} className="bg-white p-3 rounded-xl border border-slate-150 space-y-2">
+                          <div className="flex items-start gap-2">
+                            <span className="font-black text-red-500 text-xs shrink-0">{getErrorNumberSymbol(idx)}</span>
+                            <div className="space-y-1">
+                              <p className="font-bold text-slate-800 leading-snug">{err.message}</p>
+                              {err.type === 'syntax' ? (
+                                <div className="flex gap-3 font-mono text-[9px] text-slate-400 font-bold bg-slate-50 px-2 py-1 rounded border border-slate-100 w-fit">
+                                  <span>Dòng: <strong className="text-slate-700">{err.line}</strong></span>
+                                  <span>Cột: <strong className="text-slate-700">{err.column}</strong></span>
+                                </div>
+                              ) : (
+                                err.path && (
+                                  <div className="text-[9px] font-mono text-slate-400 font-bold">
+                                    Đường dẫn: <span className="text-primary font-black bg-indigo-50/50 px-1.5 py-0.5 rounded">{err.path}</span>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <button
+                    onClick={() => setValidationDialog((prev: any) => ({ ...prev, isOpen: false }))}
+                    className="py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-655 text-xs font-black rounded-xl transition cursor-pointer text-center font-sans"
+                  >
+                    Đóng
+                  </button>
+                  {validationDialog.errors?.[0]?.line && (
+                    <button
+                      onClick={() => {
+                        const line = validationDialog.errors?.[0]?.line;
+                        if (line) {
+                          highlightLineInTextarea(line);
+                          setValidationDialog((prev: any) => ({ ...prev, isOpen: false }));
+                        }
+                      }}
+                      className="py-2.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-black rounded-xl transition cursor-pointer text-center border border-red-150 font-sans"
+                    >
+                      Đi tới lỗi đầu tiên
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      <OmlGuideModal
+        isOpen={showGuideModal}
+        onClose={() => setShowGuideModal(false)}
+      />
 
       {renderPreviewFullscreenOverlay()}
     </div>
