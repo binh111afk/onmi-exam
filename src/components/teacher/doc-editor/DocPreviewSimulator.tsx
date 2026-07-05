@@ -1,35 +1,53 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Laptop, Tablet as TabletIcon, Smartphone, RefreshCw, Maximize2, Minimize2, ZoomIn, ZoomOut, RotateCcw, X } from 'lucide-react';
 
-interface Ch2ListItem {
-  id: number;
-  label: string;
-  color: string;
-  icon: string;
+export interface DocBlock {
+  id: string;
+  type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout';
+  level?: 1 | 2 | 3;
+  indent?: number;
+  text: string;
+  align?: 'left' | 'center' | 'right' | 'justify';
+  checked?: boolean;
 }
 
 interface DocPreviewSimulatorProps {
   viewport: 'desktop' | 'tablet' | 'mobile';
   setViewport: (v: 'desktop' | 'tablet' | 'mobile') => void;
   selectedPage: 'water' | 'macromolecules';
-  ch1Title: string;
-  ch1Text: string;
-  ch1Callout: string;
-  ch2Title: string;
-  ch2Text: string;
-  ch2List: Ch2ListItem[];
+  blocks: DocBlock[];
 }
+
+const getNumberedIndex = (blocks: DocBlock[], index: number): string => {
+  const currentBlock = blocks[index];
+  if (!currentBlock || currentBlock.type !== 'numbered-list') return '1.';
+  
+  let count = 1;
+  const currentIndent = currentBlock.indent || 0;
+  
+  for (let i = index - 1; i >= 0; i--) {
+    const prev = blocks[i];
+    if (prev.type !== 'numbered-list') {
+      if (prev.type !== 'bullet-list' && prev.type !== 'todo-list') {
+        break;
+      }
+      continue;
+    }
+    const prevIndent = prev.indent || 0;
+    if (prevIndent === currentIndent) {
+      count++;
+    } else if (prevIndent < currentIndent) {
+      break;
+    }
+  }
+  return `${count}.`;
+};
 
 export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
   viewport,
   setViewport,
   selectedPage,
-  ch1Title,
-  ch1Text,
-  ch1Callout,
-  ch2Title,
-  ch2Text,
-  ch2List,
+  blocks,
 }) => {
   const previewZoomLevels = [50, 75, 100, 125, 150, 200] as const;
   const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
@@ -40,7 +58,8 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
   const fullscreenScrollRef = useRef<HTMLDivElement>(null);
   const savedScrollTopRef = useRef(0);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const title = selectedPage === 'water' ? ch1Title : ch2Title;
+
+  const title = selectedPage === 'water' ? '1. Nguyên tố hóa học và Nước' : '2. Các đại phân tử hữu cơ';
 
   const openFullscreen = () => {
     savedScrollTopRef.current = previewScrollRef.current?.scrollTop ?? savedScrollTopRef.current;
@@ -121,45 +140,80 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
         Thành phần hóa học của tế bào
       </h3>
 
-      {/* Simulated live page text */}
+      {/* Dynamic content blocks rendering */}
       <div className="space-y-4 text-[10px] leading-relaxed text-[#475569]">
-        {selectedPage === 'water' ? (
-          <>
-            <h4 className="text-[11px] font-black text-primary leading-tight">
-              {ch1Title}
-            </h4>
-            <p className="text-text-secondary leading-relaxed font-bold">
-              {ch1Text}
-            </p>
+        {blocks.map((block, idx) => {
+          const alignClass = block.align === 'center' 
+            ? 'text-center' 
+            : block.align === 'right' 
+              ? 'text-right' 
+              : block.align === 'justify' 
+                ? 'text-justify' 
+                : 'text-left';
 
-            {/* Callout box inside simulator */}
-            <div className="p-3 border border-indigo-100/50 bg-[#F5F3FF]/70 rounded-xl flex gap-2.5 items-center">
-              <span className="text-xs">💧</span>
-              <div className="flex-1 leading-normal text-text-secondary font-black">
-                {ch1Callout}
+          const indentStyle = { paddingLeft: `${(block.indent || 0) * 16}px` };
+
+          if (block.type === 'heading') {
+            if (block.level === 1) {
+              return (
+                <h4 key={block.id} style={indentStyle} className={`text-[13px] font-black text-primary leading-tight ${alignClass}`} dangerouslySetInnerHTML={{ __html: block.text }} />
+              );
+            }
+            if (block.level === 2) {
+              return (
+                <h5 key={block.id} style={indentStyle} className={`text-[11px] font-black text-slate-800 leading-tight ${alignClass}`} dangerouslySetInnerHTML={{ __html: block.text }} />
+              );
+            }
+            return (
+              <h6 key={block.id} style={indentStyle} className={`text-[10px] font-bold text-slate-700 leading-tight ${alignClass}`} dangerouslySetInnerHTML={{ __html: block.text }} />
+            );
+          }
+
+          if (block.type === 'bullet-list') {
+            return (
+              <div key={block.id} style={indentStyle} className={`flex items-start gap-2 ${alignClass}`}>
+                <span className="text-slate-400 mt-0.5">•</span>
+                <span className="flex-1 text-text-secondary font-bold leading-relaxed" dangerouslySetInnerHTML={{ __html: block.text }} />
               </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <h4 className="text-[11px] font-black text-primary leading-tight">
-              {ch2Title}
-            </h4>
-            <p className="text-text-secondary leading-relaxed font-bold">
-              {ch2Text}
-            </p>
+            );
+          }
 
-            {/* List items inside simulator */}
-            <div className="space-y-2">
-              {ch2List.map(item => (
-                <div key={item.id} className="p-2 border border-slate-100 rounded-xl flex gap-2 items-center bg-[#FAF9FF] shadow-sm">
-                  <span className="text-xs shrink-0">{item.icon}</span>
-                  <span className="text-[9px] font-black text-text-secondary leading-normal">{item.label}</span>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+          if (block.type === 'numbered-list') {
+            return (
+              <div key={block.id} style={indentStyle} className={`flex items-start gap-2 ${alignClass}`}>
+                <span className="text-primary font-black mt-0.5 shrink-0">{getNumberedIndex(blocks, idx)}</span>
+                <span className="flex-1 text-text-secondary font-bold leading-relaxed" dangerouslySetInnerHTML={{ __html: block.text }} />
+              </div>
+            );
+          }
+
+          if (block.type === 'todo-list') {
+            return (
+              <div key={block.id} style={indentStyle} className={`flex items-start gap-2.5 ${alignClass}`}>
+                <input 
+                  type="checkbox" 
+                  checked={!!block.checked} 
+                  disabled 
+                  className="w-3.5 h-3.5 mt-0.5 rounded border-slate-350 accent-primary pointer-events-none"
+                />
+                <span className={`flex-1 text-text-secondary font-bold leading-relaxed ${block.checked ? 'line-through text-slate-400 font-medium' : ''}`} dangerouslySetInnerHTML={{ __html: block.text }} />
+              </div>
+            );
+          }
+
+          if (block.type === 'callout') {
+            return (
+              <div key={block.id} style={indentStyle} className="p-3 border border-indigo-100/50 bg-[#F5F3FF]/70 rounded-xl flex gap-2.5 items-center">
+                <span className="text-xs shrink-0">💧</span>
+                <div className={`flex-1 leading-normal text-text-secondary font-black ${alignClass}`} dangerouslySetInnerHTML={{ __html: block.text }} />
+              </div>
+            );
+          }
+
+          return (
+            <p key={block.id} style={indentStyle} className={`text-text-secondary leading-relaxed font-bold ${alignClass}`} dangerouslySetInnerHTML={{ __html: block.text }} />
+          );
+        })}
       </div>
     </div>
   );
@@ -229,7 +283,7 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
             </div>
           </div>
 
-          <div className="h-10 shrink-0 border-t border-slate-200 bg-white px-5 flex items-center text-[10px] font-bold text-slate-500">
+          <div className="h-10 shrink-0 border-t border-slate-200 bg-white px-5 flex items-center text-[10px] font-bold text-slate-550">
             Trang 1 / 1
           </div>
         </section>

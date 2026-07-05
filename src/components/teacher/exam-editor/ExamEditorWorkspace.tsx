@@ -1,21 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Edit, 
-  Cloud, 
-  Save, 
-  Eye, 
-  Code, 
-  Database, 
-  Check, 
-  HelpCircle, 
-  File, 
-  CheckCircle2, 
-  X, 
-  Sparkles, 
-  ChevronDown, 
-  Send, 
-  Link, 
-  Copy, 
+import {
+  Edit,
+  Cloud,
+  Save,
+  Eye,
+  Code,
+  Database,
+  Check,
+  HelpCircle,
+  File,
+  CheckCircle2,
+  X,
+  Sparkles,
+  ChevronDown,
+  Send,
+  Link,
+  Copy,
   ExternalLink,
   ChevronRight,
   ChevronLeft,
@@ -26,7 +26,20 @@ import {
   Minimize2,
   ZoomIn,
   ZoomOut,
-  RotateCcw
+  RotateCcw,
+  ArrowLeft,
+  Sliders,
+  Shuffle,
+  Timer,
+  Trophy,
+  ClipboardList,
+  Grid,
+  Image,
+  Calculator,
+  BookOpen,
+  ShieldCheck,
+  FileText,
+  CheckSquare
 } from 'lucide-react';
 
 import { ExamSidebar } from './ExamSidebar';
@@ -36,6 +49,29 @@ import { OmlPreviewPaper } from '../../ExamEditor/OmlRenderer/OmlPreviewPaper';
 import { parseOML } from '../../ExamEditor/OmlRenderer/parser';
 import { OmlGuideModal } from './OmlGuideModal';
 
+
+interface ToggleProps {
+  id: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}
+
+const Toggle: React.FC<ToggleProps> = ({ id, checked, onChange }) => {
+  return (
+    <button
+      type="button"
+      id={id}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-205 ease-in-out focus:outline-none ${checked ? 'bg-[#6C5DD3]' : 'bg-[#E2E8F0]'
+        }`}
+    >
+      <span
+        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-205 ease-in-out ${checked ? 'translate-x-4' : 'translate-x-0'
+          }`}
+      />
+    </button>
+  );
+};
 
 interface ExamEditorWorkspaceProps {
   setMode: (mode: 'dashboard' | 'editor' | 'upload' | 'exam-editor') => void;
@@ -371,7 +407,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   };
 
   const [katexLoaded, setKatexLoaded] = useState(!!(window as any).katex);
-  
+
   // Use state variable to trigger component re-render when script loads
   if (katexLoaded) {
     // KaTeX is initialized and ready for rendering
@@ -608,7 +644,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
             <div className="flex items-center gap-3">
               {/* Zoom controls */}
               <div className="flex items-center bg-slate-100/80 rounded-xl p-0.5 border border-slate-200/40">
-                <button 
+                <button
                   onClick={() => stepPreviewZoom(-1)}
                   className="p-1.5 hover:bg-white text-slate-500 hover:text-slate-700 rounded-lg transition cursor-pointer"
                 >
@@ -617,20 +653,19 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                 <span className="text-[9px] font-black text-slate-600 min-w-[36px] text-center font-mono">
                   {previewZoom}%
                 </span>
-                <button 
+                <button
                   onClick={() => stepPreviewZoom(1)}
                   className="p-1.5 hover:bg-white text-slate-500 hover:text-slate-700 rounded-lg transition cursor-pointer"
                 >
                   <ZoomIn size={13} />
                 </button>
                 <div className="w-px h-3.5 bg-slate-250 mx-1" />
-                <button 
+                <button
                   onClick={() => setIsPreviewFitWidth(!isPreviewFitWidth)}
-                  className={`px-2 py-1 rounded-lg text-[8px] font-black transition cursor-pointer ${
-                    isPreviewFitWidth 
-                      ? 'bg-primary text-white shadow-sm' 
-                      : 'text-slate-500 hover:bg-white hover:text-slate-700'
-                  }`}
+                  className={`px-2 py-1 rounded-lg text-[8px] font-black transition cursor-pointer ${isPreviewFitWidth
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-slate-500 hover:bg-white hover:text-slate-700'
+                    }`}
                 >
                   Vừa trang
                 </button>
@@ -667,7 +702,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   const handleCheckCode = () => {
     if (compileStatus === 'compiling') return;
     setCompileStatus('compiling');
-    
+
     setTimeout(() => {
       const result = parseOML(examJsonCode);
       if (result.success) {
@@ -740,9 +775,64 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   const questionsList = previewQuestions
     .map((question: any) => Number(question.id))
     .filter((id: number) => Number.isFinite(id));
-  const filteredQuestions = questionsList.filter(qNum => 
+  const filteredQuestions = questionsList.filter(qNum =>
     examSearchQuery === '' || `Câu ${qNum}`.toLowerCase().includes(examSearchQuery.toLowerCase())
   );
+
+  // Configuration helper calculations
+  const getDifficultyLabel = (diff?: string) => {
+    if (!diff) return 'Trung bình';
+    const d = diff.toLowerCase();
+    if (d === 'easy') return 'Dễ';
+    if (d === 'hard') return 'Khó';
+    return 'Trung bình';
+  };
+
+  const questionTypesCount = {
+    choice: 0,
+    'true-false': 0,
+    'fill-blank': 0,
+    essay: 0,
+  };
+
+  previewQuestions.forEach((q) => {
+    const subType = q?.subType ?? 'choice';
+    if (subType === 'choice') {
+      questionTypesCount.choice++;
+    } else if (subType === 'true-false') {
+      questionTypesCount['true-false']++;
+    } else if (subType === 'fill-blank') {
+      questionTypesCount['fill-blank']++;
+    } else {
+      questionTypesCount.essay++;
+    }
+  });
+
+  const countContentElements = () => {
+    let images = 0;
+    let tables = 0;
+    let formulas = 0;
+    let paragraphs = 0;
+
+    omlBlocks.forEach((block) => {
+      if (!block) return;
+      if (block.type === 'table') tables++;
+      else if (block.type === 'formula') formulas++;
+      else if (block.type === 'paragraph') paragraphs++;
+
+      if ((block as any).image?.src) images++;
+
+      if (block.type === 'question-group' && Array.isArray((block as any).questions)) {
+        (block as any).questions.forEach((q: any) => {
+          if (q?.image?.src) images++;
+        });
+      }
+    });
+
+    return { images, tables, formulas, paragraphs };
+  };
+
+  const counts = countContentElements();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -787,7 +877,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   return (
     <div className="fixed inset-0 z-50 bg-[#F8FAFC] flex overflow-hidden font-sans text-text-primary select-none animate-fadeIn min-h-0">
       {/* LEFT SIDEBAR */}
-      <ExamSidebar 
+      <ExamSidebar
         examSubView={examSubView}
         setExamSubView={setExamSubView}
         setMode={setMode}
@@ -800,112 +890,103 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
       {/* MAIN WORKSPACE AREA */}
       <main className="flex-1 flex flex-col overflow-hidden min-h-0">
-        {/* Top Header Bar */}
-        <header className="h-16 bg-white border-b border-slate-100 px-6 flex items-center justify-between shrink-0 shadow-sm z-10">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <h1 className="text-xs font-black text-[#1E293B] truncate max-w-xs sm:max-w-md">
-                Tạo đề: {lastValidMetadata.title}
-              </h1>
-              <button className="p-1 text-slate-400 hover:text-slate-655 rounded transition cursor-pointer font-sans">
-                <Edit size={12} />
+        {/* Top Header Bar - only shown for Edit tab */}
+        {examSubView === 'edit' && (
+          <header className="h-16 bg-white border-b border-slate-100 px-6 flex items-center justify-between shrink-0 shadow-sm z-10">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-xs font-black text-[#1E293B] truncate max-w-xs sm:max-w-md">
+                  Tạo đề: {lastValidMetadata.title}
+                </h1>
+                <button className="p-1 text-slate-400 hover:text-slate-655 rounded transition cursor-pointer font-sans">
+                  <Edit size={12} />
+                </button>
+              </div>
+              <div className="h-4 w-px bg-slate-200" />
+              <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold font-sans">
+                <Cloud size={14} className="stroke-[2.5]" />
+                <span>Chưa lưu</span>
+              </div>
+            </div>
+
+            {/* Actions buttons - Edit tab only */}
+            <div className="flex items-center gap-2">
+              {/* Auto Save Status Indicator */}
+              {examTab === 'code' && saveStatus !== 'idle' && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-555 select-none mr-1">
+                  {saveStatus === 'saving' && (
+                    <>
+                      <RefreshCw size={11} className="text-primary animate-spin" />
+                      <span>Đang lưu...</span>
+                    </>
+                  )}
+                  {saveStatus === 'saved' && (
+                    <>
+                      <CheckCircle2 size={11} className="text-emerald-500 stroke-[2.5]" />
+                      <span className="text-slate-600">Đã lưu lúc {formatSavedTime(lastSavedTime)}</span>
+                    </>
+                  )}
+                  {saveStatus === 'error' && (
+                    <>
+                      <span className="text-red-500">⚠️</span>
+                      <span className="text-red-500">Không thể lưu bản nháp</span>
+                    </>
+                  )}
+                </div>
+              )}
+
+              <button
+                onClick={handleCreateNewExamClick}
+                className="px-3.5 py-1.5 border border-red-200 text-red-555 hover:bg-red-50 text-[10px] font-bold rounded-xl flex items-center gap-1.5 transition cursor-pointer font-sans bg-white shadow-sm"
+              >
+                <File size={12} /> Tạo đề mới
+              </button>
+              <button
+                onClick={handleSaveExam}
+                className="px-3.5 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer font-sans bg-white shadow-sm"
+              >
+                <Save size={12} /> Lưu
+              </button>
+              <button
+                onClick={() => setShowLivePreview(!showLivePreview)}
+                className={`px-3.5 py-1.5 border text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer font-sans bg-white shadow-sm ${showLivePreview
+                  ? 'bg-primary-light border-primary/20 text-primary hover:bg-primary-light/80'
+                  : 'border-slate-200 text-slate-650 hover:bg-slate-50'
+                  }`}
+              >
+                <Eye size={12} /> Xem thử đề
               </button>
             </div>
-            <div className="h-4 w-px bg-slate-200" />
-            <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold font-sans">
-              <Cloud size={14} className="stroke-[2.5]" />
-              <span>Chưa lưu</span>
-            </div>
-          </div>
-
-          {/* Actions buttons */}
-          <div className="flex items-center gap-2">
-            {/* Auto Save Status Indicator */}
-            {examTab === 'code' && saveStatus !== 'idle' && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-555 select-none mr-1">
-                {saveStatus === 'saving' && (
-                  <>
-                    <RefreshCw size={11} className="text-primary animate-spin" />
-                    <span>Đang lưu...</span>
-                  </>
-                )}
-                {saveStatus === 'saved' && (
-                  <>
-                    <CheckCircle2 size={11} className="text-emerald-500 stroke-[2.5]" />
-                    <span className="text-slate-600">Đã lưu lúc {formatSavedTime(lastSavedTime)}</span>
-                  </>
-                )}
-                {saveStatus === 'error' && (
-                  <>
-                    <span className="text-red-500">⚠️</span>
-                    <span className="text-red-500">Không thể lưu bản nháp</span>
-                  </>
-                )}
-              </div>
-            )}
-
-            <button 
-              onClick={handleCreateNewExamClick}
-              className="px-3.5 py-1.5 border border-red-200 text-red-500 hover:bg-red-50 text-[10px] font-bold rounded-xl flex items-center gap-1.5 transition cursor-pointer font-sans bg-white shadow-sm"
-            >
-              <File size={12} /> Tạo đề mới
-            </button>
-            <button 
-              onClick={handleSaveExam}
-              className="px-3.5 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer font-sans bg-white shadow-sm"
-            >
-              <Save size={12} /> Lưu
-            </button>
-            <button 
-              onClick={() => {
-                if (examSubView !== 'edit') {
-                  setExamSubView('edit');
-                  setShowLivePreview(true);
-                } else {
-                  setShowLivePreview(!showLivePreview);
-                }
-              }}
-              className={`px-3.5 py-1.5 border text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer font-sans bg-white shadow-sm ${
-                (examSubView === 'edit' && showLivePreview) 
-                  ? 'bg-primary-light border-primary/20 text-primary hover:bg-primary-light/80' 
-                  : 'border-slate-200 text-slate-650 hover:bg-slate-50'
-              }`}
-            >
-              <Eye size={12} /> Xem thử đề
-            </button>
-          </div>
-        </header>
+          </header>
+        )}
 
         {/* Sub-header Tab Bar */}
         {examSubView === 'edit' && (
           <div className="h-12 bg-white border-b border-slate-100 px-6 flex items-center gap-6 shrink-0 select-none z-10">
-            <button 
+            <button
               onClick={() => { setExamSubView('edit'); setExamTab('code'); setQuickStep(1); }}
-              className={`h-full flex items-center gap-1.5 text-xs font-black border-b-2 px-1 transition ${
-                examSubView === 'edit' && examTab === 'code' 
-                  ? 'border-primary text-primary' 
-                  : 'border-transparent text-text-secondary hover:text-text-primary'
-              }`}
+              className={`h-full flex items-center gap-1.5 text-xs font-black border-b-2 px-1 transition ${examSubView === 'edit' && examTab === 'code'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-text-secondary hover:text-text-primary'
+                }`}
             >
               <Code size={14} /> Soạn bằng mã
             </button>
-            <button 
+            <button
               onClick={() => { setExamSubView('edit'); setExamTab('quick'); }}
-              className={`h-full flex items-center gap-1.5 text-xs font-black border-b-2 px-1 transition ${
-                examSubView === 'edit' && examTab === 'quick' 
-                  ? 'border-primary text-primary' 
-                  : 'border-transparent text-text-secondary hover:text-text-primary'
-              }`}
+              className={`h-full flex items-center gap-1.5 text-xs font-black border-b-2 px-1 transition ${examSubView === 'edit' && examTab === 'quick'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-text-secondary hover:text-text-primary'
+                }`}
             >
               <Edit size={14} /> Soạn nhanh
             </button>
-            <button 
+            <button
               onClick={() => { setExamSubView('edit'); setExamTab('bank'); setQuickStep(1); }}
-              className={`h-full flex items-center gap-1.5 text-xs font-black border-b-2 px-1 transition ${
-                examSubView === 'edit' && examTab === 'bank' 
-                  ? 'border-primary text-primary' 
-                  : 'border-transparent text-text-secondary hover:text-text-primary'
-              }`}
+              className={`h-full flex items-center gap-1.5 text-xs font-black border-b-2 px-1 transition ${examSubView === 'edit' && examTab === 'bank'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-text-secondary hover:text-text-primary'
+                }`}
             >
               <Database size={14} /> Ngân hàng câu hỏi
             </button>
@@ -924,7 +1005,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                     <span>⚠️</span>
                     <span>Bản nháp đã được cập nhật ở một cửa sổ khác.</span>
                   </div>
-                  <button 
+                  <button
                     onClick={() => {
                       const draft = draftService.loadDraft();
                       if (draft) {
@@ -943,7 +1024,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
               )}
               <div className="h-10 px-4 border-b border-slate-50 flex items-center justify-between shrink-0 bg-slate-50/20">
                 <span className="text-[10px] font-black text-text-primary uppercase tracking-wider">Soạn đề bằng mã</span>
-                <button 
+                <button
                   onClick={() => setShowGuideModal(true)}
                   className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1 transition cursor-pointer"
                 >
@@ -955,7 +1036,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
               <div className="flex-1 px-4 pt-4 bg-slate-50/10 flex flex-col min-h-0 overflow-hidden">
                 <div className="flex-1 flex font-mono text-[11px] bg-slate-50/70 border border-slate-100 rounded-2xl overflow-hidden min-h-0 relative">
                   {/* Line numbers */}
-                  <div 
+                  <div
                     ref={lineNumbersRef}
                     className="bg-slate-100/50 text-[#A3AED0] select-none text-right px-3 py-4 border-r border-slate-200/50 flex flex-col font-mono leading-[20px] tracking-wide shrink-0 overflow-hidden"
                   >
@@ -980,7 +1061,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
               <div className="h-11 border-t border-slate-50 px-4 flex items-center justify-between shrink-0 bg-white">
                 {/* LEFT: Action Button */}
                 {compileStatus === 'compiling' ? (
-                  <button 
+                  <button
                     disabled
                     className="px-3 py-1.5 bg-slate-100 text-slate-400 text-[10px] font-bold rounded-xl flex items-center gap-1.5 select-none"
                   >
@@ -988,14 +1069,14 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                     <span>Đang biên dịch...</span>
                   </button>
                 ) : (
-                  <button 
+                  <button
                     onClick={handleCheckCode}
                     className="px-3 py-1.5 bg-[#ECFDF5] hover:bg-[#D1FAE5] text-success text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer font-sans"
                   >
                     <Check size={12} /> Kiểm tra mã
                   </button>
                 )}
-                
+
                 {/* RIGHT: Status Badge */}
                 {compileStatus === 'unchecked' && (
                   <div className="flex items-center gap-2 text-right">
@@ -1034,7 +1115,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                 )}
 
                 {compileStatus === 'error' && (
-                  <button 
+                  <button
                     onClick={() => setValidationDialog((prev) => ({ ...prev, isOpen: true }))}
                     className="flex items-center gap-2 text-right hover:opacity-90 active:scale-[0.98] transition cursor-pointer border-none bg-transparent p-0 outline-none"
                   >
@@ -1073,7 +1154,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                     <h2 className="text-xs font-black text-[#1E293B] uppercase tracking-wider">
                       BƯỚC 1: TẢI FILE ĐỀ THI
                     </h2>
-                    
+
                     {uploadedFile ? (
                       <div className="space-y-4 animate-fadeIn">
                         <div className="p-4 border border-emerald-100 bg-emerald-50/10 rounded-2xl flex items-center justify-between">
@@ -1095,7 +1176,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                             <div className="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
                               <CheckCircle2 size={14} className="stroke-[2.5]" />
                             </div>
-                            <button 
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setUploadedFile(null);
@@ -1107,7 +1188,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                           </div>
                         </div>
 
-                        <button 
+                        <button
                           onClick={() => setQuickStep(2)}
                           className="w-full py-2.5 bg-primary hover:bg-primary-hover text-white text-xs font-black rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-sm font-sans"
                         >
@@ -1115,17 +1196,17 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                         </button>
                       </div>
                     ) : (
-                      <div 
+                      <div
                         onDragOver={handleDragOver}
                         onDrop={handleDrop}
                         onClick={() => fileInputRef.current?.click()}
                         className="border-2 border-dashed border-indigo-100 hover:border-primary/45 rounded-2xl p-12 flex flex-col items-center justify-center bg-slate-50/20 hover:bg-primary-light/10 transition cursor-pointer group"
                       >
-                        <input 
-                          type="file" 
-                          ref={fileInputRef} 
-                          onChange={handleFileChange} 
-                          className="hidden" 
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          onChange={handleFileChange}
+                          className="hidden"
                           accept=".pdf,.docx,.doc,.pptx,.png,.jpg,.jpeg"
                         />
                         <div className="w-12 h-12 rounded-full bg-indigo-50 text-primary flex items-center justify-center mb-3 transition-transform group-hover:scale-110 shadow-sm shadow-indigo-100/50">
@@ -1192,7 +1273,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
             ) : (
               // STEP 2: Hiệu chỉnh kết quả nhận diện (3-column layout)
               <div className="flex-1 flex overflow-hidden bg-white border-t border-slate-200 animate-fadeIn relative select-text">
-                
+
                 {/* Simulated OCR loading overlay */}
                 {isOcrLoading && (
                   <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-[1px] z-30 flex items-center justify-center animate-fadeIn">
@@ -1209,7 +1290,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                     {/* Header */}
                     <div className="h-11 border-b border-slate-200 px-4 flex items-center justify-between shrink-0 bg-slate-50/50">
                       <span className="text-[10px] font-black text-slate-700 tracking-wider">FILE ĐÃ TẢI</span>
-                      <button 
+                      <button
                         onClick={() => setShowLeftSidebar(false)}
                         className="p-1 hover:bg-slate-200 text-slate-500 hover:text-slate-755 rounded transition cursor-pointer"
                         title="Đóng bảng thông tin"
@@ -1217,7 +1298,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                         <ChevronLeft size={14} className="stroke-[2.5]" />
                       </button>
                     </div>
-                    
+
                     <div className="p-4 space-y-5">
                       {/* File item info */}
                       {uploadedFile && (
@@ -1246,7 +1327,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">KẾT QUẢ OCR</h3>
                           <span className="px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-600 text-[8px] font-extrabold uppercase">Thành công</span>
                         </div>
-                        
+
                         <div className="space-y-2.5 font-sans">
                           <div className="flex justify-between items-center text-[10px] text-slate-500 font-bold border-b border-slate-100 pb-2">
                             <span>Tổng số câu hỏi</span>
@@ -1270,7 +1351,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                   </div>
 
                   <div className={`p-4 space-y-2 border-t border-slate-100 bg-slate-50/50 ${showLeftSidebar ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                    <button 
+                    <button
                       onClick={() => {
                         setIsOcrLoading(true);
                         setTimeout(() => {
@@ -1283,7 +1364,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                       <RefreshCw size={12} className="stroke-[2.5]" />
                       Nhận diện lại
                     </button>
-                    <button 
+                    <button
                       onClick={() => setQuickStep(1)}
                       className="w-full py-1.5 text-[#7E8B9B] hover:text-slate-655 text-[9px] font-bold rounded-lg text-center transition cursor-pointer font-sans"
                     >
@@ -1293,16 +1374,15 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                 </div>
 
                 {/* COLUMN 2: JSON Editor */}
-                <div className={`${
-                  showLivePreview 
-                    ? (showLeftSidebar ? 'w-[38%] shrink-0 border-r border-slate-200' : 'w-[60%] shrink-0 border-r border-slate-200')
-                    : 'flex-1'
-                } flex flex-col overflow-hidden bg-white transition-all duration-300`}>
+                <div className={`${showLivePreview
+                  ? (showLeftSidebar ? 'w-[38%] shrink-0 border-r border-slate-200' : 'w-[60%] shrink-0 border-r border-slate-200')
+                  : 'flex-1'
+                  } flex flex-col overflow-hidden bg-white transition-all duration-300`}>
                   {/* Header bar */}
                   <div className="h-11 border-b border-slate-200 px-4 flex items-center justify-between shrink-0 bg-slate-50/50">
                     <div className="flex items-center">
                       {!showLeftSidebar && (
-                        <button 
+                        <button
                           onClick={() => setShowLeftSidebar(true)}
                           className="p-1 hover:bg-slate-200 text-slate-550 hover:text-slate-755 rounded transition cursor-pointer mr-2 shrink-0"
                           title="Mở bảng thông tin"
@@ -1312,9 +1392,9 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                       )}
                       <span className="text-[10px] font-black text-slate-700 tracking-wider">DỮ LIỆU ĐỀ THI (JSON)</span>
                     </div>
-                    
+
                     <div className="flex items-center gap-1.5">
-                      <button 
+                      <button
                         onClick={() => {
                           try {
                             const formatted = JSON.stringify(JSON.parse(examJsonCode), null, 2);
@@ -1327,15 +1407,15 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                       >
                         <AlignLeft size={11} /> Format JSON
                       </button>
-                      
-                      <input 
-                        type="file" 
-                        ref={jsonFileInputRef} 
-                        onChange={handleJsonUpload} 
-                        className="hidden" 
+
+                      <input
+                        type="file"
+                        ref={jsonFileInputRef}
+                        onChange={handleJsonUpload}
+                        className="hidden"
                         accept=".json"
                       />
-                      <button 
+                      <button
                         onClick={() => jsonFileInputRef.current?.click()}
                         className="px-2.5 py-1.5 border border-slate-200 hover:bg-slate-55 text-slate-600 text-[9px] font-bold rounded-lg flex items-center gap-1 transition cursor-pointer font-sans bg-white shadow-sm"
                       >
@@ -1346,7 +1426,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
                   {/* JSON Editor body */}
                   <div className="flex-1 flex font-mono text-[11px] bg-white overflow-hidden relative min-h-0">
-                    <div 
+                    <div
                       ref={quickLineNumbersRef}
                       className="bg-slate-50/60 text-[#A3AED0] select-none text-right px-2.5 py-4 border-r border-slate-100 flex flex-col leading-[18px] shrink-0 font-mono overflow-hidden h-full"
                     >
@@ -1383,134 +1463,501 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
         {/* Cấu hình đề thi */}
         {examSubView === 'config' && (
-          <div className="flex-1 p-8 overflow-y-auto max-w-5xl mx-auto w-full space-y-6 animate-fadeIn">
-            <h2 className="text-sm font-black text-text-primary uppercase tracking-wide border-b border-slate-100 pb-3 mb-6 font-sans">
-              Cấu hình đề thi
-            </h2>
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0 bg-[#F8FAFC] animate-fadeIn">
+            {/* Config Header */}
+            <header className="h-16 bg-white border-b border-slate-100 px-6 flex items-center justify-between shrink-0 shadow-sm z-10">
+              <div className="flex items-center gap-4">
+                {/* Title & Subtitle */}
+                <div>
+                  <h1 className="text-sm font-black text-slate-800 leading-tight">
+                    Cấu hình đề thi
+                  </h1>
+                  <p className="text-[10px] text-slate-400 font-bold -mt-0.5 font-sans">
+                    Thiết lập thông tin và quy tắc cho đề thi của bạn
+                  </p>
+                </div>
+              </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {/* Form fields card */}
-              <div className="md:col-span-2 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
-                <h3 className="text-xs font-black text-[#1E293B] uppercase tracking-wider mb-2 font-sans">Thông tin cơ bản</h3>
-                
-                {/* Tên đề thi */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-[#7E8B9B] uppercase tracking-wider">
-                    Tên đề thi
-                  </label>
-                  <input 
-                    type="text" 
-                    value={infoMeta.title || ''}
-                    onChange={(e) => updateJsonField('title', e.target.value)}
-                    className="text-xs font-bold text-text-primary"
-                    placeholder="Nhập tên đề thi..."
-                  />
+              {/* Right side status & action */}
+              <div className="flex items-center gap-2.5">
+                {/* Auto Save Status */}
+                <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#10B981] font-sans mr-2">
+                  <CheckCircle2 size={13} className="text-emerald-500 stroke-[2.5]" />
+                  <span>Đã tự động lưu {lastSavedTime ? formatSavedTime(lastSavedTime) : 'mới đây'}</span>
                 </div>
 
-                {/* Tên môn học */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-[#7E8B9B] uppercase tracking-wider">
-                    Tên môn học
-                  </label>
-                  <div className="relative">
-                    <select 
-                      value={infoMeta.subject || 'Sinh học'}
-                      onChange={(e) => updateJsonField('subject', e.target.value)}
-                      className="w-full bg-white border border-[#E2E8F0] rounded-xl px-3.5 py-2 text-xs font-bold text-text-primary appearance-none outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition cursor-pointer"
-                    >
-                      <option value="Sinh học">Sinh học</option>
-                      <option value="Toán học">Toán học</option>
-                      <option value="Vật lý">Vật lý</option>
-                      <option value="Hóa học">Hóa học</option>
-                      <option value="Tiếng Anh">Tiếng Anh</option>
-                    </select>
-                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                      <ChevronDown size={14} />
+                {/* Publish Button - only action needed in config */}
+                <button
+                  onClick={handlePublishExam}
+                  className="px-5 py-2 bg-[#6C5DD3] hover:bg-[#5C4DB3] text-white text-[10px] font-black rounded-xl flex items-center gap-2 transition cursor-pointer font-sans shadow-md shadow-indigo-150"
+                >
+                  <Send size={13} className="stroke-[2.5]" />
+                  Xuất bản đề thi
+                </button>
+              </div>
+            </header>
+
+            {/* Scrollable Content Container */}
+            <div className="flex-1 overflow-y-auto p-6 md:p-8">
+              <div className="max-w-6xl mx-auto flex flex-col lg:flex-row gap-8 items-start">
+
+                {/* Left Column - Configurations (2/3) */}
+                <div className="flex-1 lg:flex-[2.1] w-full space-y-6">
+
+                  {/* Card 1: Thông tin cơ bản */}
+                  <div className="bg-white rounded-[24px] p-6 border border-slate-100/80 shadow-sm space-y-5">
+                    {/* Header */}
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-9 h-9 rounded-xl bg-indigo-50 text-[#6C5DD3] flex items-center justify-center shrink-0">
+                        <FileText size={16} className="stroke-[2.5]" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-black text-slate-800 uppercase tracking-wide font-sans">
+                          1. Thông tin cơ bản
+                        </h3>
+                        <p className="text-[10px] text-slate-400 font-bold -mt-0.5 font-sans">
+                          Nhập thông tin chính của đề thi
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* Thời gian làm bài & Độ khó */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Thời gian */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-[#7E8B9B] uppercase tracking-wider">
-                      Thời gian làm bài (phút)
-                    </label>
-                    <input 
-                      type="number" 
-                      value={infoMeta.time || 90}
-                      onChange={(e) => updateJsonField('time', parseInt(e.target.value) || 0)}
-                      className="text-xs font-bold text-text-primary"
-                      placeholder="Nhập thời gian..."
-                    />
-                  </div>
+                    {/* Inputs */}
+                    <div className="space-y-4">
+                      {/* Tên đề thi */}
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block font-sans">
+                          Tên đề thi
+                        </label>
+                        <input
+                          type="text"
+                          value={infoMeta.title || ''}
+                          onChange={(e) => updateJsonField('title', e.target.value)}
+                          className="w-full bg-white border border-[#E2E8F0] focus:border-[#6C5DD3] rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 outline-none transition cursor-text placeholder:text-slate-400 focus:ring-2 focus:ring-[#6C5DD3]/10"
+                          placeholder="Nhập tên đề thi..."
+                        />
+                      </div>
 
-                  {/* Độ khó */}
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-[#7E8B9B] uppercase tracking-wider">
-                      Độ khó đề thi
-                    </label>
-                    <div className="relative">
-                      <select 
-                        value={infoMeta.level || 'trung_binh'}
-                        onChange={(e) => updateJsonField('level', e.target.value)}
-                        className="w-full bg-white border border-[#E2E8F0] rounded-xl px-3.5 py-2 text-xs font-bold text-text-primary appearance-none outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition cursor-pointer"
-                      >
-                        <option value="easy">Dễ (Easy)</option>
-                        <option value="medium">Trung bình (Medium)</option>
-                        <option value="hard">Khó (Hard)</option>
-                      </select>
-                      <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                        <ChevronDown size={14} />
+                      {/* 4 Dropdowns Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                        {/* Môn học */}
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block font-sans">
+                            Môn học
+                          </label>
+                          <div className="relative">
+                            <select
+                              value={infoMeta.subject || 'Sinh học'}
+                              onChange={(e) => updateJsonField('subject', e.target.value)}
+                              className="w-full bg-white border border-[#E2E8F0] focus:border-[#6C5DD3] rounded-2xl px-3.5 py-3 text-xs font-bold text-slate-800 appearance-none outline-none focus:ring-2 focus:ring-[#6C5DD3]/10 transition cursor-pointer pr-10"
+                            >
+                              <option value="Sinh học">Sinh học</option>
+                              <option value="Toán học">Toán học</option>
+                              <option value="Vật lý">Vật lý</option>
+                              <option value="Hóa học">Hóa học</option>
+                              <option value="Tiếng Anh">Tiếng Anh</option>
+                              <option value="Ngữ văn">Ngữ văn</option>
+                              <option value="Lịch sử">Lịch sử</option>
+                              <option value="Địa lý">Địa lý</option>
+                            </select>
+                            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                              <ChevronDown size={14} />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Khối lớp */}
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block font-sans">
+                            Khối lớp
+                          </label>
+                          <div className="relative">
+                            <select
+                              value={infoMeta.grade || 10}
+                              onChange={(e) => updateJsonField('grade', parseInt(e.target.value) || e.target.value)}
+                              className="w-full bg-white border border-[#E2E8F0] focus:border-[#6C5DD3] rounded-2xl px-3.5 py-3 text-xs font-bold text-slate-800 appearance-none outline-none focus:ring-2 focus:ring-[#6C5DD3]/10 transition cursor-pointer pr-10"
+                            >
+                              <option value={6}>Khối 6</option>
+                              <option value={7}>Khối 7</option>
+                              <option value={8}>Khối 8</option>
+                              <option value={9}>Khối 9</option>
+                              <option value={10}>Khối 10</option>
+                              <option value={11}>Khối 11</option>
+                              <option value={12}>Khối 12</option>
+                            </select>
+                            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                              <ChevronDown size={14} />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Thời gian làm bài */}
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block font-sans">
+                            Thời gian làm bài
+                          </label>
+                          <div className="relative">
+                            <select
+                              value={infoMeta.time || 60}
+                              onChange={(e) => updateJsonField('time', parseInt(e.target.value) || 0)}
+                              className="w-full bg-white border border-[#E2E8F0] focus:border-[#6C5DD3] rounded-2xl px-3.5 py-3 text-xs font-bold text-slate-800 appearance-none outline-none focus:ring-2 focus:ring-[#6C5DD3]/10 transition cursor-pointer pr-10"
+                            >
+                              <option value={15}>15 phút</option>
+                              <option value={30}>30 phút</option>
+                              <option value={45}>45 phút</option>
+                              <option value={60}>60 phút</option>
+                              <option value={90}>90 phút</option>
+                              <option value={120}>120 phút</option>
+                            </select>
+                            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                              <ChevronDown size={14} />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Độ khó */}
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block font-sans">
+                            Độ khó
+                          </label>
+                          <div className="relative">
+                            <select
+                              value={infoMeta.difficulty || 'medium'}
+                              onChange={(e) => updateJsonField('difficulty', e.target.value)}
+                              className="w-full bg-white border border-[#E2E8F0] focus:border-[#6C5DD3] rounded-2xl px-3.5 py-3 text-xs font-bold text-slate-800 appearance-none outline-none focus:ring-2 focus:ring-[#6C5DD3]/10 transition cursor-pointer pr-10"
+                            >
+                              <option value="easy">Dễ (Easy)</option>
+                              <option value="medium">Trung bình (Medium)</option>
+                              <option value="hard">Khó (Hard)</option>
+                            </select>
+                            <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                              <ChevronDown size={14} />
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="pt-2 flex justify-end">
-                  <button 
-                    onClick={() => setExamSubView('edit')}
-                    className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-black rounded-xl transition shadow-sm cursor-pointer font-sans"
-                  >
-                    Quay lại soạn đề
-                  </button>
-                </div>
-              </div>
+                  {/* Card 2: Chế độ làm bài */}
+                  <div className="bg-white rounded-[24px] p-6 border border-slate-100/80 shadow-sm space-y-5">
+                    {/* Header */}
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-9 h-9 rounded-xl bg-indigo-50 text-[#6C5DD3] flex items-center justify-center shrink-0">
+                        <Sliders size={16} className="stroke-[2.5]" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-black text-slate-800 uppercase tracking-wide font-sans">
+                          2. Chế độ làm bài
+                        </h3>
+                        <p className="text-[10px] text-slate-400 font-bold -mt-0.5 font-sans">
+                          Thiết lập các tùy chọn khi học sinh làm bài
+                        </p>
+                      </div>
+                    </div>
 
-              {/* Score Stats card */}
-              <div className="bg-gradient-to-br from-primary to-[#8F85F3] rounded-3xl p-6 text-white shadow-xl flex flex-col justify-between h-fit min-h-[300px]">
-                <div className="space-y-6">
-                  <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-sm shadow-inner">
-                    <Database size={22} />
-                  </div>
+                    {/* Options list */}
+                    <div className="divide-y divide-slate-100/60">
+                      {/* Row 1 */}
+                      <div className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
+                        <div className="flex items-center gap-4">
+                          <div className="w-8 h-8 rounded-xl bg-[#F5F3FF] text-[#6C5DD3] flex items-center justify-center shrink-0">
+                            <Shuffle size={14} />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold text-slate-800">
+                              Xáo trộn thứ tự câu hỏi
+                            </h4>
+                            <p className="text-[10px] text-slate-400 font-bold font-sans mt-0.5">
+                              Mỗi học sinh sẽ nhận đề với thứ tự câu hỏi khác nhau
+                            </p>
+                          </div>
+                        </div>
+                        <Toggle
+                          id="shuffle-questions"
+                          checked={infoMeta.shuffle !== false}
+                          onChange={(checked) => updateJsonField('shuffle', checked)}
+                        />
+                      </div>
 
-                  <div className="space-y-2">
-                    <h3 className="text-xs font-black tracking-wider uppercase opacity-75">Thống kê điểm số</h3>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-black">{lastValidMetadata.questionCount}</span>
-                      <span className="text-xs font-bold opacity-75">câu hỏi</span>
+                      {/* Row 2 */}
+                      <div className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
+                        <div className="flex items-center gap-4">
+                          <div className="w-8 h-8 rounded-xl bg-[#F5F3FF] text-[#6C5DD3] flex items-center justify-center shrink-0">
+                            <RefreshCw size={13} />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold text-slate-800">
+                              Xáo trộn thứ tự đáp án
+                            </h4>
+                            <p className="text-[10px] text-slate-400 font-bold font-sans mt-0.5">
+                              Mỗi học sinh sẽ nhận đề với thứ tự đáp án khác nhau
+                            </p>
+                          </div>
+                        </div>
+                        <Toggle
+                          id="shuffle-answers"
+                          checked={infoMeta.shuffleAnswers !== false}
+                          onChange={(checked) => updateJsonField('shuffleAnswers', checked)}
+                        />
+                      </div>
+
+                      {/* Row 3 */}
+                      <div className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
+                        <div className="flex items-center gap-4">
+                          <div className="w-8 h-8 rounded-xl bg-[#F5F3FF] text-[#6C5DD3] flex items-center justify-center shrink-0">
+                            <Timer size={14} />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold text-slate-800">
+                              Hiển thị đồng hồ đếm ngược
+                            </h4>
+                            <p className="text-[10px] text-slate-400 font-bold font-sans mt-0.5">
+                              Học sinh có thể theo dõi thời gian còn lại khi làm bài
+                            </p>
+                          </div>
+                        </div>
+                        <Toggle
+                          id="show-countdown"
+                          checked={infoMeta.showCountdown !== false}
+                          onChange={(checked) => updateJsonField('showCountdown', checked)}
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="h-px bg-white/20" />
-
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-black tracking-wider opacity-75">Điểm mỗi câu</span>
-                    <div className="text-lg font-black font-mono">
-                      {(10 / lastValidMetadata.questionCount).toFixed(2)} điểm
+                  {/* Card 3: Hiển thị kết quả */}
+                  <div className="bg-white rounded-[24px] p-6 border border-slate-100/80 shadow-sm space-y-5">
+                    {/* Header */}
+                    <div className="flex items-center gap-3.5">
+                      <div className="w-9 h-9 rounded-xl bg-indigo-50 text-[#6C5DD3] flex items-center justify-center shrink-0">
+                        <Eye size={16} className="stroke-[2.5]" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-black text-slate-800 uppercase tracking-wide font-sans">
+                          3. Hiển thị kết quả
+                        </h3>
+                        <p className="text-[10px] text-slate-400 font-bold -mt-0.5 font-sans">
+                          Thiết lập những gì học sinh có thể xem sau khi nộp bài
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-[9px] opacity-75 font-medium leading-relaxed pt-1 font-sans">
-                      Hệ thống tự động phân chia đều điểm số của tất cả các câu hỏi trên thang điểm 10 chuẩn.
-                    </p>
+
+                    {/* Options list */}
+                    <div className="divide-y divide-slate-100/60">
+                      {/* Row 1 */}
+                      <div className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
+                        <div className="flex items-center gap-4">
+                          <div className="w-8 h-8 rounded-xl bg-[#F5F3FF] text-[#6C5DD3] flex items-center justify-center shrink-0">
+                            <CheckSquare size={14} />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold text-slate-800">
+                              Hiển thị đáp án đúng
+                            </h4>
+                            <p className="text-[10px] text-slate-400 font-bold font-sans mt-0.5">
+                              Cho phép học sinh xem đáp án sau khi nộp bài
+                            </p>
+                          </div>
+                        </div>
+                        <Toggle
+                          id="show-answers"
+                          checked={infoMeta.allowReview !== false}
+                          onChange={(checked) => updateJsonField('allowReview', checked)}
+                        />
+                      </div>
+
+                      {/* Row 2 */}
+                      <div className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
+                        <div className="flex items-center gap-4">
+                          <div className="w-8 h-8 rounded-xl bg-[#F5F3FF] text-[#6C5DD3] flex items-center justify-center shrink-0">
+                            <BookOpen size={14} />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold text-slate-800">
+                              Hiển thị lời giải
+                            </h4>
+                            <p className="text-[10px] text-slate-400 font-bold font-sans mt-0.5">
+                              Cho phép học sinh xem lời giải chi tiết sau khi nộp bài
+                            </p>
+                          </div>
+                        </div>
+                        <Toggle
+                          id="show-explanation"
+                          checked={infoMeta.showExplanation !== false}
+                          onChange={(checked) => updateJsonField('showExplanation', checked)}
+                        />
+                      </div>
+
+                      {/* Row 3 */}
+                      <div className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
+                        <div className="flex items-center gap-4">
+                          <div className="w-8 h-8 rounded-xl bg-[#F5F3FF] text-[#6C5DD3] flex items-center justify-center shrink-0">
+                            <Trophy size={14} />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold text-slate-800">
+                              Hiển thị bảng xếp hạng
+                            </h4>
+                            <p className="text-[10px] text-slate-400 font-bold font-sans mt-0.5">
+                              Hiển thị bảng xếp hạng khi kết thúc bài làm (chỉ áp dụng với đề luyện tập)
+                            </p>
+                          </div>
+                        </div>
+                        <Toggle
+                          id="show-leaderboard"
+                          checked={infoMeta.showLeaderboard === true}
+                          onChange={(checked) => updateJsonField('showLeaderboard', checked)}
+                        />
+                      </div>
+                    </div>
                   </div>
+
                 </div>
 
-                <div className="pt-6 text-[9px] font-extrabold uppercase bg-white/10 px-3.5 py-2 rounded-xl text-center backdrop-blur-sm mt-4">
-                  Thang điểm: 10 • Điểm chuẩn hóa
+                {/* Right Column - Summary Sidebar (1/3) */}
+                <div className="w-full lg:flex-1 space-y-6 lg:sticky lg:top-0">
+
+                  {/* Overview Card */}
+                  <div className="bg-gradient-to-b from-[#5E51E8] to-[#6C5DD3] rounded-[24px] p-6 text-white shadow-xl flex flex-col justify-between">
+
+                    <div>
+                      {/* Card Header */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center text-white shrink-0">
+                          <ClipboardList size={16} />
+                        </div>
+                        <h3 className="text-xs font-black tracking-wider uppercase font-sans">
+                          Tổng quan đề thi
+                        </h3>
+                      </div>
+
+                      {/* Stats Grid */}
+                      <div className="grid grid-cols-4 gap-1 text-center mt-6 select-none border-b border-white/15 pb-5">
+                        <div>
+                          <div className="text-lg font-black">{previewQuestions.length}</div>
+                          <div className="text-[8px] opacity-75 font-semibold uppercase mt-0.5 tracking-wider font-sans">Câu hỏi</div>
+                        </div>
+                        <div className="border-r border-white/20 h-7 self-center" />
+                        <div>
+                          <div className="text-lg font-black">{infoMeta.time || 60} phút</div>
+                          <div className="text-[8px] opacity-75 font-semibold uppercase mt-0.5 tracking-wider font-sans">Thời gian</div>
+                        </div>
+                        <div className="border-r border-white/20 h-7 self-center" />
+                        <div>
+                          <div className="text-lg font-black">10.00</div>
+                          <div className="text-[8px] opacity-75 font-semibold uppercase mt-0.5 tracking-wider font-sans">Điểm</div>
+                        </div>
+                        <div className="border-r border-white/20 h-7 self-center" />
+                        <div>
+                          <div className="text-lg font-black">
+                            {getDifficultyLabel(infoMeta.difficulty)}
+                          </div>
+                          <div className="text-[8px] opacity-75 font-semibold uppercase mt-0.5 tracking-wider font-sans">Độ khó</div>
+                        </div>
+                      </div>
+
+                      {/* Section 1: Question Type Distribution */}
+                      <div className="mt-5">
+                        <h4 className="text-[9px] font-black uppercase tracking-wider opacity-85 mb-3 font-sans">
+                          Phân bố câu hỏi
+                        </h4>
+
+                        <div className="space-y-2.5">
+                          {/* Trắc nghiệm */}
+                          <div className="flex items-center justify-between text-xs font-bold font-sans">
+                            <div className="flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#C3B8FF]" />
+                              <span className="opacity-95 font-semibold">Trắc nghiệm</span>
+                            </div>
+                            <span className="font-bold">{questionTypesCount.choice}</span>
+                          </div>
+
+                          {/* Đúng / Sai */}
+                          <div className="flex items-center justify-between text-xs font-bold font-sans">
+                            <div className="flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#FF9F43]" />
+                              <span className="opacity-95 font-semibold">Đúng / Sai</span>
+                            </div>
+                            <span className="font-bold">{questionTypesCount['true-false']}</span>
+                          </div>
+
+                          {/* Điền khuyết */}
+                          <div className="flex items-center justify-between text-xs font-bold font-sans">
+                            <div className="flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#28C76F]" />
+                              <span className="opacity-95 font-semibold">Điền khuyết</span>
+                            </div>
+                            <span className="font-bold">{questionTypesCount['fill-blank']}</span>
+                          </div>
+
+                          {/* Tự luận */}
+                          <div className="flex items-center justify-between text-xs font-bold font-sans">
+                            <div className="flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#EA5455]" />
+                              <span className="opacity-95 font-semibold">Tự luận</span>
+                            </div>
+                            <span className="font-bold">{questionTypesCount.essay}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Section 2: Content Breakdown */}
+                      <div className="mt-6 pt-5 border-t border-white/15">
+                        <h4 className="text-[9px] font-black uppercase tracking-wider opacity-85 mb-3 font-sans">
+                          Nội dung đề thi
+                        </h4>
+
+                        <div className="space-y-2.5">
+                          {/* Hình ảnh */}
+                          <div className="flex items-center gap-2.5 text-xs font-bold font-sans opacity-95">
+                            <Image size={14} className="opacity-80" />
+                            <span>{counts.images} hình ảnh</span>
+                          </div>
+
+                          {/* Bảng biểu */}
+                          <div className="flex items-center gap-2.5 text-xs font-bold font-sans opacity-95">
+                            <Grid size={14} className="opacity-80" />
+                            <span>{counts.tables} bảng biểu</span>
+                          </div>
+
+                          {/* Công thức */}
+                          <div className="flex items-center gap-2.5 text-xs font-bold font-sans opacity-95">
+                            <Calculator size={14} className="opacity-80" />
+                            <span>{counts.formulas} công thức</span>
+                          </div>
+
+                          {/* Đoạn văn bản */}
+                          <div className="flex items-center gap-2.5 text-xs font-bold font-sans opacity-95">
+                            <BookOpen size={14} className="opacity-80" />
+                            <span>{counts.paragraphs} đoạn văn bản</span>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* Bottom Action validation card */}
+                    <div className="bg-white/10 hover:bg-white/15 border border-white/10 rounded-2xl p-4 mt-6 transition duration-150 flex items-center gap-3 cursor-pointer select-none">
+                      <ShieldCheck size={20} className="text-white shrink-0" />
+                      <div className="flex-1">
+                        <h5 className="text-[10px] font-black text-white font-sans leading-tight">
+                          Kiểm tra trước khi xuất bản
+                        </h5>
+                        <p className="text-[8px] opacity-75 font-semibold font-sans mt-0.5 leading-none">
+                          Đảm bảo đề thi hợp lệ và sẵn sàng
+                        </p>
+                      </div>
+                    </div>
+
+                  </div>
+
                 </div>
+
               </div>
             </div>
+
+
+
           </div>
         )}
 
@@ -1533,7 +1980,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                   <h3 className="text-sm font-black text-text-primary leading-tight font-sans">
                     {infoMeta.title}
                   </h3>
-                  
+
                   <div className="grid grid-cols-2 gap-3 text-[10px] font-bold text-text-secondary font-sans border-t border-b border-slate-50 py-3">
                     <div>Môn học: <span className="text-text-primary">{infoMeta.subject}</span></div>
                     <div>Khối lớp: <span className="text-text-primary">Khối {infoMeta.grade || 10}</span></div>
@@ -1546,7 +1993,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                   <p className="text-[10px] text-text-secondary leading-relaxed font-medium font-sans">
                     Nhấp vào nút **Xuất bản đề thi** dưới đây để lưu tất cả dữ liệu đề thi lên máy chủ và kích hoạt liên kết cho học sinh tham gia kiểm tra.
                   </p>
-                  <button 
+                  <button
                     onClick={handlePublishExam}
                     className="w-full mt-3 py-2.5 bg-primary hover:bg-primary-hover text-white text-xs font-black rounded-xl text-center flex items-center justify-center gap-1.5 transition cursor-pointer shadow-md shadow-indigo-100 font-sans"
                   >
@@ -1561,7 +2008,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                   <div className="w-10 h-10 rounded-xl bg-purple-50 text-primary flex items-center justify-center shadow-sm">
                     <Link size={18} />
                   </div>
-                  
+
                   <div className="space-y-1.5">
                     <h4 className="text-xs font-black text-text-primary uppercase tracking-wider">Đường liên kết tới đề thi</h4>
                     <p className="text-[10px] text-slate-400 font-bold leading-normal font-sans">
@@ -1571,24 +2018,23 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
                   {/* Copy Link field container */}
                   <div className="flex gap-2 items-center bg-slate-50/50 p-2.5 rounded-2xl border border-slate-100">
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       readOnly
                       value={`http://localhost:5174/exams/${slugify(infoMeta.title || 'de-thi')}`}
                       className="bg-transparent border-none text-[10px] font-mono text-primary font-bold focus:ring-0 p-0 flex-1 select-all cursor-text overflow-x-auto"
                     />
-                    <button 
+                    <button
                       onClick={() => {
                         const linkText = `http://localhost:5174/exams/${slugify(infoMeta.title || 'de-thi')}`;
                         navigator.clipboard.writeText(linkText);
                         setCopied(true);
                         setTimeout(() => setCopied(false), 2000);
                       }}
-                      className={`p-2 rounded-xl transition flex items-center justify-center shrink-0 cursor-pointer ${
-                        copied 
-                          ? 'bg-emerald-500 text-white shadow-md shadow-emerald-100' 
-                          : 'bg-white hover:bg-slate-50 text-slate-655 border border-slate-200 shadow-sm'
-                      }`}
+                      className={`p-2 rounded-xl transition flex items-center justify-center shrink-0 cursor-pointer ${copied
+                        ? 'bg-emerald-500 text-white shadow-md shadow-emerald-100'
+                        : 'bg-white hover:bg-slate-50 text-slate-655 border border-slate-200 shadow-sm'
+                        }`}
                       title="Sao chép liên kết"
                     >
                       {copied ? <Check size={14} className="stroke-[2.5]" /> : <Copy size={14} />}
@@ -1597,7 +2043,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                 </div>
 
                 <div className="flex gap-3">
-                  <a 
+                  <a
                     href={`http://localhost:5174/exams/${slugify(infoMeta.title || 'de-thi')}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -1628,7 +2074,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
             <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-primary flex items-center justify-center mx-auto shadow-sm">
               <RefreshCw size={22} className="text-primary animate-spin" />
             </div>
-            
+
             <div className="space-y-2 leading-relaxed">
               <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">Khôi phục bản nháp?</h3>
               <p className="text-[11px] text-slate-500 font-bold">
@@ -1667,7 +2113,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
             <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center mx-auto shadow-sm">
               <X size={22} className="stroke-[2.5]" />
             </div>
-            
+
             <div className="space-y-2 leading-relaxed">
               <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">Tạo đề mới?</h3>
               <p className="text-[11px] text-slate-500 font-bold">
@@ -1695,9 +2141,9 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
       {validationDialog.isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fadeIn">
-          <div 
-            className="fixed inset-0 bg-[#0F172A]/60 backdrop-blur-sm transition-opacity duration-300" 
-            onClick={() => setValidationDialog((prev: any) => ({ ...prev, isOpen: false }))} 
+          <div
+            className="fixed inset-0 bg-[#0F172A]/60 backdrop-blur-sm transition-opacity duration-300"
+            onClick={() => setValidationDialog((prev: any) => ({ ...prev, isOpen: false }))}
           />
           <div className="bg-white rounded-3xl w-full max-w-[460px] p-6 shadow-2xl relative overflow-hidden flex flex-col z-[101] border border-slate-100 animate-scaleUp text-left space-y-5">
             {validationDialog.success ? (
@@ -1726,10 +2172,10 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                   <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide text-center">
                     {validationDialog.title}
                   </h3>
-                  
+
                   <div className="text-[11px] text-slate-600 font-medium leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3">
                     <p className="font-bold text-red-600">Đã phát hiện {validationDialog.errors?.length ?? 0} lỗi:</p>
-                    
+
                     <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
                       {validationDialog.errors?.map((err, idx) => (
                         <div key={idx} className="bg-white p-3 rounded-xl border border-slate-150 space-y-2">
@@ -1756,7 +2202,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-3 pt-2">
                   <button
                     onClick={() => setValidationDialog((prev: any) => ({ ...prev, isOpen: false }))}
