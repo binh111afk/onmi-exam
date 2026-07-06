@@ -1,20 +1,27 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Laptop, Tablet as TabletIcon, Smartphone, RefreshCw, Maximize2, Minimize2, ZoomIn, ZoomOut, RotateCcw, X } from 'lucide-react';
+import { RefreshCw, Maximize2, Minimize2, ZoomIn, ZoomOut, RotateCcw, X } from 'lucide-react';
+import { Tooltip } from './Tooltip';
 
 export interface DocBlock {
   id: string;
-  type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout';
+  type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code';
   level?: 1 | 2 | 3;
   indent?: number;
   text: string;
   align?: 'left' | 'center' | 'right' | 'justify';
   checked?: boolean;
+  
+  src?: string;
+  caption?: string;
+  latex?: string;
+  language?: string;
+  rows?: string[][];
+  width?: string;
+  alt?: string;
 }
 
 interface DocPreviewSimulatorProps {
-  viewport: 'desktop' | 'tablet' | 'mobile';
-  setViewport: (v: 'desktop' | 'tablet' | 'mobile') => void;
-  selectedPage: 'water' | 'macromolecules';
+  lessonTitle: string;
   blocks: DocBlock[];
 }
 
@@ -44,9 +51,7 @@ const getNumberedIndex = (blocks: DocBlock[], index: number): string => {
 };
 
 export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
-  viewport,
-  setViewport,
-  selectedPage,
+  lessonTitle,
   blocks,
 }) => {
   const previewZoomLevels = [50, 75, 100, 125, 150, 200] as const;
@@ -58,8 +63,6 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
   const fullscreenScrollRef = useRef<HTMLDivElement>(null);
   const savedScrollTopRef = useRef(0);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const title = selectedPage === 'water' ? '1. Nguyên tố hóa học và Nước' : '2. Các đại phân tử hữu cơ';
 
   const openFullscreen = () => {
     savedScrollTopRef.current = previewScrollRef.current?.scrollTop ?? savedScrollTopRef.current;
@@ -118,18 +121,11 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
   }, [isFullscreenOpen]);
 
   const renderPreviewFrame = (
-    frameViewport: 'desktop' | 'tablet' | 'mobile',
     className = '',
     style?: React.CSSProperties,
   ) => (
     <div
-      className={`bg-white rounded-2xl shadow-lg border border-slate-200/50 p-5 font-sans h-fit transition-all duration-300 shrink-0 ${
-        frameViewport === 'desktop'
-          ? 'w-full'
-          : frameViewport === 'tablet'
-            ? 'w-[390px]'
-            : 'w-[310px]'
-      } ${className}`}
+      className={`bg-white rounded-2xl shadow-lg border border-slate-200/50 p-5 font-sans h-fit transition-all duration-300 shrink-0 w-full ${className}`}
       style={style}
     >
       {/* Header Tag inside simulator */}
@@ -210,6 +206,71 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
             );
           }
 
+          if (block.type === 'quote') {
+            return (
+              <blockquote key={block.id} style={indentStyle} className={`border-l-4 border-primary/30 pl-3 italic text-[10px] text-slate-655 my-2 ${alignClass}`} dangerouslySetInnerHTML={{ __html: block.text }} />
+            );
+          }
+
+          if (block.type === 'divider') {
+            return (
+              <hr key={block.id} className="border-t border-slate-200 my-3" />
+            );
+          }
+
+          if (block.type === 'image') {
+            const defaultSrc = 'https://images.unsplash.com/photo-1530026405186-ed1ea0ac7a63?w=500';
+            const imgJustify = block.align === 'left'
+              ? 'justify-start'
+              : block.align === 'right'
+                ? 'justify-end'
+                : 'justify-center';
+            return (
+              <div key={block.id} style={indentStyle} className={`w-full flex ${imgJustify} my-2.5`}>
+                <div style={{ width: block.width || '100%' }} className="flex flex-col items-center gap-1.5 max-w-full">
+                  <img src={block.src || defaultSrc} alt={block.caption || 'Preview image'} className="w-full h-auto rounded-lg object-contain shadow-sm border border-slate-100" />
+                  {block.caption && <span className="text-[8px] text-slate-400 font-bold">{block.caption}</span>}
+                </div>
+              </div>
+            );
+          }
+
+          if (block.type === 'table') {
+            const rows = block.rows || [];
+            return (
+              <div key={block.id} className="overflow-x-auto my-2.5">
+                <table className="w-full border-collapse border border-slate-200 text-[9px] font-bold text-slate-600">
+                  <tbody>
+                    {rows.map((row, ri) => (
+                      <tr key={ri}>
+                        {row.map((cell, ci) => (
+                          <td key={ci} className="border border-slate-200 p-1.5 bg-slate-50/20">{cell}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          }
+
+          if (block.type === 'formula') {
+            return (
+              <div key={block.id} className="text-center font-serif text-[11px] font-black text-slate-800 my-3.5 select-all">
+                {block.latex || 'f(x) = x^2'}
+              </div>
+            );
+          }
+
+          if (block.type === 'code') {
+            return (
+              <pre key={block.id} className="bg-slate-900 border border-slate-800 rounded-xl p-3 text-slate-200 font-mono text-[8px] leading-normal overflow-x-auto my-2.5 select-text">
+                <div className="text-slate-500 uppercase tracking-widest text-[7px] font-black mb-1.5">{block.language || 'typescript'}</div>
+                <code>{block.text}</code>
+              </pre>
+            );
+          }
+
           return (
             <p key={block.id} style={indentStyle} className={`text-text-secondary leading-relaxed font-bold ${alignClass}`} dangerouslySetInnerHTML={{ __html: block.text }} />
           );
@@ -239,17 +300,18 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
         >
           <div className="h-14 shrink-0 border-b border-slate-200 bg-white px-4 flex items-center justify-between gap-4">
             <div className="min-w-0 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={closeFullscreen}
-                className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"
-                aria-label="Đóng Preview"
-                title="Đóng"
-              >
-                <X size={18} />
-              </button>
+              <Tooltip content="Đóng">
+                <button
+                  type="button"
+                  onClick={closeFullscreen}
+                  className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"
+                  aria-label="Đóng Preview"
+                >
+                  <X size={18} />
+                </button>
+              </Tooltip>
               <div className="min-w-0">
-                <div className="truncate text-xs font-black uppercase tracking-wide text-slate-800">{title}</div>
+                <div className="truncate text-xs font-black uppercase tracking-wide text-slate-800">{lessonTitle}</div>
                 <div className="mt-0.5 flex items-center gap-2 text-[9px] font-bold text-slate-400">
                   <span>Tài liệu Sinh học 10</span>
                   <span className="rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[8px] font-black text-primary">DOC</span>
@@ -258,28 +320,38 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
             </div>
 
             <div className="flex shrink-0 items-center gap-1.5 text-slate-500">
-              <button type="button" onClick={() => stepZoom(-1)} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" title="Thu nhỏ" aria-label="Thu nhỏ">
-                <ZoomOut size={16} />
-              </button>
+              <Tooltip content="Thu nhỏ">
+                <button type="button" onClick={() => stepZoom(-1)} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" aria-label="Thu nhỏ">
+                  <ZoomOut size={16} />
+                </button>
+              </Tooltip>
               <span className="w-12 text-center text-[10px] font-black text-slate-700">{isFitWidth ? 'Fit' : `${previewZoom}%`}</span>
-              <button type="button" onClick={() => stepZoom(1)} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" title="Phóng to" aria-label="Phóng to">
-                <ZoomIn size={16} />
-              </button>
-              <button type="button" onClick={() => applyZoom(100)} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" title="Reset Zoom" aria-label="Reset Zoom">
-                <RotateCcw size={16} />
-              </button>
-              <button type="button" onClick={() => setIsFitWidth(true)} className={`px-3 py-2 rounded-xl text-[10px] font-black transition cursor-pointer ${isFitWidth ? 'bg-indigo-50 text-primary' : 'hover:bg-slate-100 hover:text-slate-900'}`} title="Fit Width" aria-label="Fit Width">
-                Fit Width
-              </button>
-              <button type="button" onClick={closeFullscreen} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" title="Thu nhỏ Preview" aria-label="Thu nhỏ Preview">
-                <Minimize2 size={16} />
-              </button>
+              <Tooltip content="Phóng to">
+                <button type="button" onClick={() => stepZoom(1)} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" aria-label="Phóng to">
+                  <ZoomIn size={16} />
+                </button>
+              </Tooltip>
+              <Tooltip content="Reset Zoom">
+                <button type="button" onClick={() => applyZoom(100)} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" aria-label="Reset Zoom">
+                  <RotateCcw size={16} />
+                </button>
+              </Tooltip>
+              <Tooltip content="Fit Width">
+                <button type="button" onClick={() => setIsFitWidth(true)} className={`px-3 py-2 rounded-xl text-[10px] font-black transition cursor-pointer ${isFitWidth ? 'bg-indigo-50 text-primary' : 'hover:bg-slate-100 hover:text-slate-900'}`} aria-label="Fit Width">
+                  Fit Width
+                </button>
+              </Tooltip>
+              <Tooltip content="Thu nhỏ Preview">
+                <button type="button" onClick={closeFullscreen} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" aria-label="Thu nhỏ Preview">
+                  <Minimize2 size={16} />
+                </button>
+              </Tooltip>
             </div>
           </div>
 
           <div ref={fullscreenScrollRef} className="flex-1 overflow-auto bg-slate-100/80 p-6">
             <div className="flex min-h-full justify-center items-start">
-              {renderPreviewFrame('desktop', 'rounded-2xl', { width: paperWidth })}
+              {renderPreviewFrame('rounded-2xl', { width: paperWidth })}
             </div>
           </div>
 
@@ -297,39 +369,20 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
       <div className="h-11 border-b border-slate-100 px-4 flex items-center justify-between shrink-0 bg-white">
         <span className="text-[10px] font-black text-[#1E293B] uppercase tracking-wider">Preview (Giao diện học sinh)</span>
 
-        {/* Responsive viewport selector */}
         <div className="flex items-center gap-1.5 text-slate-400">
-          <button
-            onClick={() => setViewport('desktop')}
-            className={`p-1.5 rounded-lg transition cursor-pointer hover:bg-slate-100 ${viewport === 'desktop' ? 'bg-slate-100 text-primary' : ''}`}
-          >
-            <Laptop size={12} />
-          </button>
-          <button
-            onClick={() => setViewport('tablet')}
-            className={`p-1.5 rounded-lg transition cursor-pointer hover:bg-slate-100 ${viewport === 'tablet' ? 'bg-slate-100 text-primary' : ''}`}
-          >
-            <TabletIcon size={12} />
-          </button>
-          <button
-            onClick={() => setViewport('mobile')}
-            className={`p-1.5 rounded-lg transition cursor-pointer hover:bg-slate-100 ${viewport === 'mobile' ? 'bg-slate-100 text-primary' : ''}`}
-          >
-            <Smartphone size={12} />
-          </button>
-          <div className="h-4 w-px bg-slate-200 mx-0.5" />
           <button className="p-1.5 hover:bg-slate-100 rounded-lg transition cursor-pointer">
             <RefreshCw size={12} />
           </button>
-          <button
-            type="button"
-            title="Phóng to Preview"
-            aria-label="Phóng to Preview"
-            onClick={openFullscreen}
-            className="p-1.5 hover:bg-indigo-50 hover:text-primary rounded-lg transition cursor-pointer"
-          >
-            <Maximize2 size={12} />
-          </button>
+          <Tooltip content="Phóng to Preview">
+            <button
+              type="button"
+              aria-label="Phóng to Preview"
+              onClick={openFullscreen}
+              className="p-1.5 hover:bg-indigo-50 hover:text-primary rounded-lg transition cursor-pointer"
+            >
+              <Maximize2 size={12} />
+            </button>
+          </Tooltip>
         </div>
       </div>
 
@@ -340,7 +393,7 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
           <div className="w-full h-fit rounded-2xl border border-dashed border-slate-200 bg-white/70 p-6 text-center text-[10px] font-bold text-slate-400">
             Preview đang mở ở chế độ phóng to
           </div>
-        ) : renderPreviewFrame(viewport)}
+        ) : renderPreviewFrame()}
       </div>
 
       {renderFullscreenOverlay()}

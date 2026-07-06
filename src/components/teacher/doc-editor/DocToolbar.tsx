@@ -21,6 +21,7 @@ import {
   Outdent,
   Check
 } from 'lucide-react';
+import { Tooltip } from './Tooltip';
 
 interface DocToolbarProps {
   onAiSuggest: () => void;
@@ -30,9 +31,9 @@ interface DocToolbarProps {
   onStrikethrough: () => void;
   onColorChange: (color: string) => void;
   onHighlightChange: (color: string) => void;
-  activeBlockType: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list';
+  activeBlockType: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code';
   activeBlockLevel?: 1 | 2 | 3;
-  onBlockTypeChange: (type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list', level?: 1 | 2 | 3) => void;
+  onBlockTypeChange: (type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code', level?: 1 | 2 | 3) => void;
   activeAlign: 'left' | 'center' | 'right' | 'justify';
   onAlignChange: (align: 'left' | 'center' | 'right' | 'justify') => void;
   onIndent: () => void;
@@ -42,13 +43,14 @@ interface DocToolbarProps {
   canUndo: boolean;
   canRedo: boolean;
   
-  // Selection formatting states for Toolbar synchronization
   isBold: boolean;
   isItalic: boolean;
   isUnderline: boolean;
   isStrikethrough: boolean;
   activeColor: string;
   activeHighlight: string;
+  activeFontSize: string;
+  onFontSizeChange: (size: string) => void;
 }
 
 const colorTextClasses: Record<string, string> = {
@@ -94,9 +96,12 @@ export const DocToolbar: React.FC<DocToolbarProps> = ({
   isUnderline,
   isStrikethrough,
   activeColor,
-  activeHighlight
+  activeHighlight,
+  activeFontSize,
+  onFontSizeChange
 }) => {
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+  const [showSizeDropdown, setShowSizeDropdown] = useState(false);
   const [showColorDropdown, setShowColorDropdown] = useState(false);
   const [showHighlightDropdown, setShowHighlightDropdown] = useState(false);
 
@@ -113,6 +118,8 @@ export const DocToolbar: React.FC<DocToolbarProps> = ({
     }
     return blockTypeLabels[activeBlockType] || 'Văn bản';
   };
+
+  const fontSizes = ['10', '12', '14', '16', '18', '20', '24', '28', '32', '36', '48', '64', '72'];
 
   const colors = [
     { name: 'Mặc định', value: '#1F2C3F' },
@@ -139,38 +146,47 @@ export const DocToolbar: React.FC<DocToolbarProps> = ({
   return (
     <div className="h-11 border-b border-slate-100 px-4 flex items-center gap-1 overflow-visible shrink-0 select-none bg-slate-50/20 relative z-20">
       {/* Undo/Redo */}
-      <button 
-        onClick={onUndo} 
-        disabled={!canUndo}
-        className={`p-1.5 rounded transition ${canUndo ? 'text-slate-600 hover:bg-slate-100 cursor-pointer' : 'text-slate-300'}`}
-        title="Undo (Ctrl+Z)"
-      >
-        <Undo size={13} />
-      </button>
-      <button 
-        onClick={onRedo} 
-        disabled={!canRedo}
-        className={`p-1.5 rounded transition ${canRedo ? 'text-slate-600 hover:bg-slate-100 cursor-pointer' : 'text-slate-300'}`}
-        title="Redo (Ctrl+Shift+Z / Ctrl+Y)"
-      >
-        <Redo size={13} />
-      </button>
+      <Tooltip content="Hoàn tác (Ctrl+Z)">
+        <button 
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={onUndo} 
+          disabled={!canUndo}
+          className={`p-1.5 rounded transition ${canUndo ? 'text-slate-600 hover:bg-slate-100 cursor-pointer' : 'text-slate-300'}`}
+        >
+          <Undo size={13} />
+        </button>
+      </Tooltip>
+
+      <Tooltip content="Làm lại (Ctrl+Shift+Z / Ctrl+Y)">
+        <button 
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={onRedo} 
+          disabled={!canRedo}
+          className={`p-1.5 rounded transition ${canRedo ? 'text-slate-600 hover:bg-slate-100 cursor-pointer' : 'text-slate-300'}`}
+        >
+          <Redo size={13} />
+        </button>
+      </Tooltip>
       
       <div className="h-4 w-px bg-slate-200 mx-1" />
       
       {/* Block Type Dropdown */}
       <div className="relative">
-        <button 
-          onClick={() => {
-            setShowTypeDropdown(!showTypeDropdown);
-            setShowColorDropdown(false);
-            setShowHighlightDropdown(false);
-          }}
-          className="px-2 py-1 text-[10px] font-black text-slate-655 hover:bg-slate-100 rounded transition flex items-center gap-1 cursor-pointer"
-        >
-          <span>{getActiveBlockLabel()}</span>
-          <ChevronDown size={10} />
-        </button>
+        <Tooltip content="Loại văn bản">
+          <button 
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              setShowTypeDropdown(!showTypeDropdown);
+              setShowSizeDropdown(false);
+              setShowColorDropdown(false);
+              setShowHighlightDropdown(false);
+            }}
+            className="px-2 py-1 text-[10px] font-black text-slate-655 hover:bg-slate-100 rounded transition flex items-center gap-1 cursor-pointer"
+          >
+            <span>{getActiveBlockLabel()}</span>
+            <ChevronDown size={10} />
+          </button>
+        </Tooltip>
 
         {showTypeDropdown && (
           <div className="absolute left-0 top-full mt-1 w-44 bg-white border border-slate-100 rounded-xl shadow-xl z-30 p-1.5 flex flex-col gap-0.5 animate-fadeIn">
@@ -247,60 +263,110 @@ export const DocToolbar: React.FC<DocToolbarProps> = ({
           </div>
         )}
       </div>
+
+      {/* Font Size Dropdown */}
+      <div className="relative">
+        <Tooltip content="Cỡ chữ">
+          <button 
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              setShowSizeDropdown(!showSizeDropdown);
+              setShowTypeDropdown(false);
+              setShowColorDropdown(false);
+              setShowHighlightDropdown(false);
+            }}
+            className="px-2 py-1 text-[10px] font-black text-slate-655 hover:bg-slate-100 rounded transition flex items-center gap-1 cursor-pointer"
+          >
+            <span>{activeFontSize}</span>
+            <ChevronDown size={10} />
+          </button>
+        </Tooltip>
+
+        {showSizeDropdown && (
+          <div className="absolute left-0 top-full mt-1 w-20 max-h-60 overflow-y-auto bg-white border border-slate-100 rounded-xl shadow-xl z-30 p-1 flex flex-col gap-0.5 animate-fadeIn">
+            {fontSizes.map(size => (
+              <button 
+                key={size}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  onFontSizeChange(size);
+                  setShowSizeDropdown(false);
+                }}
+                className={`px-3 py-1.5 text-center text-[10px] font-black rounded-lg cursor-pointer flex items-center justify-between ${
+                  activeFontSize === size ? 'bg-primary-light text-primary font-black' : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <span>{size}</span>
+                {activeFontSize === size && <Check size={10} />}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       
       <div className="h-4 w-px bg-slate-200 mx-1" />
 
       {/* Font styles */}
-      <button 
-        onMouseDown={(e) => e.preventDefault()} 
-        onClick={onBold} 
-        className={`p-1.5 rounded transition cursor-pointer ${isBold ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`} 
-        title="Bold (Ctrl+B)"
-      >
-        <Bold size={13} />
-      </button>
-      <button 
-        onMouseDown={(e) => e.preventDefault()} 
-        onClick={onItalic} 
-        className={`p-1.5 rounded transition cursor-pointer ${isItalic ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`} 
-        title="Italic (Ctrl+I)"
-      >
-        <Italic size={13} />
-      </button>
-      <button 
-        onMouseDown={(e) => e.preventDefault()} 
-        onClick={onUnderline} 
-        className={`p-1.5 rounded transition cursor-pointer ${isUnderline ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`} 
-        title="Underline (Ctrl+U)"
-      >
-        <Underline size={13} />
-      </button>
-      <button 
-        onMouseDown={(e) => e.preventDefault()} 
-        onClick={onStrikethrough} 
-        className={`p-1.5 rounded transition cursor-pointer ${isStrikethrough ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`} 
-        title="Strikethrough"
-      >
-        <Strikethrough size={13} />
-      </button>
+      <Tooltip content="In đậm (Ctrl+B)">
+        <button 
+          onMouseDown={(e) => e.preventDefault()} 
+          onClick={onBold} 
+          className={`p-1.5 rounded transition cursor-pointer ${isBold ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`} 
+        >
+          <Bold size={13} />
+        </button>
+      </Tooltip>
+
+      <Tooltip content="In nghiêng (Ctrl+I)">
+        <button 
+          onMouseDown={(e) => e.preventDefault()} 
+          onClick={onItalic} 
+          className={`p-1.5 rounded transition cursor-pointer ${isItalic ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`} 
+        >
+          <Italic size={13} />
+        </button>
+      </Tooltip>
+
+      <Tooltip content="Gạch chân (Ctrl+U)">
+        <button 
+          onMouseDown={(e) => e.preventDefault()} 
+          onClick={onUnderline} 
+          className={`p-1.5 rounded transition cursor-pointer ${isUnderline ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`} 
+        >
+          <Underline size={13} />
+        </button>
+      </Tooltip>
+
+      <Tooltip content="Gạch đè">
+        <button 
+          onMouseDown={(e) => e.preventDefault()} 
+          onClick={onStrikethrough} 
+          className={`p-1.5 rounded transition cursor-pointer ${isStrikethrough ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`} 
+        >
+          <Strikethrough size={13} />
+        </button>
+      </Tooltip>
       
       {/* Text Color Picker */}
       <div className="relative">
-        <button 
-          onClick={() => {
-            setShowColorDropdown(!showColorDropdown);
-            setShowHighlightDropdown(false);
-            setShowTypeDropdown(false);
-          }}
-          className="p-1.5 text-slate-655 hover:bg-slate-100 rounded transition cursor-pointer flex items-center gap-0.5" 
-          title="Màu chữ"
-        >
-          <span className="flex flex-col items-center justify-center relative">
-            <Baseline size={13} className={colorTextClasses[normalizedActiveColor] || 'text-slate-655'} />
-            <span className={`w-3.5 h-[2px] mt-0.5 rounded-full ${colorTextClasses[normalizedActiveColor] ? 'bg-current' : 'bg-slate-400'}`} />
-          </span>
-          <ChevronDown size={8} />
-        </button>
+        <Tooltip content="Màu chữ">
+          <button 
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              setShowColorDropdown(!showColorDropdown);
+              setShowHighlightDropdown(false);
+              setShowTypeDropdown(false);
+              setShowSizeDropdown(false);
+            }}
+            className="p-1.5 text-slate-655 hover:bg-slate-100 rounded transition cursor-pointer flex items-center gap-0.5" 
+          >
+            <span className="flex flex-col items-center justify-center relative">
+              <Baseline size={13} className={colorTextClasses[normalizedActiveColor] || 'text-slate-655'} />
+              <span className={`w-3.5 h-[2px] mt-0.5 rounded-full ${colorTextClasses[normalizedActiveColor] ? 'bg-current' : 'bg-slate-400'}`} />
+            </span>
+            <ChevronDown size={8} />
+          </button>
+        </Tooltip>
         {showColorDropdown && (
           <div className="absolute left-0 top-full mt-1 w-32 bg-white border border-slate-100 rounded-xl shadow-xl z-30 p-1 flex flex-col gap-0.5 animate-fadeIn">
             {colors.map(c => (
@@ -325,21 +391,24 @@ export const DocToolbar: React.FC<DocToolbarProps> = ({
 
       {/* Text Highlight Picker */}
       <div className="relative">
-        <button 
-          onClick={() => {
-            setShowHighlightDropdown(!showHighlightDropdown);
-            setShowColorDropdown(false);
-            setShowTypeDropdown(false);
-          }}
-          className="p-1.5 text-slate-655 hover:bg-slate-100 rounded transition cursor-pointer flex items-center gap-0.5" 
-          title="Màu nền chữ (Highlight)"
-        >
-          <span className="flex flex-col items-center justify-center relative">
-            <Highlighter size={13} className={normalizedActiveHighlight !== 'transparent' ? 'text-primary' : 'text-slate-655'} />
-            <span className={`w-3.5 h-1 border rounded-sm mt-0.5 ${highlightBgClasses[normalizedActiveHighlight] || 'bg-transparent border-slate-300'}`} />
-          </span>
-          <ChevronDown size={8} />
-        </button>
+        <Tooltip content="Màu nền chữ">
+          <button 
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              setShowHighlightDropdown(!showHighlightDropdown);
+              setShowColorDropdown(false);
+              setShowTypeDropdown(false);
+              setShowSizeDropdown(false);
+            }}
+            className="p-1.5 text-slate-655 hover:bg-slate-100 rounded transition cursor-pointer flex items-center gap-0.5" 
+          >
+            <span className="flex flex-col items-center justify-center relative">
+              <Highlighter size={13} className={normalizedActiveHighlight !== 'transparent' ? 'text-primary' : 'text-slate-655'} />
+              <span className={`w-3.5 h-1 border rounded-sm mt-0.5 ${highlightBgClasses[normalizedActiveHighlight] || 'bg-transparent border-slate-300'}`} />
+            </span>
+            <ChevronDown size={8} />
+          </button>
+        </Tooltip>
         {showHighlightDropdown && (
           <div className="absolute left-0 top-full mt-1 w-32 bg-white border border-slate-100 rounded-xl shadow-xl z-30 p-1 flex flex-col gap-0.5 animate-fadeIn">
             {highlights.map(h => (
@@ -365,79 +434,103 @@ export const DocToolbar: React.FC<DocToolbarProps> = ({
       <div className="h-4 w-px bg-slate-200 mx-1" />
 
       {/* Alignment */}
-      <button 
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => onAlignChange('left')}
-        className={`p-1.5 rounded transition cursor-pointer ${activeAlign === 'left' ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`}
-        title="Căn lề trái"
-      >
-        <AlignLeft size={13} />
-      </button>
-      <button 
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => onAlignChange('center')}
-        className={`p-1.5 rounded transition cursor-pointer ${activeAlign === 'center' ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`}
-        title="Căn giữa"
-      >
-        <AlignCenter size={13} />
-      </button>
-      <button 
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => onAlignChange('right')}
-        className={`p-1.5 rounded transition cursor-pointer ${activeAlign === 'right' ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`}
-        title="Căn lề phải"
-      >
-        <AlignRight size={13} />
-      </button>
-      <button 
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => onAlignChange('justify')}
-        className={`p-1.5 rounded transition cursor-pointer ${activeAlign === 'justify' ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`}
-        title="Căn đều"
-      >
-        <AlignJustify size={13} />
-      </button>
+      <Tooltip content="Căn trái">
+        <button 
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onAlignChange('left')}
+          className={`p-1.5 rounded transition cursor-pointer ${activeAlign === 'left' ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`}
+        >
+          <AlignLeft size={13} />
+        </button>
+      </Tooltip>
+
+      <Tooltip content="Căn giữa">
+        <button 
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onAlignChange('center')}
+          className={`p-1.5 rounded transition cursor-pointer ${activeAlign === 'center' ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`}
+        >
+          <AlignCenter size={13} />
+        </button>
+      </Tooltip>
+
+      <Tooltip content="Căn phải">
+        <button 
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onAlignChange('right')}
+          className={`p-1.5 rounded transition cursor-pointer ${activeAlign === 'right' ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`}
+        >
+          <AlignRight size={13} />
+        </button>
+      </Tooltip>
+
+      <Tooltip content="Căn đều">
+        <button 
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onAlignChange('justify')}
+          className={`p-1.5 rounded transition cursor-pointer ${activeAlign === 'justify' ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`}
+        >
+          <AlignJustify size={13} />
+        </button>
+      </Tooltip>
       
       <div className="h-4 w-px bg-slate-200 mx-1" />
 
       {/* List actions */}
-      <button 
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => onBlockTypeChange('bullet-list')}
-        className={`p-1.5 rounded transition cursor-pointer ${activeBlockType === 'bullet-list' ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`}
-        title="Danh sách chấm (Ctrl+Shift+8)"
-      >
-        <List size={13} />
-      </button>
-      <button 
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => onBlockTypeChange('numbered-list')}
-        className={`p-1.5 rounded transition cursor-pointer ${activeBlockType === 'numbered-list' ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`}
-        title="Danh sách số (Ctrl+Shift+7)"
-      >
-        <ListOrdered size={13} />
-      </button>
-      <button 
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => onBlockTypeChange('todo-list')}
-        className={`p-1.5 rounded transition cursor-pointer ${activeBlockType === 'todo-list' ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`}
-        title="Danh sách công việc (Ctrl+Shift+9)"
-      >
-        <SquareCheck size={13} />
-      </button>
+      <Tooltip content="Danh sách chấm (Ctrl+Shift+8)">
+        <button 
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onBlockTypeChange('bullet-list')}
+          className={`p-1.5 rounded transition cursor-pointer ${activeBlockType === 'bullet-list' ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`}
+        >
+          <List size={13} />
+        </button>
+      </Tooltip>
+
+      <Tooltip content="Danh sách số (Ctrl+Shift+7)">
+        <button 
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onBlockTypeChange('numbered-list')}
+          className={`p-1.5 rounded transition cursor-pointer ${activeBlockType === 'numbered-list' ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`}
+        >
+          <ListOrdered size={13} />
+        </button>
+      </Tooltip>
+
+      <Tooltip content="Danh sách công việc (Ctrl+Shift+9)">
+        <button 
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onBlockTypeChange('todo-list')}
+          className={`p-1.5 rounded transition cursor-pointer ${activeBlockType === 'todo-list' ? 'bg-primary-light text-primary' : 'text-slate-655 hover:bg-slate-100'}`}
+        >
+          <SquareCheck size={13} />
+        </button>
+      </Tooltip>
 
       {/* Indentation */}
-      <button onMouseDown={(e) => e.preventDefault()} onClick={onOutdent} className="p-1.5 text-slate-655 hover:bg-slate-100 rounded transition cursor-pointer" title="Lùi lề trái (Shift+Tab)"><Outdent size={13} /></button>
-      <button onMouseDown={(e) => e.preventDefault()} onClick={onIndent} className="p-1.5 text-slate-655 hover:bg-slate-100 rounded transition cursor-pointer" title="Thụt lề (Tab)"><Indent size={13} /></button>
+      <Tooltip content="Lùi lề trái (Shift+Tab)">
+        <button onMouseDown={(e) => e.preventDefault()} onClick={onOutdent} className="p-1.5 text-slate-655 hover:bg-slate-100 rounded transition cursor-pointer">
+          <Outdent size={13} />
+        </button>
+      </Tooltip>
+
+      <Tooltip content="Thụt lề (Tab)">
+        <button onMouseDown={(e) => e.preventDefault()} onClick={onIndent} className="p-1.5 text-slate-655 hover:bg-slate-100 rounded transition cursor-pointer">
+          <Indent size={13} />
+        </button>
+      </Tooltip>
       
       <div className="h-4 w-px bg-slate-200 mx-1" />
 
-      <button 
-        onClick={onAiSuggest}
-        className="px-2.5 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-[9px] font-black rounded-lg flex items-center gap-1.5 transition select-none cursor-pointer"
-      >
-        <Sparkles size={11} /> AI Gợi ý
-      </button>
+      <Tooltip content="AI Gợi ý">
+        <button 
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={onAiSuggest}
+          className="px-2.5 py-1.5 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 text-[9px] font-black rounded-lg flex items-center gap-1.5 transition select-none cursor-pointer"
+        >
+          <Sparkles size={11} /> AI Gợi ý
+        </button>
+      </Tooltip>
     </div>
   );
 };

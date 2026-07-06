@@ -1,102 +1,181 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   ChevronLeft, 
   Save, 
-  Eye, 
   Send, 
   FileCheck2, 
   Brain, 
-  Image as ImageIcon, 
-  Table, 
+  ImageIcon, 
+  Table as TableIcon, 
   Activity, 
   HelpCircle, 
   Award, 
   FolderOpen, 
   Video,
-  X as CloseIcon
+  GripVertical
 } from 'lucide-react';
 import { DocSidebar } from './DocSidebar';
 import { DocToolbar } from './DocToolbar';
 import { DocPreviewSimulator } from './DocPreviewSimulator';
+import { BlockContextMenu } from './BlockContextMenu';
+import { Tooltip } from './Tooltip';
+import { useAlert } from '../../common/Alert';
+import { BlockRenderer } from './blocks/BlockRenderer';
+import { uploadImageFile } from '../../../services/imageUploadService';
+import type { Chapter, Lesson } from './DocSidebar';
 import type { DocBlock } from './DocPreviewSimulator';
 
 interface DocEditorWorkspaceProps {
   setMode: (mode: 'dashboard' | 'editor' | 'upload' | 'exam-editor') => void;
 }
 
-const initialBlocks: Record<string, DocBlock[]> = {
-  water: [
-    {
-      id: 'w1',
-      type: 'heading',
-      level: 1,
-      text: '1. Nguyên tố hóa học và Nước',
-      align: 'left',
-      indent: 0
-    },
-    {
-      id: 'w2',
-      type: 'paragraph',
-      text: 'Có khoảng 25 nguyên tố cần thiết cấu tạo nên cơ thể sống. Đại lượng carbon là nguyên tố cốt lõi vì cấu tạo liên kết hóa học đa dạng. Nước đóng vai trò dung môi hòa tan, môi trường phản ứng sinh hóa, giúp điều hòa nhiệt độ tế bào.',
-      align: 'left',
-      indent: 0
-    },
-    {
-      id: 'w3',
-      type: 'callout',
-      text: 'Chiếm khoảng 70 - 90% khối lượng tế bào, tham gia vào hầu hết các quá trình sinh học quan trọng.',
-      align: 'left',
-      indent: 0
-    }
-  ],
-  macromolecules: [
-    {
-      id: 'm1',
-      type: 'heading',
-      level: 1,
-      text: '2. Các đại phân tử hữu cơ',
-      align: 'left',
-      indent: 0
-    },
-    {
-      id: 'm2',
-      type: 'paragraph',
-      text: 'Tế bào gồm 4 nhóm đại phân tử chính:',
-      align: 'left',
-      indent: 0
-    },
-    {
-      id: 'm3',
-      type: 'bullet-list',
-      text: 'Carbohydrate (Đường): cung cấp năng lượng và cấu trúc thành tế bào.',
-      align: 'left',
-      indent: 0
-    },
-    {
-      id: 'm4',
-      type: 'bullet-list',
-      text: 'Lipid (Chất béo): dự trữ năng lượng dài hạn, cấu tạo màng sinh chất.',
-      align: 'left',
-      indent: 0
-    },
-    {
-      id: 'm5',
-      type: 'bullet-list',
-      text: 'Protein: đảm nhiệm mọi chức năng sống (xúc tác, vận chuyển, cấu trúc).',
-      align: 'left',
-      indent: 0
-    },
-    {
-      id: 'm6',
-      type: 'bullet-list',
-      text: 'Axit nucleic (DNA, RNA): lưu trữ và truyền đạt thông tin di truyền.',
-      align: 'left',
-      indent: 0
-    }
-  ]
-};
+const initialChapters: Chapter[] = [
+  {
+    id: 'ch1',
+    title: 'Chương I. Thành phần hóa học của tế bào',
+    isExpanded: true,
+    lessons: [
+      {
+        id: 'water',
+        title: '1. Nguyên tố hóa & Nước',
+        blocks: [
+          {
+            id: 'w1',
+            type: 'heading',
+            level: 1,
+            text: '1. Nguyên tố hóa học và Nước',
+            align: 'left',
+            indent: 0
+          },
+          {
+            id: 'w2',
+            type: 'paragraph',
+            text: 'Có khoảng 25 nguyên tố cần thiết cấu tạo nên cơ thể sống. Đại lượng carbon là nguyên tố cốt lõi vì cấu tạo liên kết hóa học đa dạng. Nước đóng vai trò dung môi hòa tan, môi trường phản ứng sinh hóa, giúp điều hòa nhiệt độ tế bào.',
+            align: 'left',
+            indent: 0
+          },
+          {
+            id: 'w3',
+            type: 'callout',
+            text: 'Chiếm khoảng 70 - 90% khối lượng tế bào, tham gia vào hầu hết các quá trình sinh học quan trọng.',
+            align: 'left',
+            indent: 0
+          }
+        ]
+      },
+      {
+        id: 'macromolecules',
+        title: '2. Các đại phân tử hữu cơ',
+        blocks: [
+          {
+            id: 'm1',
+            type: 'heading',
+            level: 1,
+            text: '2. Các đại phân tử hữu cơ',
+            align: 'left',
+            indent: 0
+          },
+          {
+            id: 'm2',
+            type: 'paragraph',
+            text: 'Tế bào gồm 4 nhóm đại phân tử chính:',
+            align: 'left',
+            indent: 0
+          },
+          {
+            id: 'm3',
+            type: 'bullet-list',
+            text: 'Carbohydrate (Đường): cung cấp năng lượng và cấu trúc thành tế bào.',
+            align: 'left',
+            indent: 0
+          },
+          {
+            id: 'm4',
+            type: 'bullet-list',
+            text: 'Lipid (Chất béo): dự trữ năng lượng dài hạn, cấu tạo màng sinh chất.',
+            align: 'left',
+            indent: 0
+          },
+          {
+            id: 'm5',
+            type: 'bullet-list',
+            text: 'Protein: đảm nhiệm mọi chức năng sống (xúc tác, vận chuyển, cấu trúc).',
+            align: 'left',
+            indent: 0
+          },
+          {
+            id: 'm6',
+            type: 'bullet-list',
+            text: 'Axit nucleic (DNA, RNA): lưu trữ và truyền đạt thông tin di truyền.',
+            align: 'left',
+            indent: 0
+          }
+        ]
+      },
+      {
+        id: 'enzyme',
+        title: '3. Enzyme và vai trò',
+        blocks: [
+          {
+            id: 'e1',
+            type: 'heading',
+            level: 1,
+            text: '3. Enzyme và vai trò',
+            align: 'left',
+            indent: 0
+          },
+          {
+            id: 'e2',
+            type: 'paragraph',
+            text: 'Enzyme là chất xúc tác sinh học có bản chất là protein, giúp tăng tốc độ các phản ứng hóa học trong tế bào mà không bị biến đổi sau phản ứng.',
+            align: 'left',
+            indent: 0
+          }
+        ]
+      },
+      {
+        id: 'vitamin',
+        title: '4. Vitamin và khoáng chất',
+        blocks: [
+          {
+            id: 'v1',
+            type: 'heading',
+            level: 1,
+            text: '4. Vitamin và khoáng chất',
+            align: 'left',
+            indent: 0
+          },
+          {
+            id: 'v2',
+            type: 'paragraph',
+            text: 'Vitamin và khoáng chất là các chất dinh dưỡng vi lượng thiết yếu, tham gia cấu tạo tế bào và xúc tác hoạt động sống.',
+            align: 'left',
+            indent: 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'ch2',
+    title: 'Chương II. Cấu trúc tế bào',
+    isExpanded: false,
+    lessons: []
+  },
+  {
+    id: 'ch3',
+    title: 'Chương III. Chuyển hóa vật chất...',
+    isExpanded: false,
+    lessons: []
+  },
+  {
+    id: 'ch4',
+    title: 'Chương IV. Sinh trưởng và phát...',
+    isExpanded: false,
+    lessons: []
+  }
+];
 
-// Local helper to calculate nested list index
 const getNumberedIndex = (blocks: DocBlock[], index: number): string => {
   const currentBlock = blocks[index];
   if (!currentBlock || currentBlock.type !== 'numbered-list') return '1.';
@@ -122,64 +201,113 @@ const getNumberedIndex = (blocks: DocBlock[], index: number): string => {
   return `${count}.`;
 };
 
-export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode }) => {
-  const [showPreview, setShowPreview] = useState(true);
-  const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('mobile');
-  const [ch1Expanded, setCh1Expanded] = useState(true);
-  const [selectedPage, setSelectedPage] = useState<'water' | 'macromolecules'>('water');
+const COMMAND_OPTIONS = [
+  { type: 'paragraph', label: 'Văn bản (Paragraph)', desc: 'Văn bản thường', icon: 'Type' },
+  { type: 'heading-1', label: 'Tiêu đề 1 (Heading 1)', desc: 'Tiêu đề lớn cỡ 1', icon: 'Heading1' },
+  { type: 'heading-2', label: 'Tiêu đề 2 (Heading 2)', desc: 'Tiêu đề vừa cỡ 2', icon: 'Heading2' },
+  { type: 'heading-3', label: 'Tiêu đề 3 (Heading 3)', desc: 'Tiêu đề nhỏ cỡ 3', icon: 'Heading3' },
+  { type: 'quote', label: 'Trích dẫn (Quote)', desc: 'Tạo đoạn trích dẫn', icon: 'Quote' },
+  { type: 'callout', label: 'Hộp lưu ý (Callout)', desc: 'Tạo hộp lưu ý', icon: 'MessageSquare' },
+  { type: 'divider', label: 'Dấu phân cách (Divider)', desc: 'Đường gạch ngang', icon: 'Minus' },
+  { type: 'image', label: 'Hình ảnh (Image)', desc: 'Chèn ảnh liên kết', icon: 'ImageIcon' },
+  { type: 'table', label: 'Bảng (Table)', desc: 'Chèn bảng dữ liệu', icon: 'Table' },
+  { type: 'formula', label: 'Công thức (Formula)', desc: 'Chèn công thức LaTeX', icon: 'Variable' },
+  { type: 'code', label: 'Mã nguồn (Code)', desc: 'Khối code snippet', icon: 'Code' },
+];
 
-  // Pages Block state
-  const [pagesData, setPagesData] = useState<Record<string, DocBlock[]>>(initialBlocks);
+export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode }) => {
+  const { showAlert, showConfirm } = useAlert();
+  const [showPreview, setShowPreview] = useState(true);
+  const [activeLessonId, setActiveLessonId] = useState<string>('water');
+  const [chapters, setChapters] = useState<Chapter[]>(initialChapters);
   const [activeBlockIndex, setActiveBlockIndex] = useState<number>(0);
 
-  // History stack for Undo/Redo
-  const [history, setHistory] = useState<Record<string, DocBlock[]>[]>([]);
+  // Slash Command states
+  const [showSlashMenu, setShowSlashMenu] = useState(false);
+  const [slashQuery, setSlashQuery] = useState('');
+  const [slashMenuIndex, setSlashMenuIndex] = useState(0);
+  const [slashMenuCoords, setSlashMenuCoords] = useState({ top: 0, left: 0 });
+
+  // Selection states
+  const [selectedChapterId, setSelectedChapterId] = useState<string | null>('ch1');
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [newItems, setNewItems] = useState<string[]>([]);
+
+  const [history, setHistory] = useState<Chapter[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingFontSizeRef = useRef<string>('16');
 
   // Initialize history
   useEffect(() => {
-    setHistory([initialBlocks]);
+    setHistory([initialChapters]);
     setHistoryIndex(0);
   }, []);
 
-  const pushHistoryState = (newPagesData: Record<string, DocBlock[]>, isDebounced = false) => {
-    setPagesData(newPagesData);
+  // Set coordinates for Slash Command menu popover
+  useEffect(() => {
+    if (showSlashMenu) {
+      const activeEl = document.getElementById(`block-editor-${activeBlockIndex}`);
+      if (activeEl) {
+        const rect = activeEl.getBoundingClientRect();
+        const scrollParent = activeEl.closest('.overflow-y-auto') as HTMLElement;
+        if (scrollParent) {
+          const parentRect = scrollParent.getBoundingClientRect();
+          const top = (rect.bottom - parentRect.top) + scrollParent.scrollTop + 6;
+          const left = (rect.left - parentRect.left) + scrollParent.scrollLeft;
+          setSlashMenuCoords({ top, left });
+        }
+      }
+    }
+  }, [showSlashMenu, activeBlockIndex]);
 
-    const currentHistory = history.slice(0, historyIndex + 1);
+  const pushHistoryState = useCallback((newChapters: Chapter[], isDebounced = false) => {
+    setChapters(newChapters);
 
     if (isDebounced) {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = setTimeout(() => {
         setHistory(prev => {
           const nextHist = prev.slice(0, historyIndex + 1);
-          return [...nextHist, newPagesData];
+          return [...nextHist, newChapters];
         });
         setHistoryIndex(prev => prev + 1);
       }, 400);
     } else {
-      setHistory([...currentHistory, newPagesData]);
-      setHistoryIndex(currentHistory.length);
+      setHistory(prev => {
+        const nextHist = prev.slice(0, historyIndex + 1);
+        return [...nextHist, newChapters];
+      });
+      setHistoryIndex(prev => prev + 1);
     }
-  };
+  }, [historyIndex]);
 
-  const handleUndo = () => {
+  const handleUndo = useCallback(() => {
     if (historyIndex > 0) {
       const nextIndex = historyIndex - 1;
       setHistoryIndex(nextIndex);
-      setPagesData(history[nextIndex]);
+      setChapters(history[nextIndex]);
     }
-  };
+  }, [history, historyIndex]);
 
-  const handleRedo = () => {
+  const handleRedo = useCallback(() => {
     if (historyIndex < history.length - 1) {
       const nextIndex = historyIndex + 1;
       setHistoryIndex(nextIndex);
-      setPagesData(history[nextIndex]);
+      setChapters(history[nextIndex]);
     }
-  };
+  }, [history, historyIndex]);
 
-  const currentBlocks = pagesData[selectedPage] || [];
+  const findLessonById = useCallback((id: string, list: Chapter[] = chapters): Lesson | null => {
+    for (const ch of list) {
+      const lesson = ch.lessons.find(l => l.id === id);
+      if (lesson) return lesson;
+    }
+    return null;
+  }, [chapters]);
+
+  const activeLesson = useMemo(() => findLessonById(activeLessonId), [activeLessonId, findLessonById]);
+  const currentBlocks = useMemo(() => activeLesson ? activeLesson.blocks : [], [activeLesson]);
   const activeBlock = currentBlocks[activeBlockIndex] || {
     type: 'paragraph',
     align: 'left',
@@ -194,7 +322,8 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     isUnderline: false,
     isStrikethrough: false,
     activeColor: '#1F2C3F',
-    activeHighlight: 'transparent'
+    activeHighlight: 'transparent',
+    activeFontSize: '16'
   });
 
   const rgbToHex = (colorVal: string): string => {
@@ -213,8 +342,34 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     return `#${r}${g}${b}`.toUpperCase();
   };
 
-  const syncCaretFormatting = () => {
+  const syncCaretFormatting = useCallback(() => {
     try {
+      const selection = window.getSelection();
+      let isInsideEditor = false;
+      if (selection && selection.anchorNode) {
+        let node: Node | null = selection.anchorNode;
+        while (node && node !== document.body) {
+          if (node instanceof HTMLElement && node.id && node.id.startsWith('block-editor-')) {
+            isInsideEditor = true;
+            break;
+          }
+          node = node.parentNode;
+        }
+      }
+
+      if (!isInsideEditor) {
+        setCaretFormatting({
+          isBold: false,
+          isItalic: false,
+          isUnderline: false,
+          isStrikethrough: false,
+          activeColor: '#1F2C3F',
+          activeHighlight: 'transparent',
+          activeFontSize: '16'
+        });
+        return;
+      }
+
       const isBold = document.queryCommandState('bold');
       const isItalic = document.queryCommandState('italic');
       const isUnderline = document.queryCommandState('underline');
@@ -226,17 +381,31 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       activeColor = rgbToHex(activeColor);
       activeHighlight = rgbToHex(activeHighlight);
 
+      let activeFontSize = '16';
+      if (selection && selection.anchorNode) {
+        let node: Node | null = selection.anchorNode;
+        while (node && node !== document.body) {
+          if (node instanceof HTMLElement) {
+            const size = node.style.fontSize;
+            if (size) {
+              activeFontSize = size.replace('px', '');
+              break;
+            }
+          }
+          node = node.parentNode;
+        }
+      }
+
       setCaretFormatting({
         isBold,
         isItalic,
         isUnderline,
         isStrikethrough,
         activeColor,
-        activeHighlight
+        activeHighlight,
+        activeFontSize
       });
 
-      // Synchronize activeBlockIndex if anchorNode belongs to a block element
-      const selection = window.getSelection();
       if (selection && selection.anchorNode) {
         let node: Node | null = selection.anchorNode;
         while (node && node !== document.body) {
@@ -252,9 +421,9 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
         }
       }
     } catch {
-      // Ignore errors when queryCommandState isn't available
+      // Ignore
     }
-  };
+  }, [activeBlockIndex]);
 
   useEffect(() => {
     const handleSelectionChange = () => {
@@ -264,126 +433,205 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
     };
-  }, [activeBlockIndex, pagesData, selectedPage]);
+  }, [syncCaretFormatting]);
 
-  const executeFormat = (command: string, value: string = '') => {
+  const updateBlockText = useCallback((index: number, newHtml: string) => {
+    let cleanHtml = newHtml;
+    if (cleanHtml.includes('size="7"') || cleanHtml.includes("size='7'") || cleanHtml.includes("size=7")) {
+      const size = pendingFontSizeRef.current;
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = cleanHtml;
+      const fonts = tempDiv.querySelectorAll('font[size="7"]');
+      fonts.forEach(font => {
+        const span = document.createElement('span');
+        span.style.fontSize = `${size}px`;
+        span.innerHTML = font.innerHTML;
+        font.parentNode?.replaceChild(span, font);
+      });
+      cleanHtml = tempDiv.innerHTML;
+    }
+
+    const plainText = cleanHtml.replace(/<[^>]*>/g, '').trim();
+    if (plainText.startsWith('/')) {
+      setShowSlashMenu(true);
+      setSlashQuery(plainText.substring(1));
+    } else {
+      setShowSlashMenu(false);
+    }
+
+    setChapters(prev => {
+      const nextChapters = prev.map(ch => ({
+        ...ch,
+        lessons: ch.lessons.map(lesson => {
+          if (lesson.id === activeLessonId) {
+            return {
+              ...lesson,
+              blocks: lesson.blocks.map((b, idx) => 
+                idx === index ? { ...b, text: cleanHtml } : b
+              )
+            };
+          }
+          return lesson;
+        })
+      }));
+      pushHistoryState(nextChapters, true);
+      return nextChapters;
+    });
+  }, [activeLessonId, pushHistoryState]);
+
+  const executeFormat = useCallback((command: string, value: string = '') => {
     document.execCommand(command, false, value);
     const activeEl = document.getElementById(`block-editor-${activeBlockIndex}`);
     if (activeEl) {
       updateBlockText(activeBlockIndex, activeEl.innerHTML);
     }
     syncCaretFormatting();
-  };
+  }, [activeBlockIndex, updateBlockText, syncCaretFormatting]);
 
-  const updateBlockText = (index: number, newHtml: string) => {
-    const updatedBlocks = currentBlocks.map((b, idx) => 
-      idx === index ? { ...b, text: newHtml } : b
-    );
-    pushHistoryState({ ...pagesData, [selectedPage]: updatedBlocks }, true);
-  };
+  const handleColorChange = useCallback((color: string) => {
+    const targetColor = caretFormatting.activeColor === rgbToHex(color) ? '#1F2C3F' : color;
+    executeFormat('foreColor', targetColor);
+  }, [caretFormatting.activeColor, executeFormat]);
 
-  const toggleBlockType = (type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list', level?: 1 | 2 | 3) => {
-    const updatedBlocks = currentBlocks.map((b, idx) => 
-      idx === activeBlockIndex ? { ...b, type, level: level ?? undefined } : b
-    );
-    pushHistoryState({ ...pagesData, [selectedPage]: updatedBlocks });
-  };
+  const handleHighlightChange = useCallback((color: string) => {
+    const targetHighlight = caretFormatting.activeHighlight === rgbToHex(color) ? 'transparent' : color;
+    executeFormat('backColor', targetHighlight);
+  }, [caretFormatting.activeHighlight, executeFormat]);
 
-  const toggleBlockAlign = (align: 'left' | 'center' | 'right' | 'justify') => {
-    const updatedBlocks = currentBlocks.map((b, idx) => 
-      idx === activeBlockIndex ? { ...b, align } : b
-    );
-    pushHistoryState({ ...pagesData, [selectedPage]: updatedBlocks });
-  };
-
-  const indentBlock = (index = activeBlockIndex) => {
-    const updatedBlocks = currentBlocks.map((b, idx) => 
-      idx === index ? { ...b, indent: Math.min(5, (b.indent || 0) + 1) } : b
-    );
-    pushHistoryState({ ...pagesData, [selectedPage]: updatedBlocks });
-  };
-
-  const outdentBlock = (index = activeBlockIndex) => {
-    const updatedBlocks = currentBlocks.map((b, idx) => 
-      idx === index ? { ...b, indent: Math.max(0, (b.indent || 0) - 1) } : b
-    );
-    pushHistoryState({ ...pagesData, [selectedPage]: updatedBlocks });
-  };
-
-  const toggleTodoChecked = (index: number) => {
-    const updatedBlocks = currentBlocks.map((b, idx) => 
-      idx === index ? { ...b, checked: !b.checked } : b
-    );
-    pushHistoryState({ ...pagesData, [selectedPage]: updatedBlocks });
-  };
-
-  const deleteBlock = (index: number) => {
-    if (currentBlocks.length <= 1) return; // Prevent deleting the only remaining block
-    const updatedBlocks = currentBlocks.filter((_, idx) => idx !== index);
-    pushHistoryState({ ...pagesData, [selectedPage]: updatedBlocks });
-    const targetIdx = Math.max(0, index - 1);
-    setActiveBlockIndex(targetIdx);
-    focusBlock(targetIdx);
-  };
-
-  const insertBlockBelow = (index: number) => {
-    const newBlock: DocBlock = {
-      id: Math.random().toString(36).substr(2, 9),
-      type: 'paragraph',
-      text: '',
-      align: 'left',
-      indent: currentBlocks[index].indent || 0
-    };
-    const updatedBlocks = [
-      ...currentBlocks.slice(0, index + 1),
-      newBlock,
-      ...currentBlocks.slice(index + 1)
-    ];
-    pushHistoryState({ ...pagesData, [selectedPage]: updatedBlocks });
-    setActiveBlockIndex(index + 1);
-    focusBlock(index + 1);
-  };
-
-  const handleBackspaceAtStart = (index: number) => {
-    const block = currentBlocks[index];
-
-    if (block.indent && block.indent > 0) {
-      outdentBlock(index);
-      return;
+  const applyFontSize = useCallback((size: string) => {
+    pendingFontSizeRef.current = size;
+    document.execCommand('fontSize', false, '7');
+    
+    const activeEl = document.getElementById(`block-editor-${activeBlockIndex}`);
+    if (activeEl) {
+      const fonts = activeEl.querySelectorAll('font[size="7"]');
+      fonts.forEach(font => {
+        const span = document.createElement('span');
+        span.style.fontSize = `${size}px`;
+        span.innerHTML = font.innerHTML;
+        font.parentNode?.replaceChild(span, font);
+      });
+      updateBlockText(activeBlockIndex, activeEl.innerHTML);
     }
+    syncCaretFormatting();
+  }, [activeBlockIndex, updateBlockText, syncCaretFormatting]);
 
-    if (block.type !== 'paragraph') {
-      const updatedBlocks = currentBlocks.map((b, idx) => 
-        idx === index ? { ...b, type: 'paragraph' as const } : b
-      );
-      pushHistoryState({ ...pagesData, [selectedPage]: updatedBlocks });
-      return;
-    }
+  const toggleBlockType = useCallback((type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code', level?: 1 | 2 | 3) => {
+    setChapters(prev => {
+      const nextChapters = prev.map(ch => ({
+        ...ch,
+        lessons: ch.lessons.map(lesson => {
+          if (lesson.id === activeLessonId) {
+            return {
+              ...lesson,
+              blocks: lesson.blocks.map((b, idx) => {
+                if (idx === activeBlockIndex) {
+                  const isSameType = b.type === type && (type !== 'heading' || b.level === level);
+                  if (isSameType && type !== 'paragraph') {
+                    return { ...b, type: 'paragraph' as const, level: undefined };
+                  }
+                  return { ...b, type, level: level ?? undefined };
+                }
+                return b;
+              })
+            };
+          }
+          return lesson;
+        })
+      }));
+      pushHistoryState(nextChapters);
+      return nextChapters;
+    });
+  }, [activeLessonId, activeBlockIndex, pushHistoryState]);
 
-    if (index > 0) {
-      const prevBlock = currentBlocks[index - 1];
-      const updatedBlocks = currentBlocks.filter((_, idx) => idx !== index);
-      updatedBlocks[index - 1] = {
-        ...prevBlock,
-        text: prevBlock.text + block.text
-      };
-      pushHistoryState({ ...pagesData, [selectedPage]: updatedBlocks });
-      setActiveBlockIndex(index - 1);
-      
-      setTimeout(() => {
-        const prevEl = document.getElementById(`block-editor-${index - 1}`);
-        if (prevEl) {
-          prevEl.focus();
-          const selection = window.getSelection();
-          const range = document.createRange();
-          range.selectNodeContents(prevEl);
-          range.collapse(false);
-          selection?.removeAllRanges();
-          selection?.addRange(range);
-        }
-      }, 50);
-    }
-  };
+  const toggleBlockAlign = useCallback((align: 'left' | 'center' | 'right' | 'justify') => {
+    setChapters(prev => {
+      const nextChapters = prev.map(ch => ({
+        ...ch,
+        lessons: ch.lessons.map(lesson => {
+          if (lesson.id === activeLessonId) {
+            return {
+              ...lesson,
+              blocks: lesson.blocks.map((b, idx) => {
+                if (idx === activeBlockIndex) {
+                  const isSameAlign = (b.align || 'left') === align;
+                  const targetAlign = isSameAlign && align !== 'left' ? 'left' : align;
+                  return { ...b, align: targetAlign };
+                }
+                return b;
+              })
+            };
+          }
+          return lesson;
+        })
+      }));
+      pushHistoryState(nextChapters);
+      return nextChapters;
+    });
+  }, [activeLessonId, activeBlockIndex, pushHistoryState]);
+
+  const indentBlock = useCallback((index = activeBlockIndex) => {
+    setChapters(prev => {
+      const nextChapters = prev.map(ch => ({
+        ...ch,
+        lessons: ch.lessons.map(lesson => {
+          if (lesson.id === activeLessonId) {
+            return {
+              ...lesson,
+              blocks: lesson.blocks.map((b, idx) => 
+                idx === index ? { ...b, indent: Math.min(5, (b.indent || 0) + 1) } : b
+              )
+            };
+          }
+          return lesson;
+        })
+      }));
+      pushHistoryState(nextChapters);
+      return nextChapters;
+    });
+  }, [activeLessonId, activeBlockIndex, pushHistoryState]);
+
+  const outdentBlock = useCallback((index = activeBlockIndex) => {
+    setChapters(prev => {
+      const nextChapters = prev.map(ch => ({
+        ...ch,
+        lessons: ch.lessons.map(lesson => {
+          if (lesson.id === activeLessonId) {
+            return {
+              ...lesson,
+              blocks: lesson.blocks.map((b, idx) => 
+                idx === index ? { ...b, indent: Math.max(0, (b.indent || 0) - 1) } : b
+              )
+            };
+          }
+          return lesson;
+        })
+      }));
+      pushHistoryState(nextChapters);
+      return nextChapters;
+    });
+  }, [activeLessonId, activeBlockIndex, pushHistoryState]);
+
+  const toggleTodoChecked = useCallback((index: number) => {
+    setChapters(prev => {
+      const nextChapters = prev.map(ch => ({
+        ...ch,
+        lessons: ch.lessons.map(lesson => {
+          if (lesson.id === activeLessonId) {
+            return {
+              ...lesson,
+              blocks: lesson.blocks.map((b, idx) => 
+                idx === index ? { ...b, checked: !b.checked } : b
+              )
+            };
+          }
+          return lesson;
+        })
+      }));
+      pushHistoryState(nextChapters);
+      return nextChapters;
+    });
+  }, [activeLessonId, pushHistoryState]);
 
   const focusBlock = (index: number) => {
     setTimeout(() => {
@@ -394,8 +642,420 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     }, 50);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, index: number) => {
-    // Shortcuts (Ctrl+B, Ctrl+I, Ctrl+U, Ctrl+Z, Ctrl+Y)
+  const deleteBlock = useCallback((index: number) => {
+    setChapters(prev => {
+      let nextPages = prev;
+      for (const ch of prev) {
+        const lesson = ch.lessons.find(l => l.id === activeLessonId);
+        if (lesson) {
+          if (lesson.blocks.length <= 1) return prev;
+          nextPages = prev.map(c => ({
+            ...c,
+            lessons: c.lessons.map(l => {
+              if (l.id === activeLessonId) {
+                return {
+                  ...l,
+                  blocks: l.blocks.filter((_, idx) => idx !== index)
+                };
+              }
+              return l;
+            })
+          }));
+          break;
+        }
+      }
+      pushHistoryState(nextPages);
+      const targetIdx = Math.max(0, index - 1);
+      setActiveBlockIndex(targetIdx);
+      focusBlock(targetIdx);
+      return nextPages;
+    });
+  }, [activeLessonId, pushHistoryState]);
+
+  const handleDeleteBlockWithConfirm = useCallback(async (index: number) => {
+    const ok = await showConfirm({
+      type: 'danger',
+      title: 'Xóa block',
+      description: 'Bạn có chắc chắn muốn xóa block này không?'
+    });
+    if (ok) {
+      deleteBlock(index);
+    }
+  }, [deleteBlock, showConfirm]);
+
+  const insertBlockBelow = useCallback((index: number) => {
+    setChapters(prev => {
+      let nextPages = prev;
+      for (const ch of prev) {
+        const lesson = ch.lessons.find(l => l.id === activeLessonId);
+        if (lesson) {
+          const newBlock: DocBlock = {
+            id: Math.random().toString(36).substring(2, 11),
+            type: 'paragraph',
+            text: '',
+            align: 'left',
+            indent: lesson.blocks[index]?.indent || 0
+          };
+          nextPages = prev.map(c => ({
+            ...c,
+            lessons: c.lessons.map(l => {
+              if (l.id === activeLessonId) {
+                return {
+                  ...l,
+                  blocks: [
+                    ...l.blocks.slice(0, index + 1),
+                    newBlock,
+                    ...l.blocks.slice(index + 1)
+                  ]
+                };
+              }
+              return l;
+            })
+          }));
+          break;
+        }
+      }
+      pushHistoryState(nextPages);
+      setActiveBlockIndex(index + 1);
+      focusBlock(index + 1);
+      return nextPages;
+    });
+  }, [activeLessonId, pushHistoryState]);
+
+  const duplicateBlock = useCallback((index: number) => {
+    setChapters(prev => {
+      let nextPages = prev;
+      for (const ch of prev) {
+        const lesson = ch.lessons.find(l => l.id === activeLessonId);
+        if (lesson) {
+          const currentBlock = lesson.blocks[index];
+          const newBlock: DocBlock = {
+            ...currentBlock,
+            id: `b-${Math.random().toString(36).substring(2, 9)}`,
+          };
+          nextPages = prev.map(c => ({
+            ...c,
+            lessons: c.lessons.map(l => {
+              if (l.id === activeLessonId) {
+                return {
+                  ...l,
+                  blocks: [
+                    ...l.blocks.slice(0, index + 1),
+                    newBlock,
+                    ...l.blocks.slice(index + 1)
+                  ]
+                };
+              }
+              return l;
+            })
+          }));
+          break;
+        }
+      }
+      pushHistoryState(nextPages);
+      return nextPages;
+    });
+  }, [activeLessonId, pushHistoryState]);
+
+  const convertBlockType = useCallback((index: number, type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code', level?: 1 | 2 | 3) => {
+    setChapters(prev => {
+      const nextChapters = prev.map(ch => ({
+        ...ch,
+        lessons: ch.lessons.map(lesson => {
+          if (lesson.id === activeLessonId) {
+            return {
+              ...lesson,
+              blocks: lesson.blocks.map((b, idx) => {
+                if (idx === index) {
+                  return { ...b, type, level: level ?? undefined };
+                }
+                return b;
+              })
+            };
+          }
+          return lesson;
+        })
+      }));
+      pushHistoryState(nextChapters);
+      return nextChapters;
+    });
+  }, [activeLessonId, pushHistoryState]);
+
+  const handleUpdateBlock = useCallback((index: number, updatedBlock: DocBlock) => {
+    const nextChapters = chapters.map(ch => ({
+      ...ch,
+      lessons: ch.lessons.map(lesson => {
+        if (lesson.id === activeLessonId) {
+          return {
+            ...lesson,
+            blocks: lesson.blocks.map((b, idx) => 
+              idx === index ? updatedBlock : b
+            )
+          };
+        }
+        return lesson;
+      })
+    }));
+    pushHistoryState(nextChapters);
+  }, [chapters, activeLessonId, pushHistoryState]);
+
+  const moveBlockUp = useCallback((index: number) => {
+    if (index === 0) return;
+    setChapters(prev => {
+      const nextPages = prev.map(ch => ({
+        ...ch,
+        lessons: ch.lessons.map(lesson => {
+          if (lesson.id === activeLessonId) {
+            const updated = [...lesson.blocks];
+            const temp = updated[index];
+            updated[index] = updated[index - 1];
+            updated[index - 1] = temp;
+            return { ...lesson, blocks: updated };
+          }
+          return lesson;
+        })
+      }));
+      pushHistoryState(nextPages);
+      setActiveBlockIndex(index - 1);
+      focusBlock(index - 1);
+      return nextPages;
+    });
+  }, [activeLessonId, pushHistoryState]);
+
+  const moveBlockDown = useCallback((index: number) => {
+    setChapters(prev => {
+      let nextPages = prev;
+      for (const ch of prev) {
+        const lesson = ch.lessons.find(l => l.id === activeLessonId);
+        if (lesson) {
+          if (index === lesson.blocks.length - 1) return prev;
+          nextPages = prev.map(c => ({
+            ...c,
+            lessons: c.lessons.map(l => {
+              if (l.id === activeLessonId) {
+                const updated = [...l.blocks];
+                const temp = updated[index];
+                updated[index] = updated[index + 1];
+                updated[index + 1] = temp;
+                return { ...l, blocks: updated };
+              }
+              return l;
+            })
+          }));
+          break;
+        }
+      }
+      pushHistoryState(nextPages);
+      setActiveBlockIndex(index + 1);
+      focusBlock(index + 1);
+      return nextPages;
+    });
+  }, [activeLessonId, pushHistoryState]);
+
+  const handleBackspaceAtStart = useCallback((index: number) => {
+    setChapters(prev => {
+      let nextPages = prev;
+      for (const ch of prev) {
+        const lesson = ch.lessons.find(l => l.id === activeLessonId);
+        if (lesson) {
+          const block = lesson.blocks[index];
+          if (!block) return prev;
+
+          if (block.indent && block.indent > 0) {
+            nextPages = prev.map(c => ({
+              ...c,
+              lessons: c.lessons.map(l => {
+                if (l.id === activeLessonId) {
+                  return {
+                    ...l,
+                    blocks: l.blocks.map((b, idx) => 
+                      idx === index ? { ...b, indent: Math.max(0, (b.indent || 0) - 1) } : b
+                    )
+                  };
+                }
+                return l;
+              })
+            }));
+            break;
+          }
+
+          if (block.type !== 'paragraph') {
+            nextPages = prev.map(c => ({
+              ...c,
+              lessons: c.lessons.map(l => {
+                if (l.id === activeLessonId) {
+                  return {
+                    ...l,
+                    blocks: l.blocks.map((b, idx) => 
+                      idx === index ? { ...b, type: 'paragraph' as const, level: undefined } : b
+                    )
+                  };
+                }
+                return l;
+              })
+            }));
+            break;
+          }
+
+          if (index > 0) {
+            const prevBlock = lesson.blocks[index - 1];
+            nextPages = prev.map(c => ({
+              ...c,
+              lessons: c.lessons.map(l => {
+                if (l.id === activeLessonId) {
+                  const updatedBlocks = l.blocks.filter((_, idx) => idx !== index);
+                  updatedBlocks[index - 1] = {
+                    ...prevBlock,
+                    text: prevBlock.text + block.text
+                  };
+                  return { ...l, blocks: updatedBlocks };
+                }
+                return l;
+              })
+            }));
+            setActiveBlockIndex(index - 1);
+            setTimeout(() => {
+              const prevEl = document.getElementById(`block-editor-${index - 1}`);
+              if (prevEl) {
+                prevEl.focus();
+                const selection = window.getSelection();
+                const range = document.createRange();
+                range.selectNodeContents(prevEl);
+                range.collapse(false);
+                selection?.removeAllRanges();
+                selection?.addRange(range);
+              }
+            }, 50);
+            break;
+          }
+        }
+      }
+      pushHistoryState(nextPages);
+      return nextPages;
+    });
+  }, [activeLessonId, pushHistoryState]);
+
+  const handleDeleteAtEnd = useCallback((index: number) => {
+    setChapters(prev => {
+      const chs = prev.map(ch => {
+        const lesson = ch.lessons.find(l => l.id === activeLessonId);
+        if (lesson) {
+          if (index < lesson.blocks.length - 1) {
+            const currentBlock = lesson.blocks[index];
+            const nextBlock = lesson.blocks[index + 1];
+            const updatedBlocks = lesson.blocks.filter((_, idx) => idx !== index + 1);
+            updatedBlocks[index] = {
+              ...currentBlock,
+              text: currentBlock.text + nextBlock.text
+            };
+            return { ...ch, lessons: ch.lessons.map(l => l.id === activeLessonId ? { ...l, blocks: updatedBlocks } : l) };
+          }
+        }
+        return ch;
+      });
+      pushHistoryState(chs);
+      return chs;
+    });
+  }, [activeLessonId, pushHistoryState]);
+
+  const filteredCommands = useMemo(() => {
+    if (!slashQuery) return COMMAND_OPTIONS;
+    const q = slashQuery.toLowerCase();
+    return COMMAND_OPTIONS.filter(opt => 
+      opt.label.toLowerCase().includes(q) ||
+      opt.type.toLowerCase().includes(q) ||
+      opt.desc.toLowerCase().includes(q)
+    );
+  }, [slashQuery]);
+
+  const applySlashCommand = useCallback((cmd: typeof COMMAND_OPTIONS[number]) => {
+    setShowSlashMenu(false);
+    
+    const nextChapters = chapters.map(ch => ({
+      ...ch,
+      lessons: ch.lessons.map(lesson => {
+        if (lesson.id === activeLessonId) {
+          return {
+            ...lesson,
+            blocks: lesson.blocks.map((b, idx) => {
+              if (idx === activeBlockIndex) {
+                const updated: DocBlock = {
+                  id: b.id,
+                  type: 'paragraph',
+                  text: '',
+                  align: b.align || 'left',
+                  indent: b.indent || 0
+                };
+
+                if (cmd.type.startsWith('heading-')) {
+                  const level = parseInt(cmd.type.split('-')[1], 10) as 1 | 2 | 3;
+                  updated.type = 'heading';
+                  updated.level = level;
+                } else if (cmd.type === 'divider') {
+                  updated.type = 'divider';
+                } else if (cmd.type === 'image') {
+                  updated.type = 'image';
+                  updated.src = '';
+                  updated.caption = '';
+                  updated.align = 'center';
+                  updated.width = '100%';
+                } else if (cmd.type === 'table') {
+                  updated.type = 'table';
+                  updated.rows = [
+                    ['Cột 1', 'Cột 2', 'Cột 3'],
+                    ['Dữ liệu 1', 'Dữ liệu 2', 'Dữ liệu 3'],
+                    ['Dữ liệu 4', 'Dữ liệu 5', 'Dữ liệu 6']
+                  ];
+                } else if (cmd.type === 'formula') {
+                  updated.type = 'formula';
+                  updated.latex = 'f(x) = x^2';
+                } else if (cmd.type === 'code') {
+                  updated.type = 'code';
+                  updated.language = 'typescript';
+                } else if (cmd.type === 'quote') {
+                  updated.type = 'quote';
+                } else if (cmd.type === 'callout') {
+                  updated.type = 'callout';
+                }
+
+                return updated;
+              }
+              return b;
+            })
+          };
+        }
+        return lesson;
+      })
+    }));
+
+    pushHistoryState(nextChapters);
+    focusBlock(activeBlockIndex);
+  }, [chapters, activeLessonId, activeBlockIndex, pushHistoryState]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>, index: number) => {
+    if (showSlashMenu && filteredCommands.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSlashMenuIndex(prev => (prev + 1) % filteredCommands.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSlashMenuIndex(prev => (prev - 1 + filteredCommands.length) % filteredCommands.length);
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        applySlashCommand(filteredCommands[slashMenuIndex]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowSlashMenu(false);
+        return;
+      }
+    }
+
     if (e.ctrlKey || e.metaKey) {
       if (e.key.toLowerCase() === 'b') {
         e.preventDefault();
@@ -428,7 +1088,6 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       }
     }
 
-    // List Shortcuts (Ctrl+Shift+7, 8, 9)
     if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
       if (e.key === '7') {
         e.preventDefault();
@@ -464,6 +1123,24 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       }
     }
 
+    if (e.key === 'Delete') {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const isAtEnd = range.collapsed && 
+          (range.startContainer === e.currentTarget || 
+           (range.startContainer.nodeType === Node.TEXT_NODE && 
+            range.startOffset === range.startContainer.textContent?.length)
+          );
+        
+        if (isAtEnd) {
+          e.preventDefault();
+          handleDeleteAtEnd(index);
+          return;
+        }
+      }
+    }
+
     if (e.key === 'Tab') {
       e.preventDefault();
       if (e.shiftKey) {
@@ -473,63 +1150,405 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       }
       return;
     }
-  };
+  }, [showSlashMenu, filteredCommands, slashMenuIndex, applySlashCommand, executeFormat, handleUndo, handleRedo, toggleBlockType, insertBlockBelow, handleBackspaceAtStart, handleDeleteAtEnd, indentBlock, outdentBlock]);
 
-  const handlePublish = () => {
-    alert('Đăng tải tài liệu thành công!');
+  const handlePublish = async () => {
+    await showAlert({
+      type: 'success',
+      title: 'Thành công',
+      description: 'Đăng tải tài liệu thành công!'
+    });
     setMode('dashboard');
   };
 
-  const handleAiSuggest = () => {
-    const updated = [...currentBlocks];
-    if (selectedPage === 'water') {
-      updated[1] = {
-        ...updated[1],
-        text: updated[1].text + ' Nước đóng vai trò là một dung môi vạn năng.'
+  const handleAiSuggest = useCallback(() => {
+    setChapters(prev => {
+      const nextChapters = prev.map(ch => ({
+        ...ch,
+        lessons: ch.lessons.map(lesson => {
+          if (lesson.id === activeLessonId) {
+            const updated = [...lesson.blocks];
+            if (activeLessonId === 'water') {
+              updated[1] = {
+                ...updated[1],
+                text: updated[1].text + ' Nước đóng vai trò là một dung môi vạn năng.'
+              };
+            } else {
+              updated[1] = {
+                ...updated[1],
+                text: updated[1].text + ' Hãy chú ý đến cấu trúc đặc biệt của mỗi nhóm đại phân tử.'
+              };
+            }
+            return { ...lesson, blocks: updated };
+          }
+          return lesson;
+        })
+      }));
+      pushHistoryState(nextChapters);
+      return nextChapters;
+    });
+  }, [activeLessonId, pushHistoryState]);
+
+  // Explorer handlers
+  const handleToggleChapterExpand = useCallback((chapterId: string) => {
+    setChapters(prev => prev.map(ch => 
+      ch.id === chapterId ? { ...ch, isExpanded: !ch.isExpanded } : ch
+    ));
+  }, []);
+
+  const handleCreateChapter = useCallback(() => {
+    const newId = crypto.randomUUID();
+    setNewItems(prev => [...prev, newId]);
+    setChapters(prev => {
+      const newCh: Chapter = {
+        id: newId,
+        title: 'Chương chưa đặt tên',
+        isExpanded: true,
+        lessons: []
       };
-    } else {
-      updated[1] = {
-        ...updated[1],
-        text: updated[1].text + ' Hãy chú ý đến cấu trúc đặc biệt của mỗi nhóm đại phân tử.'
-      };
+      return [...prev, newCh];
+    });
+    setSelectedChapterId(newId);
+    setEditingItemId(newId);
+  }, []);
+
+  const handleDeleteChapter = useCallback(async (chapterId: string) => {
+    const ch = chapters.find(c => c.id === chapterId);
+    if (!ch) return;
+    const ok = await showConfirm({
+      type: 'danger',
+      title: 'Xóa chương',
+      description: `Bạn có chắc chắn muốn xóa chương "${ch.title}" cùng toàn bộ bài học bên trong không?`,
+    });
+    if (!ok) return;
+
+    setChapters(prev => {
+      const nextChapters = prev.filter(c => c.id !== chapterId);
+      pushHistoryState(nextChapters);
+      return nextChapters;
+    });
+  }, [chapters, showConfirm, pushHistoryState]);
+
+  const handleCreateLesson = useCallback(async (chapterId: string) => {
+    if (!chapterId) {
+      await showAlert({
+        type: 'warning',
+        title: 'Thông báo',
+        description: 'Vui lòng chọn một Chương trước.'
+      });
+      return;
     }
-    pushHistoryState({ ...pagesData, [selectedPage]: updated });
+
+    const newId = crypto.randomUUID();
+    setNewItems(prev => [...prev, newId]);
+    setChapters(prev => {
+      const newLesson: Lesson = {
+        id: newId,
+        title: 'Bài học chưa đặt tên',
+        blocks: [
+          {
+            id: `b-${Math.random().toString(36).substring(2, 9)}`,
+            type: 'paragraph',
+            text: '',
+            align: 'left',
+            indent: 0
+          }
+        ]
+      };
+      return prev.map(ch => {
+        if (ch.id === chapterId) {
+          return {
+            ...ch,
+            isExpanded: true,
+            lessons: [...ch.lessons, newLesson]
+          };
+        }
+        return ch;
+      });
+    });
+    setEditingItemId(newId);
+    setActiveLessonId(newId);
+    setActiveBlockIndex(0);
+  }, [showAlert]);
+
+  const handleDeleteLesson = useCallback(async (lessonId: string) => {
+    let currentLesson: Lesson | null = null;
+    for (const ch of chapters) {
+      const l = ch.lessons.find(less => less.id === lessonId);
+      if (l) {
+        currentLesson = l;
+        break;
+      }
+    }
+    if (!currentLesson) return;
+
+    const ok = await showConfirm({
+      type: 'danger',
+      title: 'Xóa bài học',
+      description: `Bạn có chắc chắn muốn xóa bài học "${currentLesson.title}" không?`,
+    });
+    if (!ok) return;
+
+    setChapters(prev => {
+      const nextChapters = prev.map(ch => ({
+        ...ch,
+        lessons: ch.lessons.filter(l => l.id !== lessonId)
+      }));
+      pushHistoryState(nextChapters);
+
+      if (activeLessonId === lessonId) {
+        let firstAvailableLessonId = 'water';
+        for (const ch of nextChapters) {
+          if (ch.lessons.length > 0) {
+            firstAvailableLessonId = ch.lessons[0].id;
+            break;
+          }
+        }
+        setActiveLessonId(firstAvailableLessonId);
+        setActiveBlockIndex(0);
+      }
+
+      return nextChapters;
+    });
+  }, [activeLessonId, chapters, showConfirm, pushHistoryState]);
+
+  const handleSaveEdit = useCallback((id: string, newTitle: string) => {
+    const trimmedTitle = newTitle.trim();
+
+    if (trimmedTitle === '') {
+      handleCancelEdit(id);
+      return;
+    }
+
+    setChapters(prev => {
+      const nextChapters = prev.map(ch => {
+        if (ch.id === id) {
+          return { ...ch, title: trimmedTitle };
+        }
+        return {
+          ...ch,
+          lessons: ch.lessons.map(l => 
+            l.id === id ? { ...l, title: trimmedTitle } : l
+          )
+        };
+      });
+      pushHistoryState(nextChapters);
+      return nextChapters;
+    });
+
+    setEditingItemId(null);
+    setNewItems(prev => prev.filter(x => x !== id));
+  }, [pushHistoryState]);
+
+  const handleCancelEdit = useCallback((id: string) => {
+    const isNew = newItems.includes(id);
+
+    if (isNew) {
+      setChapters(prev => {
+        const filteredChapters = prev.filter(ch => ch.id !== id);
+        const finalChapters = filteredChapters.map(ch => ({
+          ...ch,
+          lessons: ch.lessons.filter(l => l.id !== id)
+        }));
+
+        if (activeLessonId === id) {
+          let firstAvailableLessonId = 'water';
+          for (const ch of finalChapters) {
+            if (ch.lessons.length > 0) {
+              firstAvailableLessonId = ch.lessons[0].id;
+              break;
+            }
+          }
+          setActiveLessonId(firstAvailableLessonId);
+          setActiveBlockIndex(0);
+        }
+
+        return finalChapters;
+      });
+    }
+
+    setEditingItemId(null);
+    setNewItems(prev => prev.filter(x => x !== id));
+  }, [newItems, activeLessonId]);
+
+  const handleLessonDragDrop = useCallback((sourceLessonId: string, sourceChapterId: string, targetLessonId: string, targetChapterId: string) => {
+    setChapters(prev => {
+      let sourceLesson: Lesson | null = null;
+      for (const ch of prev) {
+        if (ch.id === sourceChapterId) {
+          const l = ch.lessons.find(less => less.id === sourceLessonId);
+          if (l) sourceLesson = l;
+        }
+      }
+      if (!sourceLesson) return prev;
+
+      const cleanedChapters = prev.map(ch => {
+        if (ch.id === sourceChapterId) {
+          return {
+            ...ch,
+            lessons: ch.lessons.filter(less => less.id !== sourceLessonId)
+          };
+        }
+        return ch;
+      });
+
+      const finalChapters = cleanedChapters.map(ch => {
+        if (ch.id === targetChapterId) {
+          const targetIndex = ch.lessons.findIndex(less => less.id === targetLessonId);
+          const updatedLessons = [...ch.lessons];
+          if (targetIndex !== -1) {
+            updatedLessons.splice(targetIndex, 0, sourceLesson!);
+          } else {
+            updatedLessons.push(sourceLesson!);
+          }
+          return {
+            ...ch,
+            lessons: updatedLessons
+          };
+        }
+        return ch;
+      });
+
+      pushHistoryState(finalChapters);
+      return finalChapters;
+    });
+  }, [pushHistoryState]);
+
+  const handleChapterReorder = useCallback((sourceChapterId: string, targetChapterId: string) => {
+    setChapters(prev => {
+      const sourceIndex = prev.findIndex(c => c.id === sourceChapterId);
+      const targetIndex = prev.findIndex(c => c.id === targetChapterId);
+      if (sourceIndex === -1 || targetIndex === -1) return prev;
+
+      const nextChapters = [...prev];
+      const [movedChapter] = nextChapters.splice(sourceIndex, 1);
+      nextChapters.splice(targetIndex, 0, movedChapter);
+
+      pushHistoryState(nextChapters);
+      return nextChapters;
+    });
+  }, [pushHistoryState]);
+
+  const handleLessonSelect = useCallback((lessonId: string) => {
+    setActiveLessonId(lessonId);
+    setActiveBlockIndex(0);
+  }, []);
+
+  const handleScrollWrapperClick = () => {
+    setShowSlashMenu(false);
   };
 
-  // Listen for global Undo/Redo keys
-  useEffect(() => {
-    const handleGlobalShortcuts = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+  const handleBodyDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>) => {
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      if (file.type.startsWith('image/')) {
         e.preventDefault();
-        handleUndo();
+        e.stopPropagation();
+        
+        try {
+          const uploadedUrl = await uploadImageFile(file);
+          const nextChapters = chapters.map(ch => ({
+            ...ch,
+            lessons: ch.lessons.map(lesson => {
+              if (lesson.id === activeLessonId) {
+                const newBlock: DocBlock = {
+                  id: `b-${Math.random().toString(36).substring(2, 9)}`,
+                  type: 'image',
+                  text: '',
+                  src: uploadedUrl,
+                  caption: file.name,
+                  align: 'center',
+                  width: '100%'
+                };
+                
+                const currentIdx = activeBlockIndex;
+                const updatedBlocks = [
+                  ...lesson.blocks.slice(0, currentIdx + 1),
+                  newBlock,
+                  ...lesson.blocks.slice(currentIdx + 1)
+                ];
+                return { ...lesson, blocks: updatedBlocks };
+              }
+              return lesson;
+            })
+          }));
+
+          pushHistoryState(nextChapters);
+          setActiveBlockIndex(prev => prev + 1);
+          focusBlock(activeBlockIndex + 1);
+        } catch {
+          // Ignore
+        }
       }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'z') {
-        e.preventDefault();
-        handleRedo();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
-        e.preventDefault();
-        handleRedo();
-      }
-    };
-    window.addEventListener('keydown', handleGlobalShortcuts);
-    return () => window.removeEventListener('keydown', handleGlobalShortcuts);
-  }, [historyIndex, history]);
+    }
+  }, [chapters, activeLessonId, activeBlockIndex, pushHistoryState]);
+
+  const handleSideToolClick = useCallback((label: string) => {
+    const nextChapters = chapters.map(ch => ({
+      ...ch,
+      lessons: ch.lessons.map(lesson => {
+        if (lesson.id === activeLessonId) {
+          const newBlock: DocBlock = {
+            id: `b-${Math.random().toString(36).substring(2, 9)}`,
+            type: 'paragraph',
+            text: '',
+            align: 'left',
+            indent: 0
+          };
+
+          if (label === 'Ảnh') {
+            newBlock.type = 'image';
+            newBlock.src = '';
+            newBlock.caption = '';
+            newBlock.align = 'center';
+            newBlock.width = '100%';
+          } else if (label === 'Bảng') {
+            newBlock.type = 'table';
+            newBlock.rows = [
+              ['Cột 1', 'Cột 2', 'Cột 3'],
+              ['Dữ liệu 1', 'Dữ liệu 2', 'Dữ liệu 3'],
+              ['Dữ liệu 4', 'Dữ liệu 5', 'Dữ liệu 6']
+            ];
+          } else if (label === 'Công thức') {
+            newBlock.type = 'formula';
+            newBlock.latex = 'f(x) = x^2';
+          }
+
+          const currentIdx = activeBlockIndex;
+          const updatedBlocks = [
+            ...lesson.blocks.slice(0, currentIdx + 1),
+            newBlock,
+            ...lesson.blocks.slice(currentIdx + 1)
+          ];
+          return { ...lesson, blocks: updatedBlocks };
+        }
+        return lesson;
+      })
+    }));
+
+    pushHistoryState(nextChapters);
+    setActiveBlockIndex(prev => prev + 1);
+    focusBlock(activeBlockIndex + 1);
+  }, [chapters, activeLessonId, activeBlockIndex, pushHistoryState]);
 
   return (
-    <div className="w-full flex flex-col h-screen bg-[#F8FAFC] select-none text-text-primary overflow-hidden font-sans animate-fadeIn">
+    <div className="w-full flex flex-col h-screen bg-[#F8FAFC] text-text-primary overflow-hidden font-sans animate-fadeIn">
       
       {/* ========================================== */}
       {/* TOP BAR                                    */}
       {/* ========================================== */}
-      <header className="h-14 bg-white border-b border-slate-100 px-4 flex items-center justify-between shrink-0">
+      <header className="h-14 bg-white border-b border-slate-100 px-4 flex items-center justify-between shrink-0 select-none">
         <div className="flex items-center gap-3.5">
-          <button 
-            onClick={() => setMode('dashboard')}
-            className="p-1.5 hover:bg-slate-50 text-slate-500 hover:text-slate-800 rounded-xl transition cursor-pointer"
-          >
-            <ChevronLeft size={18} className="stroke-[2.5]" />
-          </button>
+          <Tooltip content="Quay lại">
+            <button 
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setMode('dashboard')}
+              className="p-1.5 hover:bg-slate-50 text-slate-500 hover:text-slate-800 rounded-xl transition cursor-pointer"
+            >
+              <ChevronLeft size={18} className="stroke-[2.5]" />
+            </button>
+          </Tooltip>
           <div>
             <h1 className="text-xs font-black text-[#1E293B] truncate max-w-sm sm:max-w-md">
               Tóm tắt lý thuyết Sinh học 10 học kỳ 2 - Đề cương ôn tập
@@ -543,41 +1562,63 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
           </div>
         </div>
 
+        {/* Mode Tab List (Soạn thảo | Xem trước) */}
+        <div className="flex items-center gap-2 border border-slate-200 rounded-xl p-0.5 text-[10px] font-bold text-slate-500 select-none bg-slate-50/50">
+          <button 
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => setShowPreview(false)}
+            className={`px-3 py-1 rounded-lg transition cursor-pointer ${
+              !showPreview 
+                ? 'bg-white text-primary shadow-sm font-black' 
+                : 'hover:text-slate-800 hover:bg-slate-100/50'
+            }`}
+          >
+            Soạn thảo
+          </button>
+          <button 
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => setShowPreview(true)}
+            className={`px-3 py-1 rounded-lg transition cursor-pointer ${
+              showPreview 
+                ? 'bg-white text-primary shadow-sm font-black' 
+                : 'hover:text-slate-800 hover:bg-slate-100/50'
+            }`}
+          >
+            Xem trước
+          </button>
+        </div>
+
         <div className="flex items-center gap-4">
           <div className="hidden lg:flex items-center gap-1 text-[10px] text-emerald-500 font-bold">
             <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-ping" />
             Đã lưu 10:30:45
           </div>
 
-          <div className="flex items-center gap-0.5 bg-slate-100 border border-slate-100 rounded-xl p-0.5 text-[10px] font-black text-slate-500">
-            <button className="px-3 py-1 bg-white text-primary rounded-lg shadow-sm font-black">Soạn thảo</button>
-            <button className="px-3 py-1 hover:text-slate-800 transition rounded-lg">Xem trước</button>
-            <button className="px-3 py-1 hover:text-slate-800 transition rounded-lg">Responsive</button>
-          </div>
-
           <div className="flex items-center gap-2">
-            <button 
-              onClick={() => alert('Đã lưu nháp tài liệu thành công!')}
-              className="px-3 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer"
-            >
-              <Save size={12} /> Lưu
-            </button>
-            <button 
-              onClick={() => setShowPreview(!showPreview)}
-              className={`px-3 py-1.5 border text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer ${
-                showPreview 
-                  ? 'bg-primary-light border-primary/20 text-primary hover:bg-primary-light/80' 
-                  : 'border-slate-200 text-slate-650 hover:bg-slate-50'
-              }`}
-            >
-              <Eye size={12} /> Preview
-            </button>
-            <button 
-              onClick={handlePublish}
-              className="px-3 py-1.5 bg-gradient-to-r from-primary to-[#8F85F3] hover:from-primary-hover text-white text-[10px] font-black rounded-xl flex items-center gap-1 transition cursor-pointer shadow-sm shadow-indigo-100"
-            >
-              <Send size={12} /> Publish
-            </button>
+            <Tooltip content="Lưu nháp">
+              <button 
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={async () => {
+                  await showAlert({
+                    type: 'success',
+                    title: 'Thành công',
+                    description: 'Đã lưu nháp tài liệu thành công!'
+                  });
+                }}
+                className="px-3 py-1.5 border border-slate-200 text-slate-655 hover:bg-slate-50 text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer"
+              >
+                <Save size={12} /> Lưu
+              </button>
+            </Tooltip>
+            <Tooltip content="Xuất bản tài liệu">
+              <button 
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={handlePublish}
+                className="px-3 py-1.5 bg-gradient-to-r from-primary to-[#8F85F3] hover:from-primary-hover text-white text-[10px] font-black rounded-xl flex items-center gap-1 transition cursor-pointer shadow-sm shadow-indigo-100"
+              >
+                <Send size={12} /> Publish
+              </button>
+            </Tooltip>
           </div>
         </div>
       </header>
@@ -589,10 +1630,22 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
         
         {/* 1. LEFT SIDEBAR */}
         <DocSidebar 
-          selectedPage={selectedPage} 
-          setSelectedPage={setSelectedPage} 
-          ch1Expanded={ch1Expanded} 
-          setCh1Expanded={setCh1Expanded} 
+          chapters={chapters}
+          activeLessonId={activeLessonId}
+          onLessonSelect={handleLessonSelect}
+          onToggleChapterExpand={handleToggleChapterExpand}
+          selectedChapterId={selectedChapterId}
+          onSelectChapter={setSelectedChapterId}
+          editingItemId={editingItemId}
+          onStartEditing={setEditingItemId}
+          onSaveEdit={handleSaveEdit}
+          onCancelEdit={handleCancelEdit}
+          onCreateChapter={handleCreateChapter}
+          onCreateLesson={handleCreateLesson}
+          onDeleteChapter={handleDeleteChapter}
+          onDeleteLesson={handleDeleteLesson}
+          onLessonDragDrop={handleLessonDragDrop}
+          onChapterReorder={handleChapterReorder}
         />
 
         {/* 2. CENTER PANEL: Rich Editor Workspace */}
@@ -605,8 +1658,8 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
             onItalic={() => executeFormat('italic')}
             onUnderline={() => executeFormat('underline')}
             onStrikethrough={() => executeFormat('strikeThrough')}
-            onColorChange={(color) => executeFormat('foreColor', color)}
-            onHighlightChange={(color) => executeFormat('backColor', color)}
+            onColorChange={handleColorChange}
+            onHighlightChange={handleHighlightChange}
             activeBlockType={activeBlock.type}
             activeBlockLevel={activeBlock.level}
             onBlockTypeChange={toggleBlockType}
@@ -624,10 +1677,20 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
             isStrikethrough={caretFormatting.isStrikethrough}
             activeColor={caretFormatting.activeColor}
             activeHighlight={caretFormatting.activeHighlight}
+            activeFontSize={caretFormatting.activeFontSize}
+            onFontSizeChange={applyFontSize}
           />
 
           {/* Editable Block Content List */}
-          <div className="flex-1 p-8 overflow-y-auto space-y-4 select-text">
+          <div 
+            onClick={handleScrollWrapperClick}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onDrop={handleBodyDrop}
+            className="flex-1 p-8 overflow-y-auto space-y-4 select-text relative"
+          >
             {currentBlocks.map((block, idx) => {
               const alignClass = block.align === 'center'
                 ? 'text-center'
@@ -637,38 +1700,72 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
                     ? 'text-justify'
                     : 'text-left';
 
-              const indentStyle = { paddingLeft: `${(block.indent || 0) * 24}px` };
+              const listIndex = block.type === 'numbered-list' ? getNumberedIndex(currentBlocks, idx) : undefined;
 
               return (
-                <BlockRow 
+                <MemoizedBlockRow 
                   key={block.id}
                   block={block}
                   idx={idx}
                   alignClass={alignClass}
-                  indentStyle={indentStyle}
-                  activeBlockIndex={activeBlockIndex}
+                  indent={block.indent || 0}
+                  isActive={activeBlockIndex === idx}
+                  listIndex={listIndex}
                   setActiveBlockIndex={setActiveBlockIndex}
                   updateBlockText={updateBlockText}
                   handleKeyDown={handleKeyDown}
                   toggleTodoChecked={toggleTodoChecked}
-                  deleteBlock={deleteBlock}
-                  blocks={currentBlocks}
+                  onDeleteBlock={handleDeleteBlockWithConfirm}
+                  onDuplicateBlock={duplicateBlock}
+                  onConvertBlock={convertBlockType}
+                  onUpdateBlock={handleUpdateBlock}
+                  moveBlockUp={moveBlockUp}
+                  moveBlockDown={moveBlockDown}
+                  blocksLength={currentBlocks.length}
                 />
               );
             })}
+
+            {/* Floating Slash Command Menu */}
+            {showSlashMenu && filteredCommands.length > 0 && (
+              <div 
+                className="absolute bg-white border border-slate-100 rounded-xl shadow-xl z-[9999] p-1.5 flex flex-col gap-0.5 max-h-60 overflow-y-auto w-56 animate-fadeIn text-[10px] font-bold text-slate-700 select-none"
+                style={{
+                  top: `${slashMenuCoords.top}px`,
+                  left: `${slashMenuCoords.left}px`,
+                }}
+              >
+                <div className="px-2.5 py-1 text-[8px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-50 mb-1">
+                  Định dạng Block
+                </div>
+                {filteredCommands.map((cmd, cIdx) => (
+                  <button
+                    key={cmd.type}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => applySlashCommand(cmd)}
+                    className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center justify-between cursor-pointer ${
+                      slashMenuIndex === cIdx ? 'bg-primary-light text-primary font-black animate-pulse' : 'hover:bg-slate-50'
+                    }`}
+                  >
+                    <div>
+                      <div className="text-[10px] font-black">{cmd.label}</div>
+                      <div className="text-[8px] font-normal text-slate-400 mt-0.5">{cmd.desc}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="h-8 border-t border-slate-50 px-6 flex items-center text-[10px] text-slate-400 font-bold select-none bg-white">
-            Nhấn Enter để thêm dòng mới, Tab để thụt lề, Backspace để xóa/gộp dòng
+            Nhấn Enter để thêm dòng mới, Tab để thụt lề, Backspace để xóa/gộp dòng, "/" để mở menu block
           </div>
         </main>
 
         {/* 3. RIGHT SIDEBAR: Live Student Preview Simulator */}
         {showPreview && (
           <DocPreviewSimulator 
-            viewport={viewport}
-            setViewport={setViewport}
-            selectedPage={selectedPage}
+            lessonTitle={activeLesson ? activeLesson.title : ''}
             blocks={currentBlocks}
           />
         )}
@@ -680,7 +1777,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
               { icon: <FileCheck2 size={16} />, label: 'Block' },
               { icon: <Brain size={16} />, label: 'AI' },
               { icon: <ImageIcon size={16} />, label: 'Ảnh' },
-              { icon: <Table size={16} />, label: 'Bảng' },
+              { icon: <TableIcon size={16} />, label: 'Bảng' },
               { icon: <Activity size={16} />, label: 'Công thức' },
               { icon: <HelpCircle size={16} />, label: 'Quiz' },
               { icon: <Award size={16} />, label: 'Flashcard' },
@@ -688,13 +1785,15 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
               { icon: <Video size={16} />, label: 'Media' },
               { icon: <HelpCircle size={16} />, label: 'Khác' },
             ].map((tool, i) => (
-              <button 
-                key={i} 
-                className="w-12 h-12 flex flex-col items-center justify-center text-slate-400 hover:text-primary hover:bg-primary-light rounded-xl transition cursor-pointer select-none"
-              >
-                {tool.icon}
-                <span className="text-[7px] font-bold mt-1 text-slate-500">{tool.label}</span>
-              </button>
+              <Tooltip key={i} content={tool.label}>
+                <button 
+                  onClick={() => handleSideToolClick(tool.label)}
+                  className="w-12 h-12 flex flex-col items-center justify-center text-slate-400 hover:text-primary hover:bg-primary-light rounded-xl transition cursor-pointer select-none"
+                >
+                  {tool.icon}
+                  <span className="text-[7px] font-bold mt-1 text-slate-500">{tool.label}</span>
+                </button>
+              </Tooltip>
             ))}
           </div>
         </aside>
@@ -728,97 +1827,95 @@ interface BlockRowProps {
   block: DocBlock;
   idx: number;
   alignClass: string;
-  indentStyle: React.CSSProperties;
-  activeBlockIndex: number;
+  indent: number;
+  isActive: boolean;
+  listIndex?: string;
   setActiveBlockIndex: (i: number) => void;
   updateBlockText: (i: number, val: string) => void;
   handleKeyDown: (e: React.KeyboardEvent<HTMLDivElement>, i: number) => void;
   toggleTodoChecked: (i: number) => void;
-  deleteBlock: (i: number) => void;
-  blocks: DocBlock[];
+  onDeleteBlock: (i: number) => void;
+  onDuplicateBlock: (i: number) => void;
+  onConvertBlock: (index: number, type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code', level?: 1 | 2 | 3) => void;
+  onUpdateBlock: (index: number, updated: DocBlock) => void;
+  moveBlockUp: (i: number) => void;
+  moveBlockDown: (i: number) => void;
+  blocksLength: number;
 }
 
-const BlockRow: React.FC<BlockRowProps> = ({
+const BlockRowComponent: React.FC<BlockRowProps> = ({
   block,
   idx,
   alignClass,
-  indentStyle,
-  activeBlockIndex,
+  indent,
+  isActive,
+  listIndex,
   setActiveBlockIndex,
   updateBlockText,
   handleKeyDown,
   toggleTodoChecked,
-  deleteBlock,
-  blocks
+  onDeleteBlock,
+  onDuplicateBlock,
+  onConvertBlock,
+  onUpdateBlock,
+  moveBlockUp,
+  moveBlockDown,
+  blocksLength,
 }) => {
-  const ref = useRef<HTMLDivElement>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Sync content when modified externally (Undo/Redo)
-  useEffect(() => {
-    if (ref.current && document.activeElement !== ref.current) {
-      ref.current.innerHTML = block.text;
-    }
-  }, [block.text]);
+  const indentStyle = { paddingLeft: `${indent * 24}px` };
+
+  const handleKeyDownLocal = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    handleKeyDown(e, idx);
+  };
 
   return (
     <div 
       style={indentStyle}
-      className={`group relative flex items-start gap-2.5 transition rounded-xl ${activeBlockIndex === idx ? 'bg-slate-50/40 ring-1 ring-slate-100/50' : ''}`}
+      className={`group relative flex items-start gap-2.5 transition rounded-xl ${isActive ? 'bg-slate-50/40 ring-1 ring-slate-100/50' : ''}`}
     >
-      {/* Icon / List identifier prefix */}
-      <div className="w-6 flex items-center justify-center shrink-0 select-none h-full pt-1.5 text-slate-400">
-        {block.type === 'bullet-list' && (
-          <span className="text-slate-400 font-bold text-xs">•</span>
-        )}
-        {block.type === 'numbered-list' && (
-          <span className="text-primary font-black text-[11px]">{getNumberedIndex(blocks, idx)}</span>
-        )}
-        {block.type === 'todo-list' && (
-          <input 
-            type="checkbox" 
-            checked={!!block.checked}
-            onChange={() => toggleTodoChecked(idx)}
-            className="w-3.5 h-3.5 rounded border-slate-350 accent-primary cursor-pointer"
+      {/* Option menu handle for Notion-like menu */}
+      <div className="absolute -left-6 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition flex items-center select-none z-10">
+        <div className="relative">
+          <Tooltip content="Lựa chọn Block">
+            <button 
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded cursor-pointer animate-fadeIn"
+            >
+              <GripVertical size={14} />
+            </button>
+          </Tooltip>
+          
+          <BlockContextMenu 
+            isOpen={isMenuOpen}
+            onClose={() => setIsMenuOpen(false)}
+            onDuplicate={() => onDuplicateBlock(idx)}
+            onDelete={() => onDeleteBlock(idx)}
+            onMoveUp={() => moveBlockUp(idx)}
+            onMoveDown={() => moveBlockDown(idx)}
+            onConvert={(type, level) => onConvertBlock(idx, type, level)}
+            canMoveUp={idx > 0}
+            canMoveDown={idx < blocksLength - 1}
           />
-        )}
-        {block.type === 'callout' && (
-          <span className="text-sm">💧</span>
-        )}
+        </div>
       </div>
 
-      {/* Editable Block Content */}
-      <div
-        ref={ref}
-        id={`block-editor-${idx}`}
-        contentEditable
-        suppressContentEditableWarning
-        onFocus={() => setActiveBlockIndex(idx)}
-        onInput={(e) => updateBlockText(idx, e.currentTarget.innerHTML)}
-        onKeyDown={(e) => handleKeyDown(e, idx)}
-        className={`flex-1 outline-none py-1 text-slate-800 min-h-[24px] cursor-text select-text ${alignClass} ${
-          block.type === 'heading'
-            ? block.level === 1
-              ? 'text-lg font-black text-primary tracking-tight'
-              : block.level === 2
-                ? 'text-md font-bold text-slate-800'
-                : 'text-sm font-bold text-slate-700'
-            : block.type === 'todo-list' && block.checked
-              ? 'text-xs text-slate-400 line-through font-medium'
-              : 'text-xs text-text-secondary leading-relaxed font-bold'
-        }`}
-        dangerouslySetInnerHTML={{ __html: block.text }}
+      <BlockRenderer 
+        block={block}
+        idx={idx}
+        isActive={isActive}
+        alignClass={alignClass}
+        listIndex={listIndex}
+        setActiveBlockIndex={setActiveBlockIndex}
+        updateBlockText={updateBlockText}
+        handleKeyDown={handleKeyDownLocal}
+        toggleTodoChecked={toggleTodoChecked}
+        onUpdateBlock={onUpdateBlock}
       />
-
-      {/* Delete handle */}
-      <div className="absolute -left-6 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition flex items-center gap-1 select-none z-10">
-        <button 
-          onClick={() => deleteBlock(idx)}
-          className="p-1 hover:bg-slate-100 text-slate-400 hover:text-red-500 rounded cursor-pointer"
-          title="Xóa block"
-        >
-          <CloseIcon size={10} />
-        </button>
-      </div>
     </div>
   );
 };
+
+const MemoizedBlockRow = React.memo(BlockRowComponent);

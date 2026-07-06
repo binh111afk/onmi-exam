@@ -1,0 +1,135 @@
+import React from 'react';
+import type { DocBlock } from '../DocPreviewSimulator';
+import { ParagraphBlock } from './ParagraphBlock';
+import { HeadingBlock } from './HeadingBlock';
+import { QuoteBlock } from './QuoteBlock';
+import { CalloutBlock } from './CalloutBlock';
+import { DividerBlock } from './DividerBlock';
+import { ImageBlock } from './ImageBlock';
+import { TableBlock } from './TableBlock';
+import { FormulaBlock } from './FormulaBlock';
+import { CodeBlock } from './CodeBlock';
+
+interface BlockRendererProps {
+  block: DocBlock;
+  idx: number;
+  isActive: boolean;
+  alignClass: string;
+  listIndex?: string;
+  setActiveBlockIndex: (i: number) => void;
+  updateBlockText: (i: number, val: string) => void;
+  handleKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => void;
+  toggleTodoChecked: (i: number) => void;
+  onUpdateBlock: (i: number, updated: DocBlock) => void;
+}
+
+export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
+  block,
+  idx,
+  isActive,
+  alignClass,
+  listIndex,
+  setActiveBlockIndex,
+  updateBlockText,
+  handleKeyDown,
+  toggleTodoChecked,
+  onUpdateBlock,
+}) => {
+  switch (block.type) {
+    case 'heading':
+      return (
+        <HeadingBlock 
+          block={block}
+          idx={idx}
+          isActive={isActive}
+          alignClass={alignClass}
+          setActiveBlockIndex={setActiveBlockIndex}
+          updateBlockText={updateBlockText}
+          handleKeyDown={handleKeyDown}
+        />
+      );
+    case 'quote':
+      return (
+        <QuoteBlock 
+          block={block}
+          idx={idx}
+          isActive={isActive}
+          alignClass={alignClass}
+          setActiveBlockIndex={setActiveBlockIndex}
+          updateBlockText={updateBlockText}
+          handleKeyDown={handleKeyDown}
+        />
+      );
+    case 'callout':
+      return (
+        <CalloutBlock 
+          block={block}
+          idx={idx}
+          isActive={isActive}
+          alignClass={alignClass}
+          setActiveBlockIndex={setActiveBlockIndex}
+          updateBlockText={updateBlockText}
+          handleKeyDown={handleKeyDown}
+        />
+      );
+    case 'divider':
+      return (
+        <DividerBlock 
+          idx={idx}
+          setActiveBlockIndex={setActiveBlockIndex}
+        />
+      );
+    case 'image':
+      return (
+        <ImageBlock 
+          block={block}
+          idx={idx}
+          setActiveBlockIndex={setActiveBlockIndex}
+          onUpdateBlock={onUpdateBlock}
+        />
+      );
+    case 'table':
+      return (
+        <TableBlock 
+          block={block}
+          idx={idx}
+          setActiveBlockIndex={setActiveBlockIndex}
+          onUpdateBlock={onUpdateBlock}
+        />
+      );
+    case 'formula':
+      return (
+        <FormulaBlock 
+          block={block}
+          idx={idx}
+          setActiveBlockIndex={setActiveBlockIndex}
+          onUpdateBlock={onUpdateBlock}
+        />
+      );
+    case 'code':
+      return (
+        <CodeBlock 
+          block={block}
+          idx={idx}
+          setActiveBlockIndex={setActiveBlockIndex}
+          onUpdateBlock={onUpdateBlock}
+        />
+      );
+    default:
+      return (
+        <ParagraphBlock 
+          block={block}
+          idx={idx}
+          isActive={isActive}
+          alignClass={alignClass}
+          listIndex={listIndex}
+          setActiveBlockIndex={setActiveBlockIndex}
+          updateBlockText={updateBlockText}
+          handleKeyDown={handleKeyDown}
+          toggleTodoChecked={toggleTodoChecked}
+        />
+      );
+  }
+};
+
+export const BlockRenderer = React.memo(BlockRendererComponent);

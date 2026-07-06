@@ -29,6 +29,7 @@ import { Profile } from './pages/Profile';
 import { Teacher } from './pages/Teacher';
 import { AssessmentTest } from './pages/AssessmentTest';
 import { OnboardingModal } from './components/OnboardingModal';
+import { AlertProvider } from './components/common/Alert';
 
 const AUTH_STORAGE_KEY = 'omni_auth_user';
 
@@ -443,7 +444,9 @@ function AppShell() {
 function App() {
   return (
     <BrowserRouter>
-      <AppShell />
+      <AlertProvider>
+        <AppShell />
+      </AlertProvider>
     </BrowserRouter>
   );
 }
