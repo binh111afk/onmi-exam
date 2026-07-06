@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Image as ImageIcon, AlertTriangle, AlignLeft, AlignCenter, AlignRight, RefreshCw, Type } from 'lucide-react';
-import type { DocBlock } from '../DocPreviewSimulator';
+import type { DocBlock } from '../../../../types/doc-editor';
 import { uploadImageFile } from '../../../../services/imageUploadService';
 import { Tooltip } from '../Tooltip';
 import { useAlert } from '../../../common/Alert';

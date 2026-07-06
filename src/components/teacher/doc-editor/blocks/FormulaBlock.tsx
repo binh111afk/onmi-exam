@@ -1,5 +1,5 @@
 import React from 'react';
-import type { DocBlock } from '../DocPreviewSimulator';
+import type { DocBlock } from '../../../../types/doc-editor';
 
 interface FormulaBlockProps {
   block: DocBlock;

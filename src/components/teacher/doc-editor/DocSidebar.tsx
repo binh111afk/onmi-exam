@@ -1,20 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FolderOpen, ChevronDown, Folder, File, Edit, Trash2, FolderPlus, FilePlus } from 'lucide-react';
-import type { DocBlock } from './DocPreviewSimulator';
+import type { Chapter } from '../../../types/doc-editor';
 import { Tooltip } from './Tooltip';
-
-export interface Lesson {
-  id: string;
-  title: string;
-  blocks: DocBlock[];
-}
-
-export interface Chapter {
-  id: string;
-  title: string;
-  isExpanded?: boolean;
-  lessons: Lesson[];
-}
 
 interface DocSidebarProps {
   chapters: Chapter[];

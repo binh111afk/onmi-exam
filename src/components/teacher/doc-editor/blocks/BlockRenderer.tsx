@@ -1,5 +1,5 @@
 import React from 'react';
-import type { DocBlock } from '../DocPreviewSimulator';
+import type { DocBlock } from '../../../../types/doc-editor';
 import { ParagraphBlock } from './ParagraphBlock';
 import { HeadingBlock } from './HeadingBlock';
 import { QuoteBlock } from './QuoteBlock';
@@ -21,6 +21,10 @@ interface BlockRendererProps {
   handleKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => void;
   toggleTodoChecked: (i: number) => void;
   onUpdateBlock: (i: number, updated: DocBlock) => void;
+  onDeleteBlock: (i: number) => void;
+  tableNumber?: number;
+  /** Routes toolbar alignment actions into table cells when table is active */
+  onRegisterCellAlignHandler: (fn: ((align: 'left' | 'center' | 'right' | 'justify') => void) | null) => void;
 }
 
 export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
@@ -34,6 +38,9 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
   handleKeyDown,
   toggleTodoChecked,
   onUpdateBlock,
+  onDeleteBlock,
+  tableNumber,
+  onRegisterCellAlignHandler,
 }) => {
   switch (block.type) {
     case 'heading':
@@ -93,8 +100,12 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
         <TableBlock 
           block={block}
           idx={idx}
+          isActive={isActive}
           setActiveBlockIndex={setActiveBlockIndex}
           onUpdateBlock={onUpdateBlock}
+          onDeleteBlock={onDeleteBlock}
+          tableNumber={tableNumber || 1}
+          onRegisterCellAlignHandler={onRegisterCellAlignHandler}
         />
       );
     case 'formula':

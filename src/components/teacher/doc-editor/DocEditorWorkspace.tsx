@@ -22,8 +22,16 @@ import { Tooltip } from './Tooltip';
 import { useAlert } from '../../common/Alert';
 import { BlockRenderer } from './blocks/BlockRenderer';
 import { uploadImageFile } from '../../../services/imageUploadService';
-import type { Chapter, Lesson } from './DocSidebar';
-import type { DocBlock } from './DocPreviewSimulator';
+import type { Chapter, Lesson, DocBlock } from '../../../types/doc-editor';
+
+// Sprint 5 Additions
+import { BLOCK_COMMANDS } from './CommandRegistry';
+import { SlashMenu } from './SlashMenu';
+import { SelectionContextMenu } from './SelectionContextMenu';
+import { TableInsertModal } from './TableInsertModal';
+import { DragIndicator } from './DragIndicator';
+import { BlockDragPreview } from './BlockDragPreview';
+import { matchKeyboardShortcut } from './KeyboardShortcutManager';
 
 interface DocEditorWorkspaceProps {
   setMode: (mode: 'dashboard' | 'editor' | 'upload' | 'exam-editor') => void;
@@ -201,19 +209,73 @@ const getNumberedIndex = (blocks: DocBlock[], index: number): string => {
   return `${count}.`;
 };
 
-const COMMAND_OPTIONS = [
-  { type: 'paragraph', label: 'Văn bản (Paragraph)', desc: 'Văn bản thường', icon: 'Type' },
-  { type: 'heading-1', label: 'Tiêu đề 1 (Heading 1)', desc: 'Tiêu đề lớn cỡ 1', icon: 'Heading1' },
-  { type: 'heading-2', label: 'Tiêu đề 2 (Heading 2)', desc: 'Tiêu đề vừa cỡ 2', icon: 'Heading2' },
-  { type: 'heading-3', label: 'Tiêu đề 3 (Heading 3)', desc: 'Tiêu đề nhỏ cỡ 3', icon: 'Heading3' },
-  { type: 'quote', label: 'Trích dẫn (Quote)', desc: 'Tạo đoạn trích dẫn', icon: 'Quote' },
-  { type: 'callout', label: 'Hộp lưu ý (Callout)', desc: 'Tạo hộp lưu ý', icon: 'MessageSquare' },
-  { type: 'divider', label: 'Dấu phân cách (Divider)', desc: 'Đường gạch ngang', icon: 'Minus' },
-  { type: 'image', label: 'Hình ảnh (Image)', desc: 'Chèn ảnh liên kết', icon: 'ImageIcon' },
-  { type: 'table', label: 'Bảng (Table)', desc: 'Chèn bảng dữ liệu', icon: 'Table' },
-  { type: 'formula', label: 'Công thức (Formula)', desc: 'Chèn công thức LaTeX', icon: 'Variable' },
-  { type: 'code', label: 'Mã nguồn (Code)', desc: 'Khối code snippet', icon: 'Code' },
-];
+const getTableNumber = (blocks: DocBlock[], index: number): number => {
+  let count = 0;
+  for (let i = 0; i <= index; i++) {
+    if (blocks[i]?.type === 'table') {
+      count++;
+    }
+  }
+  return count;
+};
+
+
+
+interface HistoryEntry {
+  chapters: Chapter[];
+  activeIndex: number;
+  caretOffset: number;
+}
+
+const getCaretOffset = (element: HTMLElement): number => {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return 0;
+  const range = selection.getRangeAt(0);
+  const preCaretRange = range.cloneRange();
+  preCaretRange.selectNodeContents(element);
+  preCaretRange.setEnd(range.endContainer, range.endOffset);
+  return preCaretRange.toString().length;
+};
+
+const setCaretOffset = (element: HTMLElement, offset: number) => {
+  const selection = window.getSelection();
+  if (!selection) return;
+  
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  range.collapse(true);
+  
+  const nodeStack: Node[] = [element];
+  let currentOffset = 0;
+  let found = false;
+  
+  while (nodeStack.length > 0) {
+    const node = nodeStack.pop()!;
+    if (node.nodeType === Node.TEXT_NODE) {
+      const val = node.textContent || '';
+      const nextOffset = currentOffset + val.length;
+      if (offset >= currentOffset && offset <= nextOffset) {
+        range.setStart(node, offset - currentOffset);
+        range.collapse(true);
+        found = true;
+        break;
+      }
+      currentOffset = nextOffset;
+    } else {
+      for (let i = node.childNodes.length - 1; i >= 0; i--) {
+        nodeStack.push(node.childNodes[i]);
+      }
+    }
+  }
+  
+  if (!found) {
+    range.selectNodeContents(element);
+    range.collapse(false);
+  }
+  
+  selection.removeAllRanges();
+  selection.addRange(range);
+};
 
 export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode }) => {
   const { showAlert, showConfirm } = useAlert();
@@ -233,16 +295,66 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [newItems, setNewItems] = useState<string[]>([]);
 
-  const [history, setHistory] = useState<Chapter[][]>([]);
+  // History tracking with structure
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingFontSizeRef = useRef<string>('16');
+  /**
+   * Holds the active table's applyCellStyles({align}) function.
+   * TableBlock registers this when it becomes active; cleared on deactivation.
+   * toggleBlockAlign calls this instead of block.align for table blocks.
+   */
+  const tableCellAlignRef = useRef<((align: 'left' | 'center' | 'right' | 'justify') => void) | null>(null);
+
+  // Drag & Drop Pointer Events States
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const [dragPointerCoords, setDragPointerCoords] = useState({ x: 0, y: 0 });
+  const [dragIndicatorTop, setDragIndicatorTop] = useState(0);
+  const [dragIndicatorVisible, setDragIndicatorVisible] = useState(false);
+
+  // Custom Selection Context Menu States
+  const [showSelectionMenu, setShowSelectionMenu] = useState(false);
+  const [selectionMenuCoords, setSelectionMenuCoords] = useState({ x: 0, y: 0 });
+
+  // Table Creation Dialog States
+  const [showTableModal, setShowTableModal] = useState(false);
+  const [tableInsertIndex, setTableInsertIndex] = useState<number | null>(null);
+  const [tableInsertMode, setTableInsertMode] = useState<'replace' | 'insert' | null>(null);
+
+
+
+  // Pending selection/caret recovery
+  const pendingCaretRestoreRef = useRef<{ index: number; offset: number } | null>(null);
 
   // Initialize history
   useEffect(() => {
-    setHistory([initialChapters]);
+    setHistory([{
+      chapters: initialChapters,
+      activeIndex: 0,
+      caretOffset: 0
+    }]);
     setHistoryIndex(0);
   }, []);
+
+  // Restore caret position and focus when chapters change
+  useEffect(() => {
+    if (pendingCaretRestoreRef.current) {
+      const { index, offset } = pendingCaretRestoreRef.current;
+      pendingCaretRestoreRef.current = null;
+      setTimeout(() => {
+        const el = document.getElementById(`block-editor-${index}`);
+        if (el) {
+          el.focus();
+          try {
+            setCaretOffset(el, offset);
+          } catch (err) {
+            // Ignore if caret offset set fails (e.g. empty block)
+          }
+        }
+      }, 60);
+    }
+  }, [chapters]);
 
   // Set coordinates for Slash Command menu popover
   useEffect(() => {
@@ -264,37 +376,128 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
   const pushHistoryState = useCallback((newChapters: Chapter[], isDebounced = false) => {
     setChapters(newChapters);
 
+    let caretOffset = 0;
+    const activeEl = document.getElementById(`block-editor-${activeBlockIndex}`);
+    if (activeEl) {
+      try {
+        caretOffset = getCaretOffset(activeEl);
+      } catch (err) {}
+    }
+
+    const newEntry: HistoryEntry = {
+      chapters: newChapters,
+      activeIndex: activeBlockIndex,
+      caretOffset
+    };
+
     if (isDebounced) {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       typingTimeoutRef.current = setTimeout(() => {
         setHistory(prev => {
           const nextHist = prev.slice(0, historyIndex + 1);
-          return [...nextHist, newChapters];
+          return [...nextHist, newEntry];
         });
         setHistoryIndex(prev => prev + 1);
       }, 400);
     } else {
       setHistory(prev => {
         const nextHist = prev.slice(0, historyIndex + 1);
-        return [...nextHist, newChapters];
+        return [...nextHist, newEntry];
       });
       setHistoryIndex(prev => prev + 1);
     }
-  }, [historyIndex]);
+  }, [historyIndex, activeBlockIndex]);
+
+  const createTableWithDimensions = useCallback((rowsCount: number, colsCount: number, hasHeaderRow: boolean, hasHeaderCol: boolean) => {
+    const targetIndex = tableInsertIndex !== null ? tableInsertIndex : activeBlockIndex;
+    const tableRows = Array.from({ length: rowsCount }, () => Array(colsCount).fill(''));
+
+    // Set initial custom column widths and row heights
+    const columnWidths = Array(colsCount).fill(120);
+    const rowHeights = Array(rowsCount).fill(36);
+
+    const nextChapters = chapters.map(ch => ({
+      ...ch,
+      lessons: ch.lessons.map(lesson => {
+        if (lesson.id === activeLessonId) {
+          if (tableInsertMode === 'insert') {
+            const newBlock: DocBlock = {
+              id: `b-${Math.random().toString(36).substring(2, 9)}`,
+              type: 'table',
+              text: '',
+              rows: tableRows,
+              hasHeaderRow,
+              hasHeaderColumn: hasHeaderCol,
+              columnWidths,
+              rowHeights
+            };
+            return {
+              ...lesson,
+              blocks: [
+                ...lesson.blocks.slice(0, targetIndex + 1),
+                newBlock,
+                ...lesson.blocks.slice(targetIndex + 1)
+              ]
+            };
+          } else {
+            return {
+              ...lesson,
+              blocks: lesson.blocks.map((b, idx) => 
+                idx === targetIndex ? { 
+                  ...b, 
+                  type: 'table' as const, 
+                  text: '', 
+                  rows: tableRows,
+                  hasHeaderRow,
+                  hasHeaderColumn: hasHeaderCol,
+                  columnWidths,
+                  rowHeights
+                } : b
+              )
+            };
+          }
+        }
+        return lesson;
+      })
+    }));
+
+    pushHistoryState(nextChapters);
+    setChapters(nextChapters);
+
+    const nextIdx = tableInsertMode === 'insert' ? targetIndex + 1 : targetIndex;
+    setActiveBlockIndex(nextIdx);
+    focusBlock(nextIdx);
+
+    setShowTableModal(false);
+    setTableInsertIndex(null);
+    setTableInsertMode(null);
+  }, [tableInsertIndex, tableInsertMode, activeBlockIndex, chapters, activeLessonId, pushHistoryState]);
 
   const handleUndo = useCallback(() => {
     if (historyIndex > 0) {
       const nextIndex = historyIndex - 1;
+      const entry = history[nextIndex];
       setHistoryIndex(nextIndex);
-      setChapters(history[nextIndex]);
+      pendingCaretRestoreRef.current = {
+        index: entry.activeIndex,
+        offset: entry.caretOffset
+      };
+      setChapters(entry.chapters);
+      setActiveBlockIndex(entry.activeIndex);
     }
   }, [history, historyIndex]);
 
   const handleRedo = useCallback(() => {
     if (historyIndex < history.length - 1) {
       const nextIndex = historyIndex + 1;
+      const entry = history[nextIndex];
       setHistoryIndex(nextIndex);
-      setChapters(history[nextIndex]);
+      pendingCaretRestoreRef.current = {
+        index: entry.activeIndex,
+        offset: entry.caretOffset
+      };
+      setChapters(entry.chapters);
+      setActiveBlockIndex(entry.activeIndex);
     }
   }, [history, historyIndex]);
 
@@ -429,6 +632,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     const handleSelectionChange = () => {
       syncCaretFormatting();
     };
+
     document.addEventListener('selectionchange', handleSelectionChange);
     return () => {
       document.removeEventListener('selectionchange', handleSelectionChange);
@@ -516,7 +720,13 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     syncCaretFormatting();
   }, [activeBlockIndex, updateBlockText, syncCaretFormatting]);
 
-  const toggleBlockType = useCallback((type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code', level?: 1 | 2 | 3) => {
+  const toggleBlockType = useCallback((type: DocBlock['type'], level?: 1 | 2 | 3) => {
+    if (type === 'table') {
+      setTableInsertIndex(activeBlockIndex);
+      setTableInsertMode('replace');
+      setShowTableModal(true);
+      return;
+    }
     setChapters(prev => {
       const nextChapters = prev.map(ch => ({
         ...ch,
@@ -545,6 +755,11 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
   }, [activeLessonId, activeBlockIndex, pushHistoryState]);
 
   const toggleBlockAlign = useCallback((align: 'left' | 'center' | 'right' | 'justify') => {
+    // When a table cell is focused, align the cell text — not the block container
+    if (activeBlock.type === 'table' && tableCellAlignRef.current) {
+      tableCellAlignRef.current(align);
+      return;
+    }
     setChapters(prev => {
       const nextChapters = prev.map(ch => ({
         ...ch,
@@ -568,7 +783,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       pushHistoryState(nextChapters);
       return nextChapters;
     });
-  }, [activeLessonId, activeBlockIndex, pushHistoryState]);
+  }, [activeLessonId, activeBlockIndex, activeBlock.type, pushHistoryState]);
 
   const indentBlock = useCallback((index = activeBlockIndex) => {
     setChapters(prev => {
@@ -757,7 +972,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     });
   }, [activeLessonId, pushHistoryState]);
 
-  const convertBlockType = useCallback((index: number, type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code', level?: 1 | 2 | 3) => {
+  const convertBlockType = useCallback((index: number, type: DocBlock['type'], level?: 1 | 2 | 3) => {
     setChapters(prev => {
       const nextChapters = prev.map(ch => ({
         ...ch,
@@ -959,18 +1174,25 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
   }, [activeLessonId, pushHistoryState]);
 
   const filteredCommands = useMemo(() => {
-    if (!slashQuery) return COMMAND_OPTIONS;
+    if (!slashQuery) return BLOCK_COMMANDS;
     const q = slashQuery.toLowerCase();
-    return COMMAND_OPTIONS.filter(opt => 
+    return BLOCK_COMMANDS.filter(opt => 
       opt.label.toLowerCase().includes(q) ||
       opt.type.toLowerCase().includes(q) ||
       opt.desc.toLowerCase().includes(q)
     );
   }, [slashQuery]);
 
-  const applySlashCommand = useCallback((cmd: typeof COMMAND_OPTIONS[number]) => {
+  const handleSelectSlashCommand = useCallback((cmdType: string) => {
     setShowSlashMenu(false);
-    
+
+    if (cmdType === 'table') {
+      setTableInsertIndex(activeBlockIndex);
+      setTableInsertMode('replace');
+      setShowTableModal(true);
+      return;
+    }
+
     const nextChapters = chapters.map(ch => ({
       ...ch,
       lessons: ch.lessons.map(lesson => {
@@ -982,40 +1204,48 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
                 const updated: DocBlock = {
                   id: b.id,
                   type: 'paragraph',
-                  text: '',
+                  text: '', // clear text
                   align: b.align || 'left',
                   indent: b.indent || 0
                 };
 
-                if (cmd.type.startsWith('heading-')) {
-                  const level = parseInt(cmd.type.split('-')[1], 10) as 1 | 2 | 3;
+                if (cmdType.startsWith('heading-')) {
+                  const level = parseInt(cmdType.split('-')[1], 10) as 1 | 2 | 3;
                   updated.type = 'heading';
                   updated.level = level;
-                } else if (cmd.type === 'divider') {
+                } else if (cmdType === 'divider') {
                   updated.type = 'divider';
-                } else if (cmd.type === 'image') {
+                } else if (cmdType === 'image') {
                   updated.type = 'image';
                   updated.src = '';
                   updated.caption = '';
                   updated.align = 'center';
                   updated.width = '100%';
-                } else if (cmd.type === 'table') {
+                } else if (cmdType === 'table') {
                   updated.type = 'table';
                   updated.rows = [
                     ['Cột 1', 'Cột 2', 'Cột 3'],
                     ['Dữ liệu 1', 'Dữ liệu 2', 'Dữ liệu 3'],
                     ['Dữ liệu 4', 'Dữ liệu 5', 'Dữ liệu 6']
                   ];
-                } else if (cmd.type === 'formula') {
+                } else if (cmdType === 'formula') {
                   updated.type = 'formula';
                   updated.latex = 'f(x) = x^2';
-                } else if (cmd.type === 'code') {
+                } else if (cmdType === 'quiz') {
+                  updated.type = 'quiz';
+                } else if (cmdType === 'flashcard') {
+                  updated.type = 'flashcard';
+                } else if (cmdType === 'mindmap') {
+                  updated.type = 'mindmap';
+                } else if (cmdType === 'media') {
+                  updated.type = 'media';
+                } else if (cmdType === 'code') {
                   updated.type = 'code';
                   updated.language = 'typescript';
-                } else if (cmd.type === 'quote') {
-                  updated.type = 'quote';
-                } else if (cmd.type === 'callout') {
+                } else if (cmdType === 'callout') {
                   updated.type = 'callout';
+                } else if (cmdType === 'quote') {
+                  updated.type = 'quote';
                 }
 
                 return updated;
@@ -1028,11 +1258,193 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       })
     }));
 
+    pendingCaretRestoreRef.current = {
+      index: activeBlockIndex,
+      offset: 0
+    };
     pushHistoryState(nextChapters);
-    focusBlock(activeBlockIndex);
   }, [chapters, activeLessonId, activeBlockIndex, pushHistoryState]);
 
+  const insertBlockAbove = useCallback((index: number) => {
+    setChapters(prev => {
+      let nextPages = prev;
+      for (const ch of prev) {
+        const lesson = ch.lessons.find(l => l.id === activeLessonId);
+        if (lesson) {
+          const newBlock: DocBlock = {
+            id: `b-${Math.random().toString(36).substring(2, 9)}`,
+            type: 'paragraph',
+            text: '',
+            align: 'left',
+            indent: lesson.blocks[index]?.indent || 0
+          };
+          nextPages = prev.map(c => ({
+            ...c,
+            lessons: c.lessons.map(l => {
+              if (l.id === activeLessonId) {
+                return {
+                  ...l,
+                  blocks: [
+                    ...l.blocks.slice(0, index),
+                    newBlock,
+                    ...l.blocks.slice(index)
+                  ]
+                };
+              }
+              return l;
+            })
+          }));
+          break;
+        }
+      }
+      pushHistoryState(nextPages);
+      setActiveBlockIndex(index);
+      focusBlock(index);
+      return nextPages;
+    });
+  }, [activeLessonId, pushHistoryState]);
+
+  const handleBlockDragStart = (e: React.PointerEvent<HTMLButtonElement>, index: number) => {
+    e.preventDefault();
+    const button = e.currentTarget;
+    button.setPointerCapture(e.pointerId);
+
+    setDraggingIndex(index);
+    setDragPointerCoords({ x: e.clientX, y: e.clientY });
+    setDragIndicatorVisible(true);
+
+    const container = document.getElementById('editor-blocks-container');
+    if (!container) return;
+
+    const rows = Array.from(container.querySelectorAll('.block-row-item')) as HTMLElement[];
+    const rowRects = rows.map(r => r.getBoundingClientRect());
+    const containerRect = container.getBoundingClientRect();
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      setDragPointerCoords({ x: moveEvent.clientX, y: moveEvent.clientY });
+
+      const clientY = moveEvent.clientY;
+      let closestTop = 0;
+      let found = false;
+
+      for (let i = 0; i < rowRects.length; i++) {
+        const rect = rowRects[i];
+        const midY = rect.top + rect.height / 2;
+        if (clientY < midY) {
+          closestTop = rect.top;
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        const lastRect = rowRects[rowRects.length - 1];
+        closestTop = lastRect ? lastRect.bottom : 0;
+      }
+
+      const relativeTop = closestTop - containerRect.top + container.scrollTop;
+      setDragIndicatorTop(relativeTop);
+    };
+
+    const handlePointerUp = (upEvent: PointerEvent) => {
+      button.releasePointerCapture(upEvent.pointerId);
+      button.removeEventListener('pointermove', handlePointerMove);
+      button.removeEventListener('pointerup', handlePointerUp);
+
+      setDraggingIndex(null);
+      setDragIndicatorVisible(false);
+
+      const clientY = upEvent.clientY;
+      let finalTargetIdx = 0;
+      let found = false;
+
+      for (let i = 0; i < rowRects.length; i++) {
+        const rect = rowRects[i];
+        const midY = rect.top + rect.height / 2;
+        if (clientY < midY) {
+          finalTargetIdx = i;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        finalTargetIdx = rowRects.length;
+      }
+
+      if (index !== finalTargetIdx && index + 1 !== finalTargetIdx) {
+        setChapters(prev => {
+          const nextChapters = prev.map(ch => ({
+            ...ch,
+            lessons: ch.lessons.map(lesson => {
+              if (lesson.id === activeLessonId) {
+                const updatedBlocks = [...lesson.blocks];
+                const [movedBlock] = updatedBlocks.splice(index, 1);
+                const insertIdx = finalTargetIdx > index ? finalTargetIdx - 1 : finalTargetIdx;
+                updatedBlocks.splice(insertIdx, 0, movedBlock);
+                return { ...lesson, blocks: updatedBlocks };
+              }
+              return lesson;
+            })
+          }));
+          pushHistoryState(nextChapters);
+
+          const newIdx = finalTargetIdx > index ? finalTargetIdx - 1 : finalTargetIdx;
+          setActiveBlockIndex(newIdx);
+          focusBlock(newIdx);
+
+          return nextChapters;
+        });
+      }
+    };
+
+    button.addEventListener('pointermove', handlePointerMove);
+    button.addEventListener('pointerup', handlePointerUp);
+  };
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>, index: number) => {
+    // 1. Check combinations using matchKeyboardShortcut
+    const shortcut = matchKeyboardShortcut(e);
+    if (shortcut) {
+      e.preventDefault();
+      switch (shortcut) {
+        case 'bold':
+          executeFormat('bold');
+          break;
+        case 'italic':
+          executeFormat('italic');
+          break;
+        case 'underline':
+          executeFormat('underline');
+          break;
+        case 'ordered-list':
+          toggleBlockType('numbered-list');
+          break;
+        case 'bullet-list':
+          toggleBlockType('bullet-list');
+          break;
+        case 'heading-1':
+          toggleBlockType('heading', 1);
+          break;
+        case 'heading-2':
+          toggleBlockType('heading', 2);
+          break;
+        case 'heading-3':
+          toggleBlockType('heading', 3);
+          break;
+        case 'undo':
+          handleUndo();
+          break;
+        case 'redo':
+          handleRedo();
+          break;
+        case 'duplicate':
+          duplicateBlock(index);
+          break;
+      }
+      return;
+    }
+
+    // 2. Intercept Slash Menu keys
     if (showSlashMenu && filteredCommands.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -1046,7 +1458,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       }
       if (e.key === 'Enter') {
         e.preventDefault();
-        applySlashCommand(filteredCommands[slashMenuIndex]);
+        handleSelectSlashCommand(filteredCommands[slashMenuIndex].type);
         return;
       }
       if (e.key === 'Escape') {
@@ -1056,74 +1468,68 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       }
     }
 
-    if (e.ctrlKey || e.metaKey) {
-      if (e.key.toLowerCase() === 'b') {
-        e.preventDefault();
-        executeFormat('bold');
-        return;
-      }
-      if (e.key.toLowerCase() === 'i') {
-        e.preventDefault();
-        executeFormat('italic');
-        return;
-      }
-      if (e.key.toLowerCase() === 'u') {
-        e.preventDefault();
-        executeFormat('underline');
-        return;
-      }
-      if (e.key.toLowerCase() === 'y') {
-        e.preventDefault();
-        handleRedo();
-        return;
-      }
-      if (e.key.toLowerCase() === 'z') {
-        e.preventDefault();
-        if (e.shiftKey) {
-          handleRedo();
-        } else {
-          handleUndo();
-        }
-        return;
-      }
-    }
-
-    if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
-      if (e.key === '7') {
-        e.preventDefault();
-        toggleBlockType('numbered-list');
-        return;
-      }
-      if (e.key === '8') {
-        e.preventDefault();
-        toggleBlockType('bullet-list');
-        return;
-      }
-      if (e.key === '9') {
-        e.preventDefault();
-        toggleBlockType('todo-list');
-        return;
-      }
-    }
-
+    // 3. Handle Enter (insert block below)
     if (e.key === 'Enter') {
       e.preventDefault();
       insertBlockBelow(index);
       return;
     }
 
+    // 4. Handle Backspace at start of block
     if (e.key === 'Backspace') {
       const selection = window.getSelection();
       const cursorOffset = selection?.focusOffset ?? 0;
-      
-      if (cursorOffset === 0 && (e.currentTarget.innerText.trim() === '' || selection?.anchorNode?.parentNode === e.currentTarget || selection?.anchorNode === e.currentTarget)) {
+
+      if (cursorOffset === 0) {
+        const currentBlock = currentBlocks[index];
+        if (currentBlock) {
+          const isEmpty = currentBlock.text.replace(/<[^>]*>/g, '').trim() === '';
+          if (isEmpty) {
+            e.preventDefault();
+            deleteBlock(index);
+            return;
+          }
+        }
+
         e.preventDefault();
         handleBackspaceAtStart(index);
         return;
       }
     }
 
+    // 5. Handle Delete key
     if (e.key === 'Delete') {
+      const currentBlock = currentBlocks[index];
+      if (currentBlock) {
+        const isEmpty = currentBlock.text.replace(/<[^>]*>/g, '').trim() === '';
+        if (isEmpty) {
+          e.preventDefault();
+          setChapters(prev => {
+            const nextChapters = prev.map(ch => ({
+              ...ch,
+              lessons: ch.lessons.map(l => {
+                if (l.id === activeLessonId) {
+                  return {
+                    ...l,
+                    blocks: l.blocks.filter((_, idx) => idx !== index)
+                  };
+                }
+                return l;
+              })
+            }));
+
+            const hasNext = index < currentBlocks.length - 1;
+            const targetIdx = hasNext ? index : Math.max(0, index - 1);
+            setActiveBlockIndex(targetIdx);
+            focusBlock(targetIdx);
+
+            pushHistoryState(nextChapters);
+            return nextChapters;
+          });
+          return;
+        }
+      }
+
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
@@ -1132,7 +1538,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
            (range.startContainer.nodeType === Node.TEXT_NODE && 
             range.startOffset === range.startContainer.textContent?.length)
           );
-        
+
         if (isAtEnd) {
           e.preventDefault();
           handleDeleteAtEnd(index);
@@ -1141,6 +1547,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       }
     }
 
+    // 6. Handle Tab for Indent/Outdent
     if (e.key === 'Tab') {
       e.preventDefault();
       if (e.shiftKey) {
@@ -1150,7 +1557,26 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       }
       return;
     }
-  }, [showSlashMenu, filteredCommands, slashMenuIndex, applySlashCommand, executeFormat, handleUndo, handleRedo, toggleBlockType, insertBlockBelow, handleBackspaceAtStart, handleDeleteAtEnd, indentBlock, outdentBlock]);
+  }, [
+    showSlashMenu,
+    filteredCommands,
+    slashMenuIndex,
+    currentBlocks,
+    activeLessonId,
+    executeFormat,
+    toggleBlockType,
+    handleUndo,
+    handleRedo,
+    duplicateBlock,
+    handleSelectSlashCommand,
+    deleteBlock,
+    handleBackspaceAtStart,
+    handleDeleteAtEnd,
+    insertBlockBelow,
+    indentBlock,
+    outdentBlock,
+    pushHistoryState
+  ]);
 
   const handlePublish = async () => {
     await showAlert({
@@ -1160,6 +1586,15 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     });
     setMode('dashboard');
   };
+
+  const handlePasteSelection = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      document.execCommand('insertHTML', false, text);
+    } catch {
+      // Fallback
+    }
+  }, []);
 
   const handleAiSuggest = useCallback(() => {
     setChapters(prev => {
@@ -1485,6 +1920,12 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
   }, [chapters, activeLessonId, activeBlockIndex, pushHistoryState]);
 
   const handleSideToolClick = useCallback((label: string) => {
+    if (label === 'Bảng') {
+      setTableInsertIndex(activeBlockIndex);
+      setTableInsertMode('insert');
+      setShowTableModal(true);
+      return;
+    }
     const nextChapters = chapters.map(ch => ({
       ...ch,
       lessons: ch.lessons.map(lesson => {
@@ -1683,7 +2124,20 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
 
           {/* Editable Block Content List */}
           <div 
+            id="editor-blocks-container"
+            onKeyDown={(e) => handleKeyDown(e, activeBlockIndex)}
             onClick={handleScrollWrapperClick}
+            onContextMenu={(e) => {
+              const sel = window.getSelection();
+              if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
+                const container = e.currentTarget;
+                if (container.contains(sel.anchorNode)) {
+                  e.preventDefault();
+                  setSelectionMenuCoords({ x: e.clientX, y: e.clientY });
+                  setShowSelectionMenu(true);
+                }
+              }
+            }}
             onDragOver={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -1701,6 +2155,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
                     : 'text-left';
 
               const listIndex = block.type === 'numbered-list' ? getNumberedIndex(currentBlocks, idx) : undefined;
+              const tableNumber = block.type === 'table' ? getTableNumber(currentBlocks, idx) : undefined;
 
               return (
                 <MemoizedBlockRow 
@@ -1711,6 +2166,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
                   indent={block.indent || 0}
                   isActive={activeBlockIndex === idx}
                   listIndex={listIndex}
+                  tableNumber={tableNumber}
                   setActiveBlockIndex={setActiveBlockIndex}
                   updateBlockText={updateBlockText}
                   handleKeyDown={handleKeyDown}
@@ -1719,42 +2175,62 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
                   onDuplicateBlock={duplicateBlock}
                   onConvertBlock={convertBlockType}
                   onUpdateBlock={handleUpdateBlock}
+                  onInsertAbove={insertBlockAbove}
+                  onInsertBelow={insertBlockBelow}
+                  onDragStart={handleBlockDragStart}
                   moveBlockUp={moveBlockUp}
                   moveBlockDown={moveBlockDown}
                   blocksLength={currentBlocks.length}
+                  onRegisterCellAlignHandler={(fn) => { tableCellAlignRef.current = fn; }}
                 />
               );
             })}
 
-            {/* Floating Slash Command Menu */}
-            {showSlashMenu && filteredCommands.length > 0 && (
-              <div 
-                className="absolute bg-white border border-slate-100 rounded-xl shadow-xl z-[9999] p-1.5 flex flex-col gap-0.5 max-h-60 overflow-y-auto w-56 animate-fadeIn text-[10px] font-bold text-slate-700 select-none"
-                style={{
-                  top: `${slashMenuCoords.top}px`,
-                  left: `${slashMenuCoords.left}px`,
-                }}
-              >
-                <div className="px-2.5 py-1 text-[8px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-50 mb-1">
-                  Định dạng Block
-                </div>
-                {filteredCommands.map((cmd, cIdx) => (
-                  <button
-                    key={cmd.type}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => applySlashCommand(cmd)}
-                    className={`w-full text-left px-2.5 py-2 rounded-lg flex items-center justify-between cursor-pointer ${
-                      slashMenuIndex === cIdx ? 'bg-primary-light text-primary font-black animate-pulse' : 'hover:bg-slate-50'
-                    }`}
-                  >
-                    <div>
-                      <div className="text-[10px] font-black">{cmd.label}</div>
-                      <div className="text-[8px] font-normal text-slate-400 mt-0.5">{cmd.desc}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+            {/* Visual insertion indicator for block dragging */}
+            <DragIndicator top={dragIndicatorTop} visible={dragIndicatorVisible} />
+
+            {/* Floating visual preview of the block being dragged */}
+            <BlockDragPreview 
+              text={draggingIndex !== null ? (currentBlocks[draggingIndex]?.text || '') : ''} 
+              type={draggingIndex !== null ? (currentBlocks[draggingIndex]?.type || '') : ''} 
+              coords={dragPointerCoords} 
+              visible={draggingIndex !== null} 
+            />
+
+            {/* Presentation-only floating Slash Command Menu */}
+            <SlashMenu 
+              isOpen={showSlashMenu}
+              commands={filteredCommands}
+              selectedIndex={slashMenuIndex}
+              coords={slashMenuCoords}
+              onSelect={handleSelectSlashCommand}
+              onClose={() => setShowSlashMenu(false)}
+            />
+
+            {/* Custom selection right click context menu */}
+            <SelectionContextMenu 
+              isOpen={showSelectionMenu}
+              onClose={() => setShowSelectionMenu(false)}
+              coords={selectionMenuCoords}
+              onCopy={() => document.execCommand('copy')}
+              onCut={() => document.execCommand('cut')}
+              onPaste={handlePasteSelection}
+              onFormat={executeFormat}
+              onConvertBlock={(type, lvl) => convertBlockType(activeBlockIndex, type, lvl)}
+              activeColor={caretFormatting.activeColor}
+              activeHighlight={caretFormatting.activeHighlight}
+            />
+
+            {/* Custom table dimension creation modal */}
+            <TableInsertModal 
+              isOpen={showTableModal}
+              onClose={() => {
+                setShowTableModal(false);
+                setTableInsertIndex(null);
+                setTableInsertMode(null);
+              }}
+              onConfirm={createTableWithDimensions}
+            />
           </div>
 
           <div className="h-8 border-t border-slate-50 px-6 flex items-center text-[10px] text-slate-400 font-bold select-none bg-white">
@@ -1836,11 +2312,16 @@ interface BlockRowProps {
   toggleTodoChecked: (i: number) => void;
   onDeleteBlock: (i: number) => void;
   onDuplicateBlock: (i: number) => void;
-  onConvertBlock: (index: number, type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code', level?: 1 | 2 | 3) => void;
+  onConvertBlock: (index: number, type: DocBlock['type'], level?: 1 | 2 | 3) => void;
   onUpdateBlock: (index: number, updated: DocBlock) => void;
+  onInsertAbove: (i: number) => void;
+  onInsertBelow: (i: number) => void;
+  onDragStart: (e: React.PointerEvent<HTMLButtonElement>, i: number) => void;
   moveBlockUp: (i: number) => void;
   moveBlockDown: (i: number) => void;
   blocksLength: number;
+  tableNumber?: number;
+  onRegisterCellAlignHandler: (fn: ((align: 'left' | 'center' | 'right' | 'justify') => void) | null) => void;
 }
 
 const BlockRowComponent: React.FC<BlockRowProps> = ({
@@ -1858,9 +2339,14 @@ const BlockRowComponent: React.FC<BlockRowProps> = ({
   onDuplicateBlock,
   onConvertBlock,
   onUpdateBlock,
+  onInsertAbove,
+  onInsertBelow,
+  onDragStart,
   moveBlockUp,
   moveBlockDown,
   blocksLength,
+  tableNumber,
+  onRegisterCellAlignHandler,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const handleButtonRef = useRef<HTMLButtonElement>(null);
@@ -1874,17 +2360,21 @@ const BlockRowComponent: React.FC<BlockRowProps> = ({
   return (
     <div 
       style={indentStyle}
-      className={`group relative flex items-start gap-1.5 transition rounded-xl w-full ${isActive ? 'bg-slate-50/40 ring-1 ring-slate-100/50' : ''}`}
+      className={`group relative flex items-start gap-1.5 transition rounded-xl w-full block-row-item ${isActive ? 'bg-slate-50/40 ring-1 ring-slate-100/50' : ''}`}
     >
-      {/* Option menu handle for Notion-like menu */}
+      {/* Option menu handle for drag handle */}
       <div className="w-5 h-6 flex items-center justify-center shrink-0 select-none text-slate-300">
         <div className="relative opacity-0 group-hover:opacity-100 transition-all duration-[150ms] ease-in-out transform translate-x-[-2px] group-hover:translate-x-0 flex items-center justify-center">
           <Tooltip content="Lựa chọn Block">
             <button 
               ref={handleButtonRef}
-              onMouseDown={(e) => e.preventDefault()}
+              onMouseDown={(e) => {
+                // don't take focus
+                e.preventDefault();
+              }}
+              onPointerDown={(e) => onDragStart(e, idx)}
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-0.5 hover:bg-slate-100 hover:text-slate-700 rounded cursor-pointer text-slate-400"
+              className="p-0.5 hover:bg-slate-100 hover:text-slate-700 rounded cursor-pointer text-slate-400 touch-none"
             >
               <GripVertical size={14} />
             </button>
@@ -1898,6 +2388,8 @@ const BlockRowComponent: React.FC<BlockRowProps> = ({
             onMoveUp={() => moveBlockUp(idx)}
             onMoveDown={() => moveBlockDown(idx)}
             onConvert={(type, level) => onConvertBlock(idx, type, level)}
+            onInsertAbove={() => onInsertAbove(idx)}
+            onInsertBelow={() => onInsertBelow(idx)}
             canMoveUp={idx > 0}
             canMoveDown={idx < blocksLength - 1}
             triggerRef={handleButtonRef}
@@ -1917,6 +2409,9 @@ const BlockRowComponent: React.FC<BlockRowProps> = ({
           handleKeyDown={handleKeyDownLocal}
           toggleTodoChecked={toggleTodoChecked}
           onUpdateBlock={onUpdateBlock}
+          onDeleteBlock={onDeleteBlock}
+          tableNumber={tableNumber}
+          onRegisterCellAlignHandler={onRegisterCellAlignHandler}
         />
       </div>
     </div>

@@ -22,6 +22,7 @@ import {
   Check
 } from 'lucide-react';
 import { Tooltip } from './Tooltip';
+import type { DocBlock } from '../../../types/doc-editor';
 
 interface DocToolbarProps {
   onAiSuggest: () => void;
@@ -31,9 +32,9 @@ interface DocToolbarProps {
   onStrikethrough: () => void;
   onColorChange: (color: string) => void;
   onHighlightChange: (color: string) => void;
-  activeBlockType: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code';
+  activeBlockType: DocBlock['type'];
   activeBlockLevel?: 1 | 2 | 3;
-  onBlockTypeChange: (type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code', level?: 1 | 2 | 3) => void;
+  onBlockTypeChange: (type: DocBlock['type'], level?: 1 | 2 | 3) => void;
   activeAlign: 'left' | 'center' | 'right' | 'justify';
   onAlignChange: (align: 'left' | 'center' | 'right' | 'justify') => void;
   onIndent: () => void;

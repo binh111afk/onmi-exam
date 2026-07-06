@@ -1,24 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { RefreshCw, Maximize2, Minimize2, ZoomIn, ZoomOut, RotateCcw, X } from 'lucide-react';
+import { RefreshCw, Maximize2, Minimize2, ZoomIn, ZoomOut, RotateCcw, X, HelpCircle, Award, FolderOpen, Video } from 'lucide-react';
 import { Tooltip } from './Tooltip';
-
-export interface DocBlock {
-  id: string;
-  type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code';
-  level?: 1 | 2 | 3;
-  indent?: number;
-  text: string;
-  align?: 'left' | 'center' | 'right' | 'justify';
-  checked?: boolean;
-  
-  src?: string;
-  caption?: string;
-  latex?: string;
-  language?: string;
-  rows?: string[][];
-  width?: string;
-  alt?: string;
-}
+import { TableCaption } from './blocks/TableCaption';
+import { SharedTableRenderer } from './blocks/SharedTableRenderer';
+import type { DocBlock } from '../../../types/doc-editor';
 
 interface DocPreviewSimulatorProps {
   lessonTitle: string;
@@ -48,6 +33,16 @@ const getNumberedIndex = (blocks: DocBlock[], index: number): string => {
     }
   }
   return `${count}.`;
+};
+
+const getTableNumber = (blocks: DocBlock[], index: number): number => {
+  let count = 0;
+  for (let i = 0; i <= index; i++) {
+    if (blocks[i]?.type === 'table') {
+      count++;
+    }
+  }
+  return count;
 };
 
 export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
@@ -236,20 +231,21 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
           }
 
           if (block.type === 'table') {
-            const rows = block.rows || [];
+            const tableNumber   = getTableNumber(blocks, idx);
+            const colCount      = block.rows?.[0]?.length ?? 3;
+            const isManual      = !!(block.columnWidths && block.columnWidths.length === colCount);
+            const previewMaxW   = isManual ? block.columnWidths!.reduce((s, w) => s + w, 0) : undefined;
+            const previewAlign  = (block.align as 'left' | 'center' | 'right' | undefined) ?? 'left';
             return (
-              <div key={block.id} className="overflow-x-auto my-2.5">
-                <table className="w-full border-collapse border border-slate-200 text-[9px] font-bold text-slate-600">
-                  <tbody>
-                    {rows.map((row, ri) => (
-                      <tr key={ri}>
-                        {row.map((cell, ci) => (
-                          <td key={ci} className="border border-slate-200 p-1.5 bg-slate-50/20">{cell}</td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div key={block.id} className="my-2.5">
+                <SharedTableRenderer block={block} isEditable={false} />
+                <TableCaption
+                  caption={block.caption || ''}
+                  isEditable={false}
+                  tableNumber={tableNumber}
+                  align={previewAlign}
+                  tableMaxWidth={previewMaxW}
+                />
               </div>
             );
           }
@@ -268,6 +264,65 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
                 <div className="text-slate-500 uppercase tracking-widest text-[7px] font-black mb-1.5">{block.language || 'typescript'}</div>
                 <code>{block.text}</code>
               </pre>
+            );
+          }
+
+          if (block.type === 'quiz') {
+            return (
+              <div key={block.id} style={indentStyle} className="p-3 border border-purple-100 bg-purple-50/30 rounded-xl my-2.5 flex flex-col gap-2">
+                <div className="flex items-center gap-1.5 text-purple-600 font-extrabold text-[8px] uppercase tracking-wide">
+                  <HelpCircle size={10} /> Câu hỏi trắc nghiệm
+                </div>
+                <div className="text-[10px] text-slate-800 font-bold leading-normal" dangerouslySetInnerHTML={{ __html: block.text || 'Nhập câu hỏi trắc nghiệm...' }} />
+                <div className="grid grid-cols-2 gap-1.5 mt-1 text-[9px] font-semibold text-slate-600">
+                  <div className="border border-slate-100 bg-white p-1 rounded">A. Phương án 1</div>
+                  <div className="border border-slate-100 bg-white p-1 rounded">B. Phương án 2</div>
+                  <div className="border border-slate-100 bg-white p-1 rounded">C. Phương án 3</div>
+                  <div className="border border-slate-100 bg-white p-1 rounded">D. Phương án 4</div>
+                </div>
+              </div>
+            );
+          }
+
+          if (block.type === 'flashcard') {
+            return (
+              <div key={block.id} style={indentStyle} className="p-4 border border-indigo-100 bg-indigo-50/20 rounded-xl my-2.5 flex flex-col items-center justify-center text-center gap-1.5 relative overflow-hidden shadow-sm">
+                <div className="absolute top-2 left-2 text-indigo-500 font-extrabold text-[8px] uppercase tracking-wide flex items-center gap-1">
+                  <Award size={9} /> Flashcard
+                </div>
+                <div className="text-[11px] text-indigo-900 font-black tracking-wide mt-2" dangerouslySetInnerHTML={{ __html: block.text || 'Thuật ngữ / Từ vựng' }} />
+                <div className="w-12 h-px bg-indigo-100 my-1" />
+                <div className="text-[9px] text-slate-500 font-medium">Định nghĩa / Ý nghĩa giải thích</div>
+              </div>
+            );
+          }
+
+          if (block.type === 'mindmap') {
+            return (
+              <div key={block.id} style={indentStyle} className="p-3 border border-slate-200 bg-slate-50 rounded-xl my-2.5 flex flex-col gap-2 items-center justify-center text-center py-5">
+                <div className="text-primary font-black text-[9px] uppercase tracking-wider flex items-center gap-1 mb-1">
+                  <FolderOpen size={10} /> Sơ đồ tư duy (Mindmap)
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-bold text-slate-600">
+                  <div className="px-2.5 py-1 bg-white border border-slate-200 rounded-full shadow-sm text-primary">Chủ đề chính</div>
+                  <div className="text-slate-350">─</div>
+                  <div className="px-2 py-0.5 bg-white border border-slate-200 rounded-md shadow-sm">{block.text.replace(/<[^>]*>/g, '').trim() || 'Nhánh con'}</div>
+                </div>
+              </div>
+            );
+          }
+
+          if (block.type === 'media') {
+            return (
+              <div key={block.id} style={indentStyle} className="aspect-video w-full max-w-sm mx-auto bg-slate-900 rounded-xl overflow-hidden my-2.5 flex flex-col items-center justify-center text-center p-4 relative group border border-slate-800">
+                <div className="absolute top-3 left-3 text-white/60 font-black text-[8px] uppercase tracking-wider flex items-center gap-1">
+                  <Video size={10} /> Video Bài học
+                </div>
+                <div className="w-10 h-10 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer mb-2">
+                  <span className="translate-x-0.5 text-xs">▶</span>
+                </div>
+                <div className="text-[9px] text-white/80 font-bold truncate max-w-full" dangerouslySetInnerHTML={{ __html: block.text || 'Video bài giảng chưa đặt tên' }} />
+              </div>
             );
           }
 
