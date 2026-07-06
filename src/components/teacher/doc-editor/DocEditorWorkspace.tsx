@@ -1863,6 +1863,7 @@ const BlockRowComponent: React.FC<BlockRowProps> = ({
   blocksLength,
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const handleButtonRef = useRef<HTMLButtonElement>(null);
 
   const indentStyle = { paddingLeft: `${indent * 24}px` };
 
@@ -1873,16 +1874,17 @@ const BlockRowComponent: React.FC<BlockRowProps> = ({
   return (
     <div 
       style={indentStyle}
-      className={`group relative flex items-start gap-2.5 transition rounded-xl ${isActive ? 'bg-slate-50/40 ring-1 ring-slate-100/50' : ''}`}
+      className={`group relative flex items-start gap-1.5 transition rounded-xl w-full ${isActive ? 'bg-slate-50/40 ring-1 ring-slate-100/50' : ''}`}
     >
       {/* Option menu handle for Notion-like menu */}
-      <div className="absolute -left-6 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition flex items-center select-none z-10">
-        <div className="relative">
+      <div className="w-5 h-6 flex items-center justify-center shrink-0 select-none text-slate-300">
+        <div className="relative opacity-0 group-hover:opacity-100 transition-all duration-[150ms] ease-in-out transform translate-x-[-2px] group-hover:translate-x-0 flex items-center justify-center">
           <Tooltip content="Lựa chọn Block">
             <button 
+              ref={handleButtonRef}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-700 rounded cursor-pointer animate-fadeIn"
+              className="p-0.5 hover:bg-slate-100 hover:text-slate-700 rounded cursor-pointer text-slate-400"
             >
               <GripVertical size={14} />
             </button>
@@ -1898,22 +1900,25 @@ const BlockRowComponent: React.FC<BlockRowProps> = ({
             onConvert={(type, level) => onConvertBlock(idx, type, level)}
             canMoveUp={idx > 0}
             canMoveDown={idx < blocksLength - 1}
+            triggerRef={handleButtonRef}
           />
         </div>
       </div>
 
-      <BlockRenderer 
-        block={block}
-        idx={idx}
-        isActive={isActive}
-        alignClass={alignClass}
-        listIndex={listIndex}
-        setActiveBlockIndex={setActiveBlockIndex}
-        updateBlockText={updateBlockText}
-        handleKeyDown={handleKeyDownLocal}
-        toggleTodoChecked={toggleTodoChecked}
-        onUpdateBlock={onUpdateBlock}
-      />
+      <div className="flex-1 min-w-0">
+        <BlockRenderer 
+          block={block}
+          idx={idx}
+          isActive={isActive}
+          alignClass={alignClass}
+          listIndex={listIndex}
+          setActiveBlockIndex={setActiveBlockIndex}
+          updateBlockText={updateBlockText}
+          handleKeyDown={handleKeyDownLocal}
+          toggleTodoChecked={toggleTodoChecked}
+          onUpdateBlock={onUpdateBlock}
+        />
+      </div>
     </div>
   );
 };

@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Copy, 
   Trash2, 
@@ -22,6 +23,7 @@ interface BlockContextMenuProps {
   onConvert: (type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote', level?: 1 | 2 | 3) => void;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  triggerRef: React.RefObject<HTMLElement | null>;
 }
 
 export const BlockContextMenu: React.FC<BlockContextMenuProps> = ({
@@ -34,26 +36,71 @@ export const BlockContextMenu: React.FC<BlockContextMenuProps> = ({
   onConvert,
   canMoveUp,
   canMoveDown,
+  triggerRef,
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+
+  const updateCoords = () => {
+    if (triggerRef.current && menuRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const menuRect = menuRef.current.getBoundingClientRect();
+
+      let left = rect.left;
+      let top = rect.bottom + 6; // 6px space below
+
+      // Boundary check left/right
+      if (left + menuRect.width > window.innerWidth - 8) {
+        left = window.innerWidth - menuRect.width - 8;
+      }
+      if (left < 8) {
+        left = 8;
+      }
+
+      // Boundary check bottom
+      if (top + menuRect.height > window.innerHeight - 8) {
+        top = rect.top - menuRect.height - 6; // Display above trigger
+      }
+
+      setCoords({ top, left });
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return;
     const handleOutsideClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node) && 
+          triggerRef.current && !triggerRef.current.contains(e.target as Node)) {
         onClose();
       }
     };
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, triggerRef]);
+
+  useEffect(() => {
+    if (isOpen) {
+      updateCoords();
+      // Listen to scroll events on any parent scroll viewport (capture: true) and window resize
+      window.addEventListener('scroll', updateCoords, true);
+      window.addEventListener('resize', updateCoords);
+      return () => {
+        window.removeEventListener('scroll', updateCoords, true);
+        window.removeEventListener('resize', updateCoords);
+      };
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div 
       ref={menuRef}
-      className="absolute left-0 mt-6 w-48 bg-white border border-slate-100 rounded-xl shadow-xl z-50 p-1.5 flex flex-col gap-0.5 animate-fadeIn select-none text-[10px] font-bold text-slate-700"
+      className="fixed w-48 bg-white border border-slate-100 rounded-xl shadow-xl z-40 p-1.5 flex flex-col gap-0.5 animate-fadeIn select-none text-[10px] font-bold text-slate-700 font-sans"
+      style={{
+        top: `${coords.top}px`,
+        left: `${coords.left}px`,
+      }}
     >
       <button
         onMouseDown={(e) => e.preventDefault()}
@@ -155,6 +202,7 @@ export const BlockContextMenu: React.FC<BlockContextMenuProps> = ({
         <MessageSquare size={12} className="text-slate-400" />
         <span>💧 Hộp lưu ý (Callout)</span>
       </button>
-    </div>
+    </div>,
+    document.body
   );
 };
