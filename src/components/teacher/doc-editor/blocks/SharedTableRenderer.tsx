@@ -4,15 +4,14 @@
  * Single source of truth for rendering a document table.
  * Used by both TableBlock (editor) and DocPreviewSimulator (preview).
  *
- * Editor mode   → passes resize handles, cell focus/selection props.
+ * Editor mode   → passes resize handles, cell focus/selection props, toolbar and caption handles.
  * Preview mode  → isEditable=false, no interactive handles.
  *
  * Alignment (left / center / right) is driven by block.align.
- * The table container exposes its rendered width via onWidthChange
- * so the caption can track it without duplicated layout logic.
  */
 import React from 'react';
-import type { DocBlock, TableCellStyle } from '../../../../types/doc-editor';
+import type { DocBlock, LiveTableResizeState } from '../../../../types/doc-editor';
+import { TableCaption } from './TableCaption';
 
 // ─── Shared styling constants ────────────────────────────────────────────────
 
@@ -51,46 +50,93 @@ export interface CellEditHandles {
 
 export interface SharedTableRendererProps {
   block: DocBlock;
-  /** Live widths during a col-resize drag */
-  activeWidths?:  number[];
-  /** Live heights during a row-resize drag */
-  activeHeights?: number[];
   /** Render in interactive editor mode */
   isEditable?: boolean;
   resize?:     ResizeHandles;
   selection?:  SelectionHandles;
   cellEdit?:   CellEditHandles;
+
+  liveTableResize?: LiveTableResizeState | null;
+
+  // Toolbar Props
+  onAddRow?: () => void;
+  onAddColumn?: () => void;
+  onDeleteRow?: () => void;
+  onDeleteColumn?: () => void;
+  onDeleteTable?: () => void;
+  isTableActive?: boolean;
+
+  // Caption Props
+  onChangeCaption?: (text: string) => void;
+  onFocusCaption?: () => void;
+  onTableSelect?: () => void;
 }
 
-// ─── Internal helpers ─────────────────────────────────────────────────────────
+export interface TableLayoutModel {
+  isManual: boolean;
+  colCount: number;
+  rowCount: number;
+  columnWidths: number[];
+  rowHeights: number[];
+  totalWidth: number;
+  tableStyle: React.CSSProperties;
+  containerStyle: React.CSSProperties;
+}
 
-function computeWidths(block: DocBlock, colCount: number) {
+// ─── Single Table Layout Engine ──────────────────────────────────────────────
+
+export function computeTableLayout(
+  block: DocBlock,
+  liveWidths?: number[],
+  liveHeights?: number[]
+): TableLayoutModel {
+  const rows = block.rows || [['', '', ''], ['', '', ''], ['', '', '']];
+  const colCount = rows[0]?.length || 3;
+  const rowCount = rows.length;
+
   const isManual = !!(block.columnWidths && block.columnWidths.length === colCount);
-  return {
-    isManual,
-    widths: isManual ? block.columnWidths! : Array<number>(colCount).fill(120),
-  };
-}
-
-function computeHeights(block: DocBlock, rowCount: number): number[] {
-  return block.rowHeights && block.rowHeights.length === rowCount
+  const baseWidths = isManual ? block.columnWidths! : Array<number>(colCount).fill(120);
+  const baseHeights = block.rowHeights && block.rowHeights.length === rowCount
     ? block.rowHeights
     : Array<number>(rowCount).fill(36);
-}
 
-function computeCellStyles(block: DocBlock, rowCount: number, colCount: number): TableCellStyle[][] {
-  return block.cellStyles &&
-    block.cellStyles.length === rowCount &&
-    block.cellStyles[0]?.length === colCount
-    ? block.cellStyles
-    : Array.from({ length: rowCount }, () => Array<TableCellStyle>(colCount).fill({}));
-}
+  const columnWidths = liveWidths ?? baseWidths;
+  const rowHeights = liveHeights ?? baseHeights;
+  const totalWidth = columnWidths.reduce((sum, w) => sum + w, 0);
 
-/** Maps block.align to CSS margin shorthand so both editor and preview are identical */
-function alignToMargin(align?: string): string {
-  if (align === 'center') return '0 auto';
-  if (align === 'right')  return '0 0 0 auto';
-  return '0';                // left (default)
+  const alignToMargin = (align?: string): string => {
+    if (align === 'center') return '0 auto';
+    if (align === 'right')  return '0 0 0 auto';
+    return '0'; // left (default)
+  };
+
+  const containerStyle: React.CSSProperties = isManual
+    ? {
+        width: '100%',
+        maxWidth: `${totalWidth}px`,
+        minWidth: `${totalWidth}px`,
+        margin: alignToMargin(block.align),
+      }
+    : {
+        width: '100%',
+        margin: alignToMargin(block.align),
+      };
+
+  const tableStyle: React.CSSProperties = {
+    width: '100%',
+    tableLayout: 'fixed',
+  };
+
+  return {
+    isManual,
+    colCount,
+    rowCount,
+    columnWidths,
+    rowHeights,
+    totalWidth,
+    tableStyle,
+    containerStyle,
+  };
 }
 
 // ─── Resize handle ────────────────────────────────────────────────────────────
@@ -134,53 +180,60 @@ const ColResizeHandle: React.FC<ColResizeHandleProps> = ({ colIdx, resize }) => 
 
 export const SharedTableRenderer: React.FC<SharedTableRendererProps> = ({
   block,
-  activeWidths:  propActiveWidths,
-  activeHeights: propActiveHeights,
   isEditable = false,
   resize,
   selection,
   cellEdit,
+  liveTableResize,
+  onChangeCaption,
+  onFocusCaption,
+  onTableSelect,
 }) => {
-  const rows     = block.rows || [['', '', ''], ['', '', ''], ['', '', '']];
+  const rows = block.rows || [['', '', ''], ['', '', ''], ['', '', '']];
   const colCount = rows[0]?.length || 3;
-  const rowCount = rows.length;
 
-  const { isManual, widths: baseWidths } = computeWidths(block, colCount);
-  const baseHeights                      = computeHeights(block, rowCount);
-  const cellStyles                       = computeCellStyles(block, rowCount, colCount);
+  const isLive = !!(liveTableResize && liveTableResize.blockId === block.id);
+  const liveWidths = isLive ? liveTableResize.columnWidths : undefined;
+  const liveHeights = isLive ? liveTableResize.rowHeights : undefined;
 
-  const activeWidths  = propActiveWidths  ?? baseWidths;
-  const activeHeights = propActiveHeights ?? baseHeights;
+  const {
+    isManual,
+    columnWidths,
+    rowHeights,
+    totalWidth,
+    tableStyle,
+    containerStyle,
+  } = computeTableLayout(block, liveWidths, liveHeights);
 
-  const totalWidth = activeWidths.reduce((s, w) => s + w, 0);
+  const isDragging = !!(
+    liveTableResize &&
+    liveTableResize.blockId === block.id &&
+    (liveTableResize.resizingCol !== null || liveTableResize.resizingRow !== null)
+  );
 
-  /**
-   * Fluid (auto) tables: 100% width, equal columns via <col>
-   * Manual tables: fixed pixel widths, still expressed as percentages
-   *                of the total so the table always fills its container.
-   */
-  const tableStyle: React.CSSProperties = isManual
-    ? {
-        width:       '100%',
-        maxWidth:    `${totalWidth}px`,
-        minWidth:    `${totalWidth}px`,
-        tableLayout: 'fixed',
-        margin:      alignToMargin(block.align),
-      }
-    : {
-        width:       '100%',
-        tableLayout: 'fixed',
-        margin:      alignToMargin(block.align),
-      };
+  const activeResizingRow = liveTableResize && liveTableResize.blockId === block.id ? liveTableResize.resizingRow : null;
 
-  const isDragging = !!(resize && (resize.resizingCol !== null || resize.resizingRow !== null));
+  const handleTableClick = (e: React.PointerEvent) => {
+    if (!isEditable) return;
+    const target = e.target as HTMLElement;
+    const isCell = target.closest('td') || target.closest('th');
+    if (!isCell) {
+      onTableSelect?.();
+    }
+  };
 
   return (
-    /* Outer scroll wrapper — horizontal scroll only, never vertical */
     <div
-      className="w-full overflow-x-auto"
-      style={{ pointerEvents: isDragging ? 'none' : undefined }}
+      style={containerStyle}
+      onPointerDown={handleTableClick}
+      className={`relative transition ${
+        isEditable
+          ? 'w-full rounded-xl p-1.5'
+          : ''
+      }`}
     >
+
+
       <table
         className="border-collapse text-[10px] font-bold"
         style={{
@@ -188,10 +241,11 @@ export const SharedTableRenderer: React.FC<SharedTableRendererProps> = ({
           /* left + top outer border — right + bottom come from the last td borders */
           borderTop:  `1px solid ${TABLE_BORDER_COLOR}`,
           borderLeft: `1px solid ${TABLE_BORDER_COLOR}`,
+          pointerEvents: isDragging ? 'none' : undefined,
         }}
       >
         <colgroup>
-          {activeWidths.map((w, ci) => (
+          {columnWidths.map((w, ci) => (
             <col
               key={ci}
               style={{
@@ -205,14 +259,14 @@ export const SharedTableRenderer: React.FC<SharedTableRendererProps> = ({
 
         <tbody>
           {rows.map((row, rIdx) => {
-            const rowH = activeHeights[rIdx] ?? 36;
+            const rowH = rowHeights[rIdx] ?? 36;
             return (
               <tr key={rIdx} style={{ height: `${rowH}px` }}>
                 {row.map((cell, cIdx) => {
                   const isHeader =
                     (rIdx === 0 && !!block.hasHeaderRow) ||
                     (cIdx === 0 && !!block.hasHeaderColumn);
-                  const cs = cellStyles[rIdx]?.[cIdx] ?? {};
+                  const cellStyles = block.cellStyles && block.cellStyles[rIdx]?.[cIdx] ? block.cellStyles[rIdx][cIdx] : {};
                   const isSelected =
                     selection?.selectedCells.some(s => s.r === rIdx && s.c === cIdx) ?? false;
 
@@ -220,8 +274,8 @@ export const SharedTableRenderer: React.FC<SharedTableRendererProps> = ({
                     borderRight:     `1px solid ${TABLE_BORDER_COLOR}`,
                     borderBottom:    `1px solid ${TABLE_BORDER_COLOR}`,
                     height:          `${rowH}px`,
-                    verticalAlign:   cs.valign || 'middle',
-                    backgroundColor: isHeader ? (cs.bg || TABLE_HEADER_BG) : (cs.bg || 'white'),
+                    verticalAlign:   cellStyles.valign || 'middle',
+                    backgroundColor: isHeader ? (cellStyles.bg || TABLE_HEADER_BG) : (cellStyles.bg || 'white'),
                     position:        'relative',
                     ...(isSelected && isEditable
                       ? { outline: '2px solid #6366F1', outlineOffset: '-1px' }
@@ -229,8 +283,8 @@ export const SharedTableRenderer: React.FC<SharedTableRendererProps> = ({
                   };
 
                   const innerStyle: React.CSSProperties = {
-                    textAlign:  cs.align  || undefined,
-                    color:      isHeader ? (cs.color || TABLE_HEADER_TEXT) : (cs.color || TABLE_CELL_TEXT),
+                    textAlign:  cellStyles.align  || undefined,
+                    color:      isHeader ? (cellStyles.color || TABLE_HEADER_TEXT) : (cellStyles.color || TABLE_CELL_TEXT),
                     fontWeight: isHeader ? 800 : 600,
                   };
 
@@ -271,11 +325,11 @@ export const SharedTableRenderer: React.FC<SharedTableRendererProps> = ({
                             zIndex:         30,
                             userSelect:     'none',
                             pointerEvents:  'auto',
-                            backgroundColor: resize.resizingRow === rIdx ? '#6366F1' : undefined,
-                            opacity:         resize.resizingRow === rIdx ? 1 : undefined,
+                            backgroundColor: activeResizingRow === rIdx ? '#6366F1' : undefined,
+                            opacity:         activeResizingRow === rIdx ? 1 : undefined,
                           }}
                           className={
-                            resize.resizingRow !== rIdx
+                            activeResizingRow !== rIdx
                               ? 'opacity-0 hover:opacity-100 hover:bg-indigo-400/40 transition-opacity'
                               : ''
                           }
@@ -289,6 +343,13 @@ export const SharedTableRenderer: React.FC<SharedTableRendererProps> = ({
           })}
         </tbody>
       </table>
+
+      <TableCaption
+        caption={block.caption || ''}
+        isEditable={isEditable}
+        onChange={onChangeCaption}
+        onFocus={onFocusCaption}
+      />
     </div>
   );
 };

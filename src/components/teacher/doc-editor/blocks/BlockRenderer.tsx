@@ -1,5 +1,5 @@
 import React from 'react';
-import type { DocBlock } from '../../../../types/doc-editor';
+import type { DocBlock, LiveTableResizeState, LiveTableActiveCell } from '../../../../types/doc-editor';
 import { ParagraphBlock } from './ParagraphBlock';
 import { HeadingBlock } from './HeadingBlock';
 import { QuoteBlock } from './QuoteBlock';
@@ -20,11 +20,15 @@ interface BlockRendererProps {
   updateBlockText: (i: number, val: string) => void;
   handleKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => void;
   toggleTodoChecked: (i: number) => void;
-  onUpdateBlock: (i: number, updated: DocBlock) => void;
+  onUpdateBlock: (i: number, updated: DocBlock, isDebounced?: boolean) => void;
   onDeleteBlock: (i: number) => void;
   tableNumber?: number;
   /** Routes toolbar alignment actions into table cells when table is active */
   onRegisterCellAlignHandler: (fn: ((align: 'left' | 'center' | 'right' | 'justify') => void) | null) => void;
+  liveTableResize: LiveTableResizeState | null;
+  setLiveTableResize: (state: LiveTableResizeState | null) => void;
+  liveTableActiveCell: LiveTableActiveCell | null;
+  setLiveTableActiveCell: (state: LiveTableActiveCell | null) => void;
 }
 
 export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
@@ -41,6 +45,10 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
   onDeleteBlock,
   tableNumber,
   onRegisterCellAlignHandler,
+  liveTableResize,
+  setLiveTableResize,
+  liveTableActiveCell,
+  setLiveTableActiveCell,
 }) => {
   switch (block.type) {
     case 'heading':
@@ -91,6 +99,7 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
         <ImageBlock 
           block={block}
           idx={idx}
+          isActive={isActive}
           setActiveBlockIndex={setActiveBlockIndex}
           onUpdateBlock={onUpdateBlock}
         />
@@ -104,8 +113,12 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
           setActiveBlockIndex={setActiveBlockIndex}
           onUpdateBlock={onUpdateBlock}
           onDeleteBlock={onDeleteBlock}
-          tableNumber={tableNumber || 1}
+          _tableNumber={tableNumber || 1}
           onRegisterCellAlignHandler={onRegisterCellAlignHandler}
+          liveTableResize={liveTableResize}
+          setLiveTableResize={setLiveTableResize}
+          liveTableActiveCell={liveTableActiveCell}
+          setLiveTableActiveCell={setLiveTableActiveCell}
         />
       );
     case 'formula':
@@ -113,8 +126,10 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
         <FormulaBlock 
           block={block}
           idx={idx}
+          isActive={isActive}
           setActiveBlockIndex={setActiveBlockIndex}
           onUpdateBlock={onUpdateBlock}
+          handleKeyDown={handleKeyDown}
         />
       );
     case 'code':

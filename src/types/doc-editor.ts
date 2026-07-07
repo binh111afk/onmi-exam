@@ -17,6 +17,7 @@ export interface DocBlock {
   src?: string;
   caption?: string;
   latex?: string;
+  display?: 'inline' | 'block';
   language?: string;
   rows?: string[][];
   width?: string;
@@ -40,3 +41,19 @@ export interface Chapter {
   isExpanded?: boolean;
   lessons: Lesson[];
 }
+
+export interface LiveTableResizeState {
+  blockId: string;
+  resizingCol: number | null;
+  resizingRow: number | null;
+  columnWidths: number[];
+  rowHeights: number[];
+}
+
+export interface LiveTableActiveCell {
+  blockId: string;
+  row: number;
+  col: number;
+}
+
+

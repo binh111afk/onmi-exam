@@ -1,13 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Image as ImageIcon, AlertTriangle, AlignLeft, AlignCenter, AlignRight, RefreshCw, Type } from 'lucide-react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
+import { Image as ImageIcon, AlertTriangle, RefreshCw, Type } from 'lucide-react';
 import type { DocBlock } from '../../../../types/doc-editor';
 import { uploadImageFile } from '../../../../services/imageUploadService';
-import { Tooltip } from '../Tooltip';
 import { useAlert } from '../../../common/Alert';
+import { BlockWrapperContext } from '../BlockWrapper';
 
 interface ImageBlockProps {
   block: DocBlock;
   idx: number;
+  isActive: boolean;
   setActiveBlockIndex: (i: number) => void;
   onUpdateBlock: (i: number, updated: DocBlock) => void;
 }
@@ -15,9 +16,11 @@ interface ImageBlockProps {
 export const ImageBlockComponent: React.FC<ImageBlockProps> = ({
   block,
   idx,
+  isActive,
   setActiveBlockIndex,
   onUpdateBlock,
 }) => {
+  const wrapperContext = useContext(BlockWrapperContext);
   const { showAlert } = useAlert();
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -185,6 +188,35 @@ export const ImageBlockComponent: React.FC<ImageBlockProps> = ({
     }
   };
 
+  useEffect(() => {
+    if (wrapperContext && isActive) {
+      wrapperContext.registerCustomActions([
+        {
+          label: 'Thay ảnh',
+          icon: <RefreshCw size={11} />,
+          onTrigger: triggerReplace
+        },
+        {
+          label: 'Chú thích',
+          icon: <Type size={11} />,
+          onTrigger: () => setIsEditingCaption(true)
+        },
+        {
+          label: '33%',
+          onTrigger: () => onUpdateBlock(idx, { ...block, width: '33%' })
+        },
+        {
+          label: '66%',
+          onTrigger: () => onUpdateBlock(idx, { ...block, width: '66%' })
+        },
+        {
+          label: '100%',
+          onTrigger: () => onUpdateBlock(idx, { ...block, width: '100%' })
+        }
+      ]);
+    }
+  }, [wrapperContext, isActive, idx, block.width]);
+
   const justifyClass = block.align === 'left'
     ? 'justify-start'
     : block.align === 'right'
@@ -299,81 +331,6 @@ export const ImageBlockComponent: React.FC<ImageBlockProps> = ({
             <span className="text-[9px] font-black text-slate-500">↘</span>
           </div>
         </div>
-
-        {isToolbarOpen && !hasError && (
-          <div 
-            onMouseDown={(e) => e.stopPropagation()}
-            className="absolute top-[-36px] left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-sm border border-slate-100 shadow-xl rounded-xl px-2 py-1 flex items-center gap-1.5 z-40 text-[9px] font-black text-slate-500 select-none animate-fadeIn"
-          >
-            <Tooltip content="Thay ảnh">
-              <button 
-                onClick={triggerReplace}
-                className="p-1 hover:bg-slate-50 hover:text-slate-800 rounded transition cursor-pointer"
-              >
-                <RefreshCw size={11} />
-              </button>
-            </Tooltip>
-
-            <span className="w-px h-3 bg-slate-100" />
-
-            <Tooltip content="Đổi căn lề: Trái">
-              <button 
-                onClick={() => onUpdateBlock(idx, { ...block, align: 'left' })}
-                className={`p-1 rounded transition cursor-pointer ${block.align === 'left' ? 'text-primary bg-primary-light' : 'hover:bg-slate-50 hover:text-slate-800'}`}
-              >
-                <AlignLeft size={11} />
-              </button>
-            </Tooltip>
-            <Tooltip content="Đổi căn lề: Giữa">
-              <button 
-                onClick={() => onUpdateBlock(idx, { ...block, align: 'center' })}
-                className={`p-1 rounded transition cursor-pointer ${block.align === 'center' || !block.align ? 'text-primary bg-primary-light' : 'hover:bg-slate-50 hover:text-slate-800'}`}
-              >
-                <AlignCenter size={11} />
-              </button>
-            </Tooltip>
-            <Tooltip content="Đổi căn lề: Phải">
-              <button 
-                onClick={() => onUpdateBlock(idx, { ...block, align: 'right' })}
-                className={`p-1 rounded transition cursor-pointer ${block.align === 'right' ? 'text-primary bg-primary-light' : 'hover:bg-slate-50 hover:text-slate-800'}`}
-              >
-                <AlignRight size={11} />
-              </button>
-            </Tooltip>
-
-            <span className="w-px h-3 bg-slate-100" />
-
-            <button 
-              onClick={() => onUpdateBlock(idx, { ...block, width: '33%' })}
-              className={`px-1.5 py-0.5 rounded transition cursor-pointer ${block.width === '33%' ? 'text-primary bg-primary-light' : 'hover:bg-slate-50 hover:text-slate-800'}`}
-            >
-              S
-            </button>
-            <button 
-              onClick={() => onUpdateBlock(idx, { ...block, width: '66%' })}
-              className={`px-1.5 py-0.5 rounded transition cursor-pointer ${block.width === '66%' ? 'text-primary bg-primary-light' : 'hover:bg-slate-50 hover:text-slate-800'}`}
-            >
-              M
-            </button>
-            <button 
-              onClick={() => onUpdateBlock(idx, { ...block, width: '100%' })}
-              className={`px-1.5 py-0.5 rounded transition cursor-pointer ${block.width === '100%' || !block.width ? 'text-primary bg-primary-light' : 'hover:bg-slate-50 hover:text-slate-800'}`}
-            >
-              L
-            </button>
-
-            <span className="w-px h-3 bg-slate-100" />
-
-            <Tooltip content="Viết chú thích">
-              <button 
-                onClick={() => setIsEditingCaption(true)}
-                className="p-1 hover:bg-slate-50 hover:text-slate-800 rounded transition cursor-pointer"
-              >
-                <Type size={11} />
-              </button>
-            </Tooltip>
-          </div>
-        )}
 
         <div className="mt-1.5 text-center text-[8px] font-bold text-slate-400 min-h-[14px]">
           {isEditingCaption ? (

@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import type { DocBlock, TableCellStyle } from '../../../../types/doc-editor';
-import { TableToolbar } from './TableToolbar';
-import { TableCaption } from './TableCaption';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
+import type { DocBlock, TableCellStyle, LiveTableResizeState, LiveTableActiveCell } from '../../../../types/doc-editor';
+import { BlockWrapperContext } from '../BlockWrapper';
 import {
   SharedTableRenderer,
   type ResizeHandles,
@@ -16,13 +15,18 @@ interface TableBlockProps {
   setActiveBlockIndex: (i: number) => void;
   onUpdateBlock: (i: number, updated: DocBlock) => void;
   onDeleteBlock: (i: number) => void;
-  tableNumber: number;
+  _tableNumber: number;
   /**
    * Callback so the workspace can route toolbar alignment commands
    * into cells when this table is the active block.
    * The workspace stores the latest handler in a ref.
    */
   onRegisterCellAlignHandler: (fn: ((align: 'left' | 'center' | 'right' | 'justify') => void) | null) => void;
+
+  liveTableResize: LiveTableResizeState | null;
+  setLiveTableResize: (state: LiveTableResizeState | null) => void;
+  liveTableActiveCell: LiveTableActiveCell | null;
+  setLiveTableActiveCell: (state: LiveTableActiveCell | null) => void;
 }
 
 export const TableBlockComponent: React.FC<TableBlockProps> = ({
@@ -32,9 +36,14 @@ export const TableBlockComponent: React.FC<TableBlockProps> = ({
   setActiveBlockIndex,
   onUpdateBlock,
   onDeleteBlock,
-  tableNumber,
+  _tableNumber: _unusedTableNumber,
   onRegisterCellAlignHandler,
+  liveTableResize,
+  setLiveTableResize,
+  liveTableActiveCell: _unusedLiveTableActiveCell,
+  setLiveTableActiveCell,
 }) => {
+  const wrapperContext = useContext(BlockWrapperContext);
   const rows     = block.rows || [['', '', ''], ['', '', ''], ['', '', '']];
   const colCount = rows[0]?.length || 3;
   const rowCount = rows.length;
@@ -45,13 +54,9 @@ export const TableBlockComponent: React.FC<TableBlockProps> = ({
   const [selectStart, setSelectStart] = useState<{ r: number; c: number } | null>(null);
   const [selectedCells, setSelectedCells] = useState<{ r: number; c: number }[]>([]);
 
-  // ── Resize state (kept local to avoid layout thrashing) ────────────────────
-  const [resizingCol, setResizingCol] = useState<number | null>(null);
-  const [resizingRow, setResizingRow] = useState<number | null>(null);
-  const [startSize,   setStartSize]   = useState(0);
-  const [startPos,    setStartPos]    = useState(0);
-  const [tempWidths,  setTempWidths]  = useState<number[]>([]);
-  const [tempHeights, setTempHeights] = useState<number[]>([]);
+  // ── Local helper resize state ──────────────────────────────────────────────
+  const [startSize, setStartSize] = useState(0);
+  const [startPos,  setStartPos]  = useState(0);
 
   // Helpers
   const isManuallyResized = !!(block.columnWidths && block.columnWidths.length === colCount);
@@ -60,9 +65,11 @@ export const TableBlockComponent: React.FC<TableBlockProps> = ({
     ? block.rowHeights
     : Array<number>(rowCount).fill(36);
 
-  const activeWidths  = resizingCol !== null ? tempWidths  : baseWidths;
-  const activeHeights = resizingRow !== null ? tempHeights : baseHeights;
+  const isLive = !!(liveTableResize && liveTableResize.blockId === block.id);
 
+
+  const resizingCol = isLive ? liveTableResize.resizingCol : null;
+  const resizingRow = isLive ? liveTableResize.resizingRow : null;
 
   // ── Grid mutation helpers ───────────────────────────────────────────────────
   const newStyleRow = () => Array<TableCellStyle>(colCount).fill({});
@@ -102,18 +109,21 @@ export const TableBlockComponent: React.FC<TableBlockProps> = ({
   }, [block, idx, rowCount, colCount, selectedCells, focusedRow, focusedCol, onUpdateBlock]);
 
   // Register / deregister the cell-align handler with the workspace whenever
-  // this table is (or stops being) the active block.
+  // a table cell is focused/active inside this block.
   useEffect(() => {
-    if (isActive) {
-      onRegisterCellAlignHandler((align) => applyCellStyles({ align }));
+    if (isActive && focusedRow !== null && focusedCol !== null) {
+      onRegisterCellAlignHandler((align) => {
+        if (align !== 'justify') {
+          applyCellStyles({ align });
+        }
+      });
     } else {
       onRegisterCellAlignHandler(null);
     }
     return () => {
       onRegisterCellAlignHandler(null);
     };
-  // Include applyCellStyles in deps — it updates whenever block/selection changes
-  }, [isActive, applyCellStyles, onRegisterCellAlignHandler]);
+  }, [isActive, focusedRow, focusedCol, applyCellStyles, onRegisterCellAlignHandler]);
 
   const handleAddRow = () => {
     const activeR = focusedRow ?? rows.length - 1;
@@ -166,6 +176,24 @@ export const TableBlockComponent: React.FC<TableBlockProps> = ({
     setFocusedCol(Math.min(colCount - 2, activeC));
     setFocusedRow(focusedRow ?? 0);
   };
+
+  useEffect(() => {
+    if (wrapperContext && isActive) {
+      wrapperContext.registerCustomActions([
+        { label: 'Thêm dòng', onTrigger: handleAddRow },
+        { label: 'Thêm cột', onTrigger: handleAddColumn },
+        { label: 'Xóa dòng', onTrigger: handleDeleteRow },
+        { label: 'Xóa cột', onTrigger: handleDeleteColumn },
+      ]);
+    }
+  }, [
+    wrapperContext,
+    isActive,
+    rows.length,
+    colCount,
+    focusedRow,
+    focusedCol,
+  ]);
 
   // ── Keyboard navigation ─────────────────────────────────────────────────────
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, rIdx: number, cIdx: number) => {
@@ -295,64 +323,81 @@ export const TableBlockComponent: React.FC<TableBlockProps> = ({
       }
     }
     if (widths.length !== colCount) widths = Array<number>(colCount).fill(120);
-    setResizingCol(colIdx);
+
+    setLiveTableResize({
+      blockId: block.id,
+      resizingCol: colIdx,
+      resizingRow: null,
+      columnWidths: widths,
+      rowHeights: baseHeights,
+    });
     setStartSize(widths[colIdx]);
     setStartPos(e.clientX);
-    setTempWidths(widths);
     document.body.classList.add('select-none');
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
   const onColResize = (e: React.PointerEvent) => {
-    if (resizingCol === null) return;
+    if (!liveTableResize || liveTableResize.resizingCol === null) return;
+    const currentResizingCol = liveTableResize.resizingCol;
     const delta    = e.clientX - startPos;
     const newW     = Math.max(60, startSize + delta);
     const adjusted = newW - startSize;
-    const next     = [...tempWidths];
-    next[resizingCol] = newW;
-    if (resizingCol + 1 < next.length) {
-      next[resizingCol + 1] = Math.max(60, tempWidths[resizingCol + 1] - adjusted);
+    const next     = [...liveTableResize.columnWidths];
+    next[currentResizingCol] = newW;
+    if (currentResizingCol + 1 < next.length) {
+      next[currentResizingCol + 1] = Math.max(60, liveTableResize.columnWidths[currentResizingCol + 1] - adjusted);
     }
-    setTempWidths(next);
+    setLiveTableResize({
+      ...liveTableResize,
+      columnWidths: next,
+    });
   };
 
   const endColResize = (e: React.PointerEvent) => {
-    if (resizingCol === null) return;
+    if (!liveTableResize || liveTableResize.resizingCol === null) return;
     e.currentTarget.releasePointerCapture(e.pointerId);
-    onUpdateBlock(idx, { ...block, columnWidths: tempWidths });
-    setResizingCol(null);
+    onUpdateBlock(idx, { ...block, columnWidths: liveTableResize.columnWidths });
+    setLiveTableResize(null);
     document.body.classList.remove('select-none');
   };
 
   // ── Row resize ──────────────────────────────────────────────────────────────
   const startRowResize = (e: React.PointerEvent, rowIdx: number) => {
     e.preventDefault(); e.stopPropagation();
-    setResizingRow(rowIdx);
+    setLiveTableResize({
+      blockId: block.id,
+      resizingCol: null,
+      resizingRow: rowIdx,
+      columnWidths: baseWidths,
+      rowHeights: [...baseHeights],
+    });
     setStartSize(baseHeights[rowIdx]);
     setStartPos(e.clientY);
-    setTempHeights([...baseHeights]);
     document.body.classList.add('select-none');
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
   const onRowResize = (e: React.PointerEvent) => {
-    if (resizingRow === null) return;
-    const next = [...tempHeights];
-    next[resizingRow] = Math.max(25, startSize + (e.clientY - startPos));
-    setTempHeights(next);
+    if (!liveTableResize || liveTableResize.resizingRow === null) return;
+    const currentResizingRow = liveTableResize.resizingRow;
+    const next = [...liveTableResize.rowHeights];
+    next[currentResizingRow] = Math.max(25, startSize + (e.clientY - startPos));
+    setLiveTableResize({
+      ...liveTableResize,
+      rowHeights: next,
+    });
   };
 
   const endRowResize = (e: React.PointerEvent) => {
-    if (resizingRow === null) return;
+    if (!liveTableResize || liveTableResize.resizingRow === null) return;
     e.currentTarget.releasePointerCapture(e.pointerId);
-    onUpdateBlock(idx, { ...block, rowHeights: tempHeights });
-    setResizingRow(null);
+    onUpdateBlock(idx, { ...block, rowHeights: liveTableResize.rowHeights });
+    setLiveTableResize(null);
     document.body.classList.remove('select-none');
   };
 
   // ── Compose prop objects for SharedTableRenderer ────────────────────────────
-  const isTableActive = isActive && focusedRow !== null && focusedCol !== null;
-
   const resizeHandles: ResizeHandles = {
     onColResizeStart: startColResize,
     onColResizeMove:  onColResize,
@@ -370,50 +415,48 @@ export const TableBlockComponent: React.FC<TableBlockProps> = ({
     selectedCells,
   };
 
+  const handleTableSelect = useCallback(() => {
+    setActiveBlockIndex(idx);
+    setFocusedRow(null);
+    setFocusedCol(null);
+    setLiveTableActiveCell(null);
+  }, [idx, setActiveBlockIndex, setLiveTableActiveCell]);
+
+  const isEditingCell = focusedRow !== null && focusedCol !== null;
+  const isTableSelected = isActive && !isEditingCell;
+
   const cellEditHandles: CellEditHandles = {
     onChange:  handleCellChange,
-    onFocus:   (r, c) => { setActiveBlockIndex(idx); setFocusedRow(r); setFocusedCol(c); },
+    onFocus:   (r, c) => {
+      setActiveBlockIndex(idx);
+      setFocusedRow(r);
+      setFocusedCol(c);
+      setLiveTableActiveCell({ blockId: block.id, row: r, col: c });
+    },
     onKeyDown: handleKeyDown,
     onPaste:   handleCellPaste,
     focusedRow,
     focusedCol,
   };
 
-  // Total pixel width used by caption to track manual table widths
-  const captionTableMaxWidth = isManuallyResized ? activeWidths.reduce((s, w) => s + w, 0) : undefined;
-  const captionAlign = (block.align as 'left' | 'center' | 'right' | undefined) ?? 'left';
-
   return (
-    <div className={`w-full rounded-xl p-1.5 transition ${isActive ? 'bg-slate-50/20' : ''}`}>
-      <TableToolbar
-        onAddRow={handleAddRow}
-        onAddColumn={handleAddColumn}
-        onDeleteRow={handleDeleteRow}
-        onDeleteColumn={handleDeleteColumn}
-        onDeleteTable={() => onDeleteBlock(idx)}
-        isTableActive={isTableActive}
-      />
-
-      {/* Table — NO fixed height, NO overflow-y, grows naturally with content */}
-      <SharedTableRenderer
-        block={block}
-        activeWidths={activeWidths}
-        activeHeights={activeHeights}
-        isEditable={true}
-        resize={resizeHandles}
-        selection={selectionHandles}
-        cellEdit={cellEditHandles}
-      />
-
-      <TableCaption
-        caption={block.caption || ''}
-        isEditable={true}
-        align={captionAlign}
-        tableMaxWidth={captionTableMaxWidth}
-        onChange={text => onUpdateBlock(idx, { ...block, caption: text })}
-        onFocus={() => setActiveBlockIndex(idx)}
-      />
-    </div>
+    <SharedTableRenderer
+      block={block}
+      isEditable={true}
+      resize={resizeHandles}
+      selection={selectionHandles}
+      cellEdit={cellEditHandles}
+      liveTableResize={liveTableResize}
+      onAddRow={handleAddRow}
+      onAddColumn={handleAddColumn}
+      onDeleteRow={handleDeleteRow}
+      onDeleteColumn={handleDeleteColumn}
+      onDeleteTable={() => onDeleteBlock(idx)}
+      isTableActive={isTableSelected}
+      onChangeCaption={text => onUpdateBlock(idx, { ...block, caption: text })}
+      onFocusCaption={handleTableSelect}
+      onTableSelect={handleTableSelect}
+    />
   );
 };
 

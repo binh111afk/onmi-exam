@@ -12,17 +12,17 @@ import {
   Award, 
   FolderOpen, 
   Video,
-  GripVertical
 } from 'lucide-react';
 import { DocSidebar } from './DocSidebar';
 import { DocToolbar } from './DocToolbar';
 import { DocPreviewSimulator } from './DocPreviewSimulator';
-import { BlockContextMenu } from './BlockContextMenu';
 import { Tooltip } from './Tooltip';
 import { useAlert } from '../../common/Alert';
 import { BlockRenderer } from './blocks/BlockRenderer';
+import { BlockSelectionProvider } from './BlockSelectionProvider';
+import { BlockWrapper } from './BlockWrapper';
 import { uploadImageFile } from '../../../services/imageUploadService';
-import type { Chapter, Lesson, DocBlock } from '../../../types/doc-editor';
+import type { Chapter, Lesson, DocBlock, LiveTableResizeState, LiveTableActiveCell } from '../../../types/doc-editor';
 
 // Sprint 5 Additions
 import { BLOCK_COMMANDS } from './CommandRegistry';
@@ -283,6 +283,8 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
   const [activeLessonId, setActiveLessonId] = useState<string>('water');
   const [chapters, setChapters] = useState<Chapter[]>(initialChapters);
   const [activeBlockIndex, setActiveBlockIndex] = useState<number>(0);
+  const [liveTableResize, setLiveTableResize] = useState<LiveTableResizeState | null>(null);
+  const [liveTableActiveCell, setLiveTableActiveCell] = useState<LiveTableActiveCell | null>(null);
 
   // Slash Command states
   const [showSlashMenu, setShowSlashMenu] = useState(false);
@@ -336,6 +338,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     }]);
     setHistoryIndex(0);
   }, []);
+
 
   // Restore caret position and focus when chapters change
   useEffect(() => {
@@ -517,6 +520,13 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     level: undefined,
     indent: 0
   };
+
+  // Clear liveTableActiveCell if active block is not a table
+  useEffect(() => {
+    if (!activeBlock || activeBlock.type !== 'table') {
+      setLiveTableActiveCell(null);
+    }
+  }, [activeBlock]);
 
   // Caret style state
   const [caretFormatting, setCaretFormatting] = useState({
@@ -937,6 +947,84 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     });
   }, [activeLessonId, pushHistoryState]);
 
+  const deleteBlocks = useCallback((ids: string[]) => {
+    setChapters(prev => {
+      const nextChapters = prev.map(ch => ({
+        ...ch,
+        lessons: ch.lessons.map(lesson => {
+          if (lesson.id === activeLessonId) {
+            const filtered = lesson.blocks.filter(b => !ids.includes(b.id));
+            const finalBlocks = filtered.length > 0 ? filtered : [{
+              id: `b-${Math.random().toString(36).substring(2, 9)}`,
+              type: 'paragraph' as const,
+              text: ''
+            }];
+            return { ...lesson, blocks: finalBlocks };
+          }
+          return lesson;
+        })
+      }));
+      pushHistoryState(nextChapters);
+      return nextChapters;
+    });
+  }, [activeLessonId, pushHistoryState]);
+
+  const duplicateBlocks = useCallback((ids: string[]) => {
+    setChapters(prev => {
+      const nextChapters = prev.map(ch => ({
+        ...ch,
+        lessons: ch.lessons.map(lesson => {
+          if (lesson.id === activeLessonId) {
+            const newBlocks: DocBlock[] = [];
+            lesson.blocks.forEach(b => {
+              newBlocks.push(b);
+              if (ids.includes(b.id)) {
+                newBlocks.push({
+                  ...b,
+                  id: `b-${Math.random().toString(36).substring(2, 9)}`,
+                });
+              }
+            });
+            return { ...lesson, blocks: newBlocks };
+          }
+          return lesson;
+        })
+      }));
+      pushHistoryState(nextChapters);
+      return nextChapters;
+    });
+  }, [activeLessonId, pushHistoryState]);
+
+  const pasteBlocks = useCallback((pasted: DocBlock[], targetBlockId: string | null) => {
+    if (pasted.length === 0) return;
+    setChapters(prev => {
+      const nextChapters = prev.map(ch => ({
+        ...ch,
+        lessons: ch.lessons.map(lesson => {
+          if (lesson.id === activeLessonId) {
+            const idx = targetBlockId ? lesson.blocks.findIndex(b => b.id === targetBlockId) : -1;
+            const insertIdx = idx !== -1 ? idx + 1 : lesson.blocks.length;
+
+            const freshBlocks = pasted.map(b => ({
+              ...b,
+              id: `b-${Math.random().toString(36).substring(2, 9)}`,
+            }));
+
+            const updated = [
+              ...lesson.blocks.slice(0, insertIdx),
+              ...freshBlocks,
+              ...lesson.blocks.slice(insertIdx)
+            ];
+            return { ...lesson, blocks: updated };
+          }
+          return lesson;
+        })
+      }));
+      pushHistoryState(nextChapters);
+      return nextChapters;
+    });
+  }, [activeLessonId, pushHistoryState]);
+
   const duplicateBlock = useCallback((index: number) => {
     setChapters(prev => {
       let nextPages = prev;
@@ -996,7 +1084,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     });
   }, [activeLessonId, pushHistoryState]);
 
-  const handleUpdateBlock = useCallback((index: number, updatedBlock: DocBlock) => {
+  const handleUpdateBlock = useCallback((index: number, updatedBlock: DocBlock, isDebounced = false) => {
     const nextChapters = chapters.map(ch => ({
       ...ch,
       lessons: ch.lessons.map(lesson => {
@@ -1011,7 +1099,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
         return lesson;
       })
     }));
-    pushHistoryState(nextChapters);
+    pushHistoryState(nextChapters, isDebounced);
   }, [chapters, activeLessonId, pushHistoryState]);
 
   const moveBlockUp = useCallback((index: number) => {
@@ -1231,6 +1319,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
                 } else if (cmdType === 'formula') {
                   updated.type = 'formula';
                   updated.latex = 'f(x) = x^2';
+                  updated.display = 'block';
                 } else if (cmdType === 'quiz') {
                   updated.type = 'quiz';
                 } else if (cmdType === 'flashcard') {
@@ -1954,6 +2043,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
           } else if (label === 'Công thức') {
             newBlock.type = 'formula';
             newBlock.latex = 'f(x) = x^2';
+            newBlock.display = 'block';
           }
 
           const currentIdx = activeBlockIndex;
@@ -1974,7 +2064,15 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
   }, [chapters, activeLessonId, activeBlockIndex, pushHistoryState]);
 
   return (
-    <div className="w-full flex flex-col h-screen bg-[#F8FAFC] text-text-primary overflow-hidden font-sans animate-fadeIn">
+    <BlockSelectionProvider
+      blocks={currentBlocks}
+      activeBlockIndex={activeBlockIndex}
+      setActiveBlockIndex={setActiveBlockIndex}
+      onDeleteBlocks={deleteBlocks}
+      onDuplicateBlocks={duplicateBlocks}
+      onPasteBlocks={pasteBlocks}
+    >
+      <div className="w-full flex flex-col h-screen bg-[#F8FAFC] text-text-primary overflow-hidden font-sans animate-fadeIn">
       
       {/* ========================================== */}
       {/* TOP BAR                                    */}
@@ -2143,7 +2241,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
               e.stopPropagation();
             }}
             onDrop={handleBodyDrop}
-            className="flex-1 p-8 overflow-y-auto space-y-4 select-text relative"
+            className="flex-1 p-8 overflow-auto space-y-4 select-text relative"
           >
             {currentBlocks.map((block, idx) => {
               const alignClass = block.align === 'center'
@@ -2182,6 +2280,10 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
                   moveBlockDown={moveBlockDown}
                   blocksLength={currentBlocks.length}
                   onRegisterCellAlignHandler={(fn) => { tableCellAlignRef.current = fn; }}
+                  liveTableResize={liveTableResize}
+                  setLiveTableResize={setLiveTableResize}
+                  liveTableActiveCell={liveTableActiveCell}
+                  setLiveTableActiveCell={setLiveTableActiveCell}
                 />
               );
             })}
@@ -2243,6 +2345,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
           <DocPreviewSimulator 
             lessonTitle={activeLesson ? activeLesson.title : ''}
             blocks={currentBlocks}
+            liveTableResize={liveTableResize}
           />
         )}
 
@@ -2296,6 +2399,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       </footer>
 
     </div>
+    </BlockSelectionProvider>
   );
 };
 
@@ -2313,7 +2417,7 @@ interface BlockRowProps {
   onDeleteBlock: (i: number) => void;
   onDuplicateBlock: (i: number) => void;
   onConvertBlock: (index: number, type: DocBlock['type'], level?: 1 | 2 | 3) => void;
-  onUpdateBlock: (index: number, updated: DocBlock) => void;
+  onUpdateBlock: (index: number, updated: DocBlock, isDebounced?: boolean) => void;
   onInsertAbove: (i: number) => void;
   onInsertBelow: (i: number) => void;
   onDragStart: (e: React.PointerEvent<HTMLButtonElement>, i: number) => void;
@@ -2322,6 +2426,10 @@ interface BlockRowProps {
   blocksLength: number;
   tableNumber?: number;
   onRegisterCellAlignHandler: (fn: ((align: 'left' | 'center' | 'right' | 'justify') => void) | null) => void;
+  liveTableResize: LiveTableResizeState | null;
+  setLiveTableResize: (state: LiveTableResizeState | null) => void;
+  liveTableActiveCell: LiveTableActiveCell | null;
+  setLiveTableActiveCell: (state: LiveTableActiveCell | null) => void;
 }
 
 const BlockRowComponent: React.FC<BlockRowProps> = ({
@@ -2347,10 +2455,11 @@ const BlockRowComponent: React.FC<BlockRowProps> = ({
   blocksLength,
   tableNumber,
   onRegisterCellAlignHandler,
+  liveTableResize,
+  setLiveTableResize,
+  liveTableActiveCell,
+  setLiveTableActiveCell,
 }) => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const handleButtonRef = useRef<HTMLButtonElement>(null);
-
   const indentStyle = { paddingLeft: `${indent * 24}px` };
 
   const handleKeyDownLocal = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -2358,46 +2467,21 @@ const BlockRowComponent: React.FC<BlockRowProps> = ({
   };
 
   return (
-    <div 
-      style={indentStyle}
-      className={`group relative flex items-start gap-1.5 transition rounded-xl w-full block-row-item ${isActive ? 'bg-slate-50/40 ring-1 ring-slate-100/50' : ''}`}
-    >
-      {/* Option menu handle for drag handle */}
-      <div className="w-5 h-6 flex items-center justify-center shrink-0 select-none text-slate-300">
-        <div className="relative opacity-0 group-hover:opacity-100 transition-all duration-[150ms] ease-in-out transform translate-x-[-2px] group-hover:translate-x-0 flex items-center justify-center">
-          <Tooltip content="Lựa chọn Block">
-            <button 
-              ref={handleButtonRef}
-              onMouseDown={(e) => {
-                // don't take focus
-                e.preventDefault();
-              }}
-              onPointerDown={(e) => onDragStart(e, idx)}
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-0.5 hover:bg-slate-100 hover:text-slate-700 rounded cursor-pointer text-slate-400 touch-none"
-            >
-              <GripVertical size={14} />
-            </button>
-          </Tooltip>
-          
-          <BlockContextMenu 
-            isOpen={isMenuOpen}
-            onClose={() => setIsMenuOpen(false)}
-            onDuplicate={() => onDuplicateBlock(idx)}
-            onDelete={() => onDeleteBlock(idx)}
-            onMoveUp={() => moveBlockUp(idx)}
-            onMoveDown={() => moveBlockDown(idx)}
-            onConvert={(type, level) => onConvertBlock(idx, type, level)}
-            onInsertAbove={() => onInsertAbove(idx)}
-            onInsertBelow={() => onInsertBelow(idx)}
-            canMoveUp={idx > 0}
-            canMoveDown={idx < blocksLength - 1}
-            triggerRef={handleButtonRef}
-          />
-        </div>
-      </div>
-
-      <div className="flex-1 min-w-0">
+    <div style={indentStyle} className="w-full block-row-item">
+      <BlockWrapper
+        block={block}
+        idx={idx}
+        onUpdateBlock={onUpdateBlock}
+        onDeleteBlock={onDeleteBlock}
+        onDuplicateBlock={onDuplicateBlock}
+        onConvertBlock={onConvertBlock}
+        onInsertAbove={onInsertAbove}
+        onInsertBelow={onInsertBelow}
+        moveBlockUp={moveBlockUp}
+        moveBlockDown={moveBlockDown}
+        blocksLength={blocksLength}
+        onDragStart={onDragStart}
+      >
         <BlockRenderer 
           block={block}
           idx={idx}
@@ -2412,8 +2496,12 @@ const BlockRowComponent: React.FC<BlockRowProps> = ({
           onDeleteBlock={onDeleteBlock}
           tableNumber={tableNumber}
           onRegisterCellAlignHandler={onRegisterCellAlignHandler}
+          liveTableResize={liveTableResize}
+          setLiveTableResize={setLiveTableResize}
+          liveTableActiveCell={liveTableActiveCell}
+          setLiveTableActiveCell={setLiveTableActiveCell}
         />
-      </div>
+      </BlockWrapper>
     </div>
   );
 };

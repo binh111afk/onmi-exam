@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { RefreshCw, Maximize2, Minimize2, ZoomIn, ZoomOut, RotateCcw, X, HelpCircle, Award, FolderOpen, Video } from 'lucide-react';
 import { Tooltip } from './Tooltip';
-import { TableCaption } from './blocks/TableCaption';
 import { SharedTableRenderer } from './blocks/SharedTableRenderer';
-import type { DocBlock } from '../../../types/doc-editor';
+import type { DocBlock, LiveTableResizeState } from '../../../types/doc-editor';
 
 interface DocPreviewSimulatorProps {
   lessonTitle: string;
   blocks: DocBlock[];
+  liveTableResize?: LiveTableResizeState | null;
 }
 
 const getNumberedIndex = (blocks: DocBlock[], index: number): string => {
@@ -35,19 +35,11 @@ const getNumberedIndex = (blocks: DocBlock[], index: number): string => {
   return `${count}.`;
 };
 
-const getTableNumber = (blocks: DocBlock[], index: number): number => {
-  let count = 0;
-  for (let i = 0; i <= index; i++) {
-    if (blocks[i]?.type === 'table') {
-      count++;
-    }
-  }
-  return count;
-};
 
 export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
   lessonTitle,
   blocks,
+  liveTableResize,
 }) => {
   const previewZoomLevels = [50, 75, 100, 125, 150, 200] as const;
   const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
@@ -58,6 +50,23 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
   const fullscreenScrollRef = useRef<HTMLDivElement>(null);
   const savedScrollTopRef = useRef(0);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [katexLoaded, setKatexLoaded] = useState(!!(window as any).katex);
+  useEffect(() => {
+    if ((window as any).katex) {
+      setKatexLoaded(true);
+      return;
+    }
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css';
+    document.head.appendChild(link);
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js';
+    script.onload = () => setKatexLoaded(true);
+    document.body.appendChild(script);
+  }, []);
 
   const openFullscreen = () => {
     savedScrollTopRef.current = previewScrollRef.current?.scrollTop ?? savedScrollTopRef.current;
@@ -231,29 +240,41 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
           }
 
           if (block.type === 'table') {
-            const tableNumber   = getTableNumber(blocks, idx);
-            const colCount      = block.rows?.[0]?.length ?? 3;
-            const isManual      = !!(block.columnWidths && block.columnWidths.length === colCount);
-            const previewMaxW   = isManual ? block.columnWidths!.reduce((s, w) => s + w, 0) : undefined;
-            const previewAlign  = (block.align as 'left' | 'center' | 'right' | undefined) ?? 'left';
             return (
               <div key={block.id} className="my-2.5">
-                <SharedTableRenderer block={block} isEditable={false} />
-                <TableCaption
-                  caption={block.caption || ''}
+                <SharedTableRenderer
+                  block={block}
                   isEditable={false}
-                  tableNumber={tableNumber}
-                  align={previewAlign}
-                  tableMaxWidth={previewMaxW}
+                  liveTableResize={liveTableResize}
                 />
               </div>
             );
           }
 
           if (block.type === 'formula') {
+            const latex = block.latex || '';
+            const displayMode = block.display !== 'inline';
+            let html = '';
+            const katex = (window as any).katex;
+            if (katexLoaded && katex) {
+              try {
+                html = katex.renderToString(latex || '\\text{Formula Block}', { displayMode, throwOnError: false });
+              } catch (e) {
+                html = '';
+              }
+            }
             return (
-              <div key={block.id} className="text-center font-serif text-[11px] font-black text-slate-800 my-3.5 select-all">
-                {block.latex || 'f(x) = x^2'}
+              <div 
+                key={block.id} 
+                className={`my-3.5 overflow-x-auto select-all ${displayMode ? 'w-full flex justify-center' : 'inline-block'}`}
+              >
+                {html ? (
+                  <div dangerouslySetInnerHTML={{ __html: html }} />
+                ) : (
+                  <code className="font-mono text-[9px] bg-slate-100 text-slate-600 rounded px-2.5 py-1">
+                    {latex || 'f(x) = x^2'}
+                  </code>
+                )}
               </div>
             );
           }
@@ -441,8 +462,7 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
         </div>
       </div>
 
-      {/* Preview Frame Container */}
-      <div ref={previewScrollRef} className="flex-1 p-6 overflow-y-auto flex justify-center bg-slate-100/50">
+      <div ref={previewScrollRef} className="flex-1 p-6 overflow-auto flex justify-center bg-slate-100/50">
         {/* Virtual Frame Simulator */}
         {isFullscreenOpen ? (
           <div className="w-full h-fit rounded-2xl border border-dashed border-slate-200 bg-white/70 p-6 text-center text-[10px] font-bold text-slate-400">
