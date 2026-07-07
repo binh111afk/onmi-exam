@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { RefreshCw, Maximize2, Minimize2, ZoomIn, ZoomOut, RotateCcw, X, HelpCircle, Award, FolderOpen, Video } from 'lucide-react';
+import { RefreshCw, Maximize2, Minimize2, ZoomIn, ZoomOut, RotateCcw, X, Award, FolderOpen, Video } from 'lucide-react';
 import { Tooltip } from './Tooltip';
-import { SharedTableRenderer } from './blocks/SharedTableRenderer';
+import { SharedTableRenderer } from './blocks/table/SharedTableRenderer';
+import { QuizPreview } from './blocks/quiz/QuizPreview';
 import type { DocBlock, LiveTableResizeState } from '../../../types/doc-editor';
 
 interface DocPreviewSimulatorProps {
@@ -290,18 +291,11 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
 
           if (block.type === 'quiz') {
             return (
-              <div key={block.id} style={indentStyle} className="p-3 border border-purple-100 bg-purple-50/30 rounded-xl my-2.5 flex flex-col gap-2">
-                <div className="flex items-center gap-1.5 text-purple-600 font-extrabold text-[8px] uppercase tracking-wide">
-                  <HelpCircle size={10} /> Câu hỏi trắc nghiệm
-                </div>
-                <div className="text-[10px] text-slate-800 font-bold leading-normal" dangerouslySetInnerHTML={{ __html: block.text || 'Nhập câu hỏi trắc nghiệm...' }} />
-                <div className="grid grid-cols-2 gap-1.5 mt-1 text-[9px] font-semibold text-slate-600">
-                  <div className="border border-slate-100 bg-white p-1 rounded">A. Phương án 1</div>
-                  <div className="border border-slate-100 bg-white p-1 rounded">B. Phương án 2</div>
-                  <div className="border border-slate-100 bg-white p-1 rounded">C. Phương án 3</div>
-                  <div className="border border-slate-100 bg-white p-1 rounded">D. Phương án 4</div>
-                </div>
-              </div>
+              <QuizPreview 
+                key={block.id} 
+                block={block} 
+                indentStyle={indentStyle} 
+              />
             );
           }
 

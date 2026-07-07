@@ -1,0 +1,74 @@
+import React from 'react';
+import { HelpCircle } from 'lucide-react';
+import type { DocBlock, QuizQuestion, QuizOption } from '../../../../../types/doc-editor';
+
+interface QuizPreviewProps {
+  block: DocBlock;
+  indentStyle?: React.CSSProperties;
+}
+
+export const QuizPreview: React.FC<QuizPreviewProps> = ({
+  block,
+  indentStyle,
+}) => {
+  const quizContent = block.quizContent || { questions: [], settings: {} };
+  const questions = quizContent.questions || [];
+
+  if (questions.length === 0) {
+    return (
+      <div style={indentStyle} className="p-3.5 border border-purple-100 bg-purple-50/30 rounded-xl my-2.5 flex flex-col gap-2">
+        <div className="flex items-center gap-1.5 text-purple-600 font-extrabold text-[8px] uppercase tracking-wide">
+          <HelpCircle size={10} /> Câu hỏi trắc nghiệm
+        </div>
+        <div className="text-[10px] text-slate-400 italic">Bộ câu hỏi chưa có câu hỏi nào.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={indentStyle} className="flex flex-col gap-3 my-2.5 w-full">
+      {questions.map((question: QuizQuestion, qIdx: number) => (
+        <div 
+          key={question.id} 
+          className="p-4 border border-purple-100 bg-purple-50/20 rounded-xl flex flex-col gap-2.5 w-full"
+        >
+          <div className="flex items-center gap-1.5 text-purple-600 font-extrabold text-[8px] uppercase tracking-wide">
+            <HelpCircle size={10} /> Câu hỏi {qIdx + 1}
+          </div>
+          <div className="text-[10px] text-slate-800 font-bold leading-normal">
+            {question.text || 'Nội dung câu hỏi chưa thiết lập...'}
+          </div>
+          {question.description && (
+            <div className="text-[9px] text-slate-500 italic mt-0.5">
+              {question.description}
+            </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-1 text-[9px] font-semibold text-slate-600 w-full">
+            {question.options.map((option: QuizOption, oIdx: number) => {
+              const letter = String.fromCharCode(65 + oIdx);
+              return (
+                <div 
+                  key={option.id}
+                  className={`border p-2 rounded-lg transition-colors flex items-center gap-2 bg-white ${
+                    option.isCorrect 
+                      ? 'border-emerald-200 bg-emerald-50/10 text-emerald-700' 
+                      : 'border-slate-100 text-slate-600'
+                  }`}
+                >
+                  <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${
+                    option.isCorrect 
+                      ? 'border-emerald-500 bg-emerald-50' 
+                      : 'border-slate-350'
+                  }`}>
+                    {option.isCorrect && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                  </div>
+                  <span>{letter}. {option.text || 'Phương án chưa nhập...'}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};

@@ -17,6 +17,7 @@ import {
   Check
 } from 'lucide-react';
 import type { DocBlock } from '../../../types/doc-editor';
+import { useFormattingState } from './FormattingStateProvider';
 
 interface SelectionContextMenuProps {
   isOpen: boolean;
@@ -27,8 +28,6 @@ interface SelectionContextMenuProps {
   onPaste: () => void;
   onFormat: (command: string, value?: string) => void;
   onConvertBlock: (type: DocBlock['type'], level?: 1 | 2 | 3) => void;
-  activeColor: string;
-  activeHighlight: string;
 }
 
 const colors = [
@@ -59,9 +58,9 @@ export const SelectionContextMenu: React.FC<SelectionContextMenuProps> = ({
   onPaste,
   onFormat,
   onConvertBlock,
-  activeColor,
-  activeHighlight,
 }) => {
+  const { formattingState } = useFormattingState();
+  const { color: activeColor, highlight: activeHighlight } = formattingState;
   const menuRef = useRef<HTMLDivElement>(null);
   const [adjustedCoords, setAdjustedCoords] = useState(coords);
   const [activeSubmenu, setActiveSubmenu] = useState<'color' | 'highlight' | null>(null);

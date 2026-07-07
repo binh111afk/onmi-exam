@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Tooltip } from './Tooltip';
 import type { DocBlock } from '../../../types/doc-editor';
+import { useFormattingState } from './FormattingStateProvider';
 
 interface DocToolbarProps {
   onAiSuggest: () => void;
@@ -32,10 +33,7 @@ interface DocToolbarProps {
   onStrikethrough: () => void;
   onColorChange: (color: string) => void;
   onHighlightChange: (color: string) => void;
-  activeBlockType: DocBlock['type'];
-  activeBlockLevel?: 1 | 2 | 3;
   onBlockTypeChange: (type: DocBlock['type'], level?: 1 | 2 | 3) => void;
-  activeAlign: 'left' | 'center' | 'right' | 'justify';
   onAlignChange: (align: 'left' | 'center' | 'right' | 'justify') => void;
   onIndent: () => void;
   onOutdent: () => void;
@@ -43,14 +41,6 @@ interface DocToolbarProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
-  
-  isBold: boolean;
-  isItalic: boolean;
-  isUnderline: boolean;
-  isStrikethrough: boolean;
-  activeColor: string;
-  activeHighlight: string;
-  activeFontSize: string;
   onFontSizeChange: (size: string) => void;
 }
 
@@ -81,10 +71,7 @@ export const DocToolbar: React.FC<DocToolbarProps> = ({
   onStrikethrough,
   onColorChange,
   onHighlightChange,
-  activeBlockType,
-  activeBlockLevel,
   onBlockTypeChange,
-  activeAlign,
   onAlignChange,
   onIndent,
   onOutdent,
@@ -92,15 +79,21 @@ export const DocToolbar: React.FC<DocToolbarProps> = ({
   onRedo,
   canUndo,
   canRedo,
-  isBold,
-  isItalic,
-  isUnderline,
-  isStrikethrough,
-  activeColor,
-  activeHighlight,
-  activeFontSize,
   onFontSizeChange
 }) => {
+  const { formattingState } = useFormattingState();
+  const {
+    blockAlign: activeAlign,
+    bold: isBold,
+    italic: isItalic,
+    underline: isUnderline,
+    strikethrough: isStrikethrough,
+    color: activeColor,
+    highlight: activeHighlight,
+    fontSize: activeFontSize,
+    blockType: activeBlockType,
+    blockLevel: activeBlockLevel,
+  } = formattingState;
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [showSizeDropdown, setShowSizeDropdown] = useState(false);
   const [showColorDropdown, setShowColorDropdown] = useState(false);

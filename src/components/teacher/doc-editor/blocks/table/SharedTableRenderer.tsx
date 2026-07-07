@@ -10,8 +10,9 @@
  * Alignment (left / center / right) is driven by block.align.
  */
 import React from 'react';
-import type { DocBlock, LiveTableResizeState } from '../../../../types/doc-editor';
+import type { DocBlock, LiveTableResizeState } from '../../../../../types/doc-editor';
 import { TableCaption } from './TableCaption';
+import type { ResizeHandles, SelectionHandles, CellEditHandles } from './TableTypes';
 
 // ─── Shared styling constants ────────────────────────────────────────────────
 
@@ -19,34 +20,6 @@ export const TABLE_BORDER_COLOR = '#CBD5E1'; // slate-300
 export const TABLE_HEADER_BG    = '#F1F5F9'; // slate-100
 export const TABLE_HEADER_TEXT  = '#312E81'; // indigo-900
 export const TABLE_CELL_TEXT    = '#334155'; // slate-700
-
-// ─── Public types ─────────────────────────────────────────────────────────────
-
-export interface ResizeHandles {
-  onColResizeStart: (e: React.PointerEvent, colIdx: number) => void;
-  onColResizeMove:  (e: React.PointerEvent) => void;
-  onColResizeEnd:   (e: React.PointerEvent) => void;
-  onRowResizeStart: (e: React.PointerEvent, rowIdx: number) => void;
-  onRowResizeMove:  (e: React.PointerEvent) => void;
-  onRowResizeEnd:   (e: React.PointerEvent) => void;
-  resizingCol: number | null;
-  resizingRow: number | null;
-}
-
-export interface SelectionHandles {
-  onCellPointerDown:  (rIdx: number, cIdx: number, e: React.PointerEvent) => void;
-  onCellPointerEnter: (rIdx: number, cIdx: number) => void;
-  selectedCells: { r: number; c: number }[];
-}
-
-export interface CellEditHandles {
-  onChange:   (rIdx: number, cIdx: number, val: string) => void;
-  onFocus:    (rIdx: number, cIdx: number) => void;
-  onKeyDown:  (e: React.KeyboardEvent<HTMLDivElement>, rIdx: number, cIdx: number) => void;
-  onPaste:    (rIdx: number, cIdx: number, e: React.ClipboardEvent) => void;
-  focusedRow: number | null;
-  focusedCol: number | null;
-}
 
 export interface SharedTableRendererProps {
   block: DocBlock;

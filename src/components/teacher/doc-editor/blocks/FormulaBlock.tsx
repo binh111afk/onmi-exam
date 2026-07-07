@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, ToggleLeft, HelpCircle } from 'lucide-react';
+import { ChevronDown, ToggleLeft, ToggleRight, HelpCircle } from 'lucide-react';
 import { BlockWrapperContext } from '../BlockWrapper';
 import type { DocBlock } from '../../../../types/doc-editor';
 
@@ -11,6 +11,7 @@ interface FormulaBlockProps {
   setActiveBlockIndex: (i: number) => void;
   onUpdateBlock: (i: number, updated: DocBlock, isDebounced?: boolean) => void;
   handleKeyDown: (e: React.KeyboardEvent<any>) => void;
+  showUniversalToolbar?: boolean;
 }
 
 const GREEK_LETTERS = [
@@ -184,6 +185,7 @@ export const FormulaBlockComponent: React.FC<FormulaBlockProps> = ({
   setActiveBlockIndex,
   onUpdateBlock,
   handleKeyDown,
+  showUniversalToolbar,
 }) => {
   const wrapperContext = useContext(BlockWrapperContext);
   const [katexLoaded, setKatexLoaded] = useState(!!(window as any).katex);
@@ -336,24 +338,7 @@ export const FormulaBlockComponent: React.FC<FormulaBlockProps> = ({
     }
   }, [showPicker, calculatePickerPosition]);
 
-  // Register custom actions to the BlockWrapper
-  useEffect(() => {
-    if (wrapperContext && isActive) {
-      wrapperContext.registerCustomActions([
-        {
-          label: 'Chế độ hiển thị',
-          icon: <ToggleLeft size={13} className="text-slate-400" />,
-          onTrigger: toggleDisplayMode
-        },
-        {
-          label: 'Chèn công thức ▼',
-          icon: <HelpCircle size={13} className="text-slate-400" />,
-          onTrigger: handleTogglePicker,
-          ref: buttonRef
-        }
-      ]);
-    }
-  }, [wrapperContext, isActive, toggleDisplayMode, handleTogglePicker]);
+  // Specialized block: do not register actions with parent shared BlockToolbar
 
   // Close picker when clicking outside
   useEffect(() => {
@@ -399,6 +384,36 @@ export const FormulaBlockComponent: React.FC<FormulaBlockProps> = ({
     >
       {isActive && (
         <div className="flex flex-col gap-2 relative">
+          {/* Formula Toolbar */}
+          <div className="mb-1 flex items-center gap-1 select-none animate-fadeIn">
+            <div className="inline-flex items-center gap-0.5 px-1.5 py-1 bg-white border border-slate-200 rounded-xl shadow-sm">
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={toggleDisplayMode}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition cursor-pointer"
+              >
+                {displayMode ? (
+                  <ToggleRight size={13} className="text-indigo-600" />
+                ) : (
+                  <ToggleLeft size={13} className="text-slate-400" />
+                )}
+                <span>Hiển thị: {displayMode ? 'Block' : 'Inline'}</span>
+              </button>
+              <div className="w-px h-3.5 bg-slate-200 mx-0.5" />
+              <button
+                ref={buttonRef}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={handleTogglePicker}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition cursor-pointer"
+              >
+                <HelpCircle size={12} className="text-slate-400" />
+                <span>Chèn công thức ▼</span>
+              </button>
+            </div>
+          </div>
+
           {/* LaTeX editor area */}
           <textarea
             ref={inputRef}
@@ -417,7 +432,7 @@ export const FormulaBlockComponent: React.FC<FormulaBlockProps> = ({
       )}
 
       {/* Rendered output */}
-      <div className={`py-2 overflow-x-auto ${displayMode ? 'w-full flex flex-col items-center justify-center' : 'inline-block'}`}>
+      <div className={`py-2 overflow-x-auto ${displayMode ? 'w-full flex flex-col' : 'inline-block'}`}>
         {html ? (
           <div
             className="select-all"

@@ -27,6 +27,46 @@ export interface DocBlock {
   columnWidths?: number[];
   rowHeights?: number[];
   cellStyles?: TableCellStyle[][];
+  quizContent?: QuizContent;
+}
+
+export const QuestionType = {
+  SINGLE_CHOICE: 'single-choice',
+  MULTIPLE_CHOICE: 'multiple-choice',
+  TRUE_FALSE: 'true-false',
+  FILL_BLANK: 'fill-blank',
+  MATCHING: 'matching',
+  ORDERING: 'ordering',
+  SHORT_ANSWER: 'short-answer'
+} as const;
+
+export type QuestionType = typeof QuestionType[keyof typeof QuestionType];
+
+export interface QuizOption {
+  id: string;
+  text: string;
+  isCorrect: boolean;
+}
+
+export interface QuizQuestion {
+  id: string;
+  text: string;
+  description?: string;
+  type: QuestionType;
+  options: QuizOption[];
+}
+
+export interface QuizSettings {
+  shuffleQuestions: boolean;
+  shuffleOptions: boolean;
+  showCorrectAnswers: boolean;
+  passingScore: number;
+}
+
+export interface QuizContent {
+  version: number;
+  questions: QuizQuestion[];
+  settings: QuizSettings;
 }
 
 export interface Lesson {

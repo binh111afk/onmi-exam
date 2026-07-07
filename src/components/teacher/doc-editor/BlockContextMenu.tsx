@@ -1,15 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { 
-  Copy, 
-  Trash2, 
-  ChevronUp, 
+import {
+  Copy,
+  Trash2,
+  ChevronUp,
   ChevronDown,
   ArrowUp,
-  ArrowDown,
-  ChevronRight,
-  Sliders,
-  Check
+  ArrowDown
 } from 'lucide-react';
 import { BLOCK_COMMANDS } from './CommandRegistry';
 import type { DocBlock } from '../../../types/doc-editor';
@@ -27,8 +24,6 @@ interface BlockContextMenuProps {
   canMoveUp: boolean;
   canMoveDown: boolean;
   triggerRef: React.RefObject<HTMLElement | null>;
-  onAlign?: (align: DocBlock['align']) => void;
-  currentAlign?: DocBlock['align'];
 }
 
 export const BlockContextMenu: React.FC<BlockContextMenuProps> = ({
@@ -44,8 +39,6 @@ export const BlockContextMenu: React.FC<BlockContextMenuProps> = ({
   canMoveUp,
   canMoveDown,
   triggerRef,
-  onAlign,
-  currentAlign,
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState({ 
@@ -160,68 +153,6 @@ export const BlockContextMenu: React.FC<BlockContextMenuProps> = ({
     }
   }, [lockedDirection, triggerRef]);
 
-  const [showAlignSubmenu, setShowAlignSubmenu] = useState(false);
-  const [submenuCoords, setSubmenuCoords] = useState({ top: 0, left: 0 });
-  const submenuTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleAlignMouseEnter = (e: React.MouseEvent) => {
-    if (submenuTimeoutRef.current) clearTimeout(submenuTimeoutRef.current);
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    const submenuWidth = 120;
-    const submenuHeight = 110;
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    const spaceRight = viewportWidth - rect.right - 12;
-    const spaceLeft = rect.left - 12;
-    const spaceBelow = viewportHeight - rect.bottom - 12;
-
-    let targetLeft = rect.right + 4;
-    let targetTop = rect.top;
-
-    // Priority: Right, Left, Bottom, Top
-    if (spaceRight >= submenuWidth) {
-      targetLeft = rect.right + 4;
-      targetTop = rect.top;
-    } else if (spaceLeft >= submenuWidth) {
-      targetLeft = rect.left - submenuWidth - 4;
-      targetTop = rect.top;
-    } else if (spaceBelow >= submenuHeight) {
-      targetLeft = rect.left;
-      targetTop = rect.bottom + 4;
-    } else {
-      targetLeft = rect.left;
-      targetTop = rect.top - submenuHeight - 4;
-    }
-
-    // Clamp inside viewport
-    targetLeft = Math.max(8, Math.min(viewportWidth - submenuWidth - 8, targetLeft));
-    targetTop = Math.max(12, Math.min(viewportHeight - submenuHeight - 12, targetTop));
-
-    setSubmenuCoords({ top: targetTop, left: targetLeft });
-    setShowAlignSubmenu(true);
-  };
-
-  const handleAlignMouseLeave = () => {
-    if (submenuTimeoutRef.current) clearTimeout(submenuTimeoutRef.current);
-    submenuTimeoutRef.current = setTimeout(() => {
-      setShowAlignSubmenu(false);
-    }, 150);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (submenuTimeoutRef.current) clearTimeout(submenuTimeoutRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setShowAlignSubmenu(false);
-    }
-  }, [isOpen]);
-
   useEffect(() => {
     if (!isOpen) return;
     const handleOutsideClick = (e: MouseEvent) => {
@@ -291,24 +222,6 @@ export const BlockContextMenu: React.FC<BlockContextMenuProps> = ({
       </button>
 
       <div className="h-px bg-slate-100 my-1" />
-
-      {onAlign && (
-        <>
-          <button
-            onMouseEnter={handleAlignMouseEnter}
-            onMouseLeave={handleAlignMouseLeave}
-            onMouseDown={(e) => e.preventDefault()}
-            className="w-full text-left px-2.5 py-1.5 hover:bg-slate-50 rounded-lg flex items-center justify-between cursor-pointer text-slate-655"
-          >
-            <div className="flex items-center gap-2">
-              <Sliders size={11} className="text-slate-400" />
-              <span>Căn chỉnh</span>
-            </div>
-            <ChevronRight size={10} className="text-slate-400" />
-          </button>
-          <div className="h-px bg-slate-100 my-1" />
-        </>
-      )}
 
       <button
         onMouseDown={(e) => e.preventDefault()}
@@ -383,54 +296,6 @@ export const BlockContextMenu: React.FC<BlockContextMenuProps> = ({
         ))}
       </div>
       </div>
-
-      {showAlignSubmenu && onAlign && (
-        <div
-          onMouseEnter={() => {
-            if (submenuTimeoutRef.current) clearTimeout(submenuTimeoutRef.current);
-            setShowAlignSubmenu(true);
-          }}
-          onMouseLeave={handleAlignMouseLeave}
-          className="fixed w-32 bg-white border border-slate-100 rounded-xl shadow-xl z-[10000] p-1 flex flex-col gap-0.5 select-none text-[10px] font-bold text-slate-700 font-sans animate-fadeIn"
-          style={{
-            top: `${submenuCoords.top}px`,
-            left: `${submenuCoords.left}px`,
-          }}
-        >
-          <button
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => { onAlign('left'); onClose(); }}
-            className={`w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer flex items-center justify-between ${currentAlign === 'left' ? 'bg-indigo-50 text-indigo-700 font-extrabold' : 'text-slate-600 font-medium'}`}
-          >
-            <span>Căn trái</span>
-            {currentAlign === 'left' && <Check size={10} className="text-indigo-600" />}
-          </button>
-          <button
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => { onAlign('center'); onClose(); }}
-            className={`w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer flex items-center justify-between ${currentAlign === 'center' ? 'bg-indigo-50 text-indigo-700 font-extrabold' : 'text-slate-600 font-medium'}`}
-          >
-            <span>Căn giữa</span>
-            {currentAlign === 'center' && <Check size={10} className="text-indigo-600" />}
-          </button>
-          <button
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => { onAlign('right'); onClose(); }}
-            className={`w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer flex items-center justify-between ${currentAlign === 'right' ? 'bg-indigo-50 text-indigo-700 font-extrabold' : 'text-slate-600 font-medium'}`}
-          >
-            <span>Căn phải</span>
-            {currentAlign === 'right' && <Check size={10} className="text-indigo-600" />}
-          </button>
-          <button
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => { onAlign('justify'); onClose(); }}
-            className={`w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer flex items-center justify-between ${currentAlign === 'justify' ? 'bg-indigo-50 text-indigo-700 font-extrabold' : 'text-slate-600 font-medium'}`}
-          >
-            <span>Trải đều</span>
-            {currentAlign === 'justify' && <Check size={10} className="text-indigo-600" />}
-          </button>
-        </div>
-      )}
     </>,
     document.body
   );

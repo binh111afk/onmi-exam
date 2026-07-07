@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useCallback, useEffect } from 'react';
 import type { DocBlock } from '../../../types/doc-editor';
 
 interface BlockSelectionContextType {
@@ -7,14 +7,22 @@ interface BlockSelectionContextType {
   selectBlock: (id: string, extend?: boolean, range?: boolean) => void;
   clearSelection: () => void;
   isSelected: (id: string) => boolean;
+  getCommandBlockIds: (fallbackId?: string | null) => string[];
+  canMoveCommandBlocks: (ids: string[], direction: 'up' | 'down') => boolean;
+  editorMode: 'block' | 'text';
+  setEditorMode: (mode: 'block' | 'text') => void;
 }
 
 export const BlockSelectionContext = createContext<BlockSelectionContextType | null>(null);
 
 interface BlockSelectionProviderProps {
   blocks: DocBlock[];
-  activeBlockIndex: number;
-  setActiveBlockIndex: (i: number) => void;
+  activeBlockId: string | null;
+  setActiveBlockId: (id: string | null) => void;
+  selectedBlockIds: string[];
+  setSelectedBlockIds: React.Dispatch<React.SetStateAction<string[]>>;
+  editorMode: 'block' | 'text';
+  setEditorMode: (mode: 'block' | 'text') => void;
   onDeleteBlocks: (ids: string[]) => void;
   onDuplicateBlocks: (ids: string[]) => void;
   onPasteBlocks: (blocks: DocBlock[], targetBlockId: string | null) => void;
@@ -23,31 +31,31 @@ interface BlockSelectionProviderProps {
 
 export const BlockSelectionProvider: React.FC<BlockSelectionProviderProps> = ({
   blocks,
-  activeBlockIndex,
-  setActiveBlockIndex,
+  activeBlockId,
+  setActiveBlockId,
+  selectedBlockIds,
+  setSelectedBlockIds,
+  editorMode,
+  setEditorMode,
   onDeleteBlocks,
   onDuplicateBlocks,
   onPasteBlocks,
   children,
 }) => {
-  const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>([]);
-  const activeBlockId = blocks[activeBlockIndex]?.id || null;
-
   // Sync activeBlockId to selection list if selection is empty
   useEffect(() => {
     if (activeBlockId && selectedBlockIds.length === 0) {
       setSelectedBlockIds([activeBlockId]);
     }
-  }, [activeBlockId, selectedBlockIds]);
+  }, [activeBlockId, selectedBlockIds, setSelectedBlockIds]);
 
   const selectBlock = useCallback((id: string, extend = false, range = false) => {
     const clickIdx = blocks.findIndex(b => b.id === id);
     if (clickIdx === -1) return;
 
-    setActiveBlockIndex(clickIdx);
+    setActiveBlockId(id);
 
     if (range && selectedBlockIds.length > 0) {
-      // Find the index of the first selected block to anchor the range selection
       const startIdx = blocks.findIndex(b => b.id === selectedBlockIds[0]);
       if (startIdx !== -1) {
         const min = Math.min(startIdx, clickIdx);
@@ -61,7 +69,7 @@ export const BlockSelectionProvider: React.FC<BlockSelectionProviderProps> = ({
     if (extend) {
       setSelectedBlockIds(prev => {
         if (prev.includes(id)) {
-          if (prev.length === 1) return prev; // Keep at least one selected block
+          if (prev.length === 1) return prev;
           return prev.filter(x => x !== id);
         }
         return [...prev, id];
@@ -69,7 +77,7 @@ export const BlockSelectionProvider: React.FC<BlockSelectionProviderProps> = ({
     } else {
       setSelectedBlockIds([id]);
     }
-  }, [blocks, selectedBlockIds, setActiveBlockIndex]);
+  }, [blocks, selectedBlockIds, setActiveBlockId, setSelectedBlockIds]);
 
   const clearSelection = useCallback(() => {
     if (activeBlockId) {
@@ -77,11 +85,39 @@ export const BlockSelectionProvider: React.FC<BlockSelectionProviderProps> = ({
     } else {
       setSelectedBlockIds([]);
     }
-  }, [activeBlockId]);
+  }, [activeBlockId, setSelectedBlockIds]);
 
   const isSelected = useCallback((id: string) => {
     return selectedBlockIds.includes(id);
   }, [selectedBlockIds]);
+
+  const getCommandBlockIds = useCallback((fallbackId?: string | null) => {
+    const blockIds = new Set(blocks.map(block => block.id));
+    const targetId = fallbackId ?? activeBlockId;
+    if (!targetId || !blockIds.has(targetId)) return [];
+
+    const selectionIds = selectedBlockIds.filter(id => blockIds.has(id));
+    if (selectionIds.includes(targetId)) {
+      return blocks
+        .filter(block => selectionIds.includes(block.id))
+        .map(block => block.id);
+    }
+
+    return [targetId];
+  }, [activeBlockId, blocks, selectedBlockIds]);
+
+  const canMoveCommandBlocks = useCallback((ids: string[], direction: 'up' | 'down') => {
+    if (ids.length === 0) return false;
+    const selected = new Set(ids);
+    const indexes = blocks
+      .map((block, index) => selected.has(block.id) ? index : -1)
+      .filter(index => index !== -1);
+
+    if (indexes.length === 0) return false;
+    return direction === 'up'
+      ? Math.min(...indexes) > 0
+      : Math.max(...indexes) < blocks.length - 1;
+  }, [blocks]);
 
   // Global key listener for shortcuts
   useEffect(() => {
@@ -166,7 +202,17 @@ export const BlockSelectionProvider: React.FC<BlockSelectionProviderProps> = ({
   }, [blocks, selectedBlockIds, activeBlockId, onDeleteBlocks, onDuplicateBlocks, onPasteBlocks, clearSelection]);
 
   return (
-    <BlockSelectionContext.Provider value={{ selectedBlockIds, activeBlockId, selectBlock, clearSelection, isSelected }}>
+    <BlockSelectionContext.Provider value={{
+      selectedBlockIds,
+      activeBlockId,
+      selectBlock,
+      clearSelection,
+      isSelected,
+      getCommandBlockIds,
+      canMoveCommandBlocks,
+      editorMode,
+      setEditorMode
+    }}>
       {children}
     </BlockSelectionContext.Provider>
   );

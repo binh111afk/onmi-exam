@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { 
-  ChevronLeft, 
-  Save, 
-  Send, 
-  FileCheck2, 
-  Brain, 
-  ImageIcon, 
-  Table as TableIcon, 
-  Activity, 
-  HelpCircle, 
-  Award, 
-  FolderOpen, 
+import {
+  ChevronLeft,
+  Save,
+  Send,
+  FileCheck2,
+  Brain,
+  ImageIcon,
+  Table as TableIcon,
+  Activity,
+  HelpCircle,
+  Award,
+  FolderOpen,
   Video,
 } from 'lucide-react';
 import { DocSidebar } from './DocSidebar';
@@ -21,8 +21,10 @@ import { useAlert } from '../../common/Alert';
 import { BlockRenderer } from './blocks/BlockRenderer';
 import { BlockSelectionProvider } from './BlockSelectionProvider';
 import { BlockWrapper } from './BlockWrapper';
+import { createDefaultBlock, generateBlockId } from './blocks/BlockFactory';
 import { uploadImageFile } from '../../../services/imageUploadService';
 import type { Chapter, Lesson, DocBlock, LiveTableResizeState, LiveTableActiveCell } from '../../../types/doc-editor';
+import { FormattingStateProvider } from './FormattingStateProvider';
 
 // Sprint 5 Additions
 import { BLOCK_COMMANDS } from './CommandRegistry';
@@ -187,10 +189,10 @@ const initialChapters: Chapter[] = [
 const getNumberedIndex = (blocks: DocBlock[], index: number): string => {
   const currentBlock = blocks[index];
   if (!currentBlock || currentBlock.type !== 'numbered-list') return '1.';
-  
+
   let count = 1;
   const currentIndent = currentBlock.indent || 0;
-  
+
   for (let i = index - 1; i >= 0; i--) {
     const prev = blocks[i];
     if (prev.type !== 'numbered-list') {
@@ -240,15 +242,15 @@ const getCaretOffset = (element: HTMLElement): number => {
 const setCaretOffset = (element: HTMLElement, offset: number) => {
   const selection = window.getSelection();
   if (!selection) return;
-  
+
   const range = document.createRange();
   range.selectNodeContents(element);
   range.collapse(true);
-  
+
   const nodeStack: Node[] = [element];
   let currentOffset = 0;
   let found = false;
-  
+
   while (nodeStack.length > 0) {
     const node = nodeStack.pop()!;
     if (node.nodeType === Node.TEXT_NODE) {
@@ -267,12 +269,12 @@ const setCaretOffset = (element: HTMLElement, offset: number) => {
       }
     }
   }
-  
+
   if (!found) {
     range.selectNodeContents(element);
     range.collapse(false);
   }
-  
+
   selection.removeAllRanges();
   selection.addRange(range);
 };
@@ -282,9 +284,57 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
   const [showPreview, setShowPreview] = useState(true);
   const [activeLessonId, setActiveLessonId] = useState<string>('water');
   const [chapters, setChapters] = useState<Chapter[]>(initialChapters);
-  const [activeBlockIndex, setActiveBlockIndex] = useState<number>(0);
+
+  const findLessonById = useCallback((id: string, list: Chapter[] = chapters): Lesson | null => {
+    for (const ch of list) {
+      const lesson = ch.lessons.find(l => l.id === id);
+      if (lesson) return lesson;
+    }
+    return null;
+  }, [chapters]);
+
+  const activeLesson = useMemo(() => findLessonById(activeLessonId), [activeLessonId, findLessonById]);
+  const currentBlocks = useMemo(() => activeLesson ? activeLesson.blocks : [], [activeLesson]);
+
+  const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
+  const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>([]);
+  const [editorMode, setEditorMode] = useState<'block' | 'text'>('block');
+
+  const activeBlockIndex = useMemo(() => {
+    if (!activeBlockId) return 0;
+    const idx = currentBlocks.findIndex(b => b.id === activeBlockId);
+    return idx !== -1 ? idx : 0;
+  }, [currentBlocks, activeBlockId]);
+
+  const setActiveBlockIndex = useCallback((index: number | ((prev: number) => number)) => {
+    if (typeof index === 'function') {
+      setActiveBlockId(prevId => {
+        const prevIdx = prevId ? currentBlocks.findIndex(b => b.id === prevId) : 0;
+        const nextIdx = index(prevIdx === -1 ? 0 : prevIdx);
+        return currentBlocks[nextIdx]?.id || null;
+      });
+    } else {
+      setActiveBlockId(currentBlocks[index]?.id || null);
+    }
+  }, [currentBlocks]);
+
+  // Initialize activeBlockId on load
+  useEffect(() => {
+    if (!activeBlockId && currentBlocks.length > 0) {
+      setActiveBlockId(currentBlocks[0].id);
+    }
+  }, [currentBlocks, activeBlockId]);
   const [liveTableResize, setLiveTableResize] = useState<LiveTableResizeState | null>(null);
   const [liveTableActiveCell, setLiveTableActiveCell] = useState<LiveTableActiveCell | null>(null);
+  const tableCellAlignRef = useRef<((align: 'left' | 'center' | 'right' | 'justify') => void) | null>(null);
+  const syncFormattingRef = useRef<(() => void) | null>(null);
+
+  const syncBlockCommandState = useCallback((nextActiveId: string | null, nextSelectedIds?: string[]) => {
+    setActiveBlockId(nextActiveId);
+    setSelectedBlockIds(nextSelectedIds ?? (nextActiveId ? [nextActiveId] : []));
+    setEditorMode('block');
+    requestAnimationFrame(() => syncFormattingRef.current?.());
+  }, []);
 
   // Slash Command states
   const [showSlashMenu, setShowSlashMenu] = useState(false);
@@ -302,12 +352,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
   const [historyIndex, setHistoryIndex] = useState(-1);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingFontSizeRef = useRef<string>('16');
-  /**
-   * Holds the active table's applyCellStyles({align}) function.
-   * TableBlock registers this when it becomes active; cleared on deactivation.
-   * toggleBlockAlign calls this instead of block.align for table blocks.
-   */
-  const tableCellAlignRef = useRef<((align: 'left' | 'center' | 'right' | 'justify') => void) | null>(null);
+  // Removed tableCellAlignRef definition (defined above)
 
   // Drag & Drop Pointer Events States
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
@@ -376,11 +421,11 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     }
   }, [showSlashMenu, activeBlockIndex]);
 
-  const pushHistoryState = useCallback((newChapters: Chapter[], isDebounced = false) => {
+  const pushHistoryState = useCallback((newChapters: Chapter[], isDebounced = false, activeIndexOverride = activeBlockIndex) => {
     setChapters(newChapters);
 
     let caretOffset = 0;
-    const activeEl = document.getElementById(`block-editor-${activeBlockIndex}`);
+    const activeEl = document.getElementById(`block-editor-${activeIndexOverride}`);
     if (activeEl) {
       try {
         caretOffset = getCaretOffset(activeEl);
@@ -389,7 +434,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
 
     const newEntry: HistoryEntry = {
       chapters: newChapters,
-      activeIndex: activeBlockIndex,
+      activeIndex: activeIndexOverride,
       caretOffset
     };
 
@@ -445,11 +490,11 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
           } else {
             return {
               ...lesson,
-              blocks: lesson.blocks.map((b, idx) => 
-                idx === targetIndex ? { 
-                  ...b, 
-                  type: 'table' as const, 
-                  text: '', 
+              blocks: lesson.blocks.map((b, idx) =>
+                idx === targetIndex ? {
+                  ...b,
+                  type: 'table' as const,
+                  text: '',
                   rows: tableRows,
                   hasHeaderRow,
                   hasHeaderColumn: hasHeaderCol,
@@ -480,40 +525,35 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     if (historyIndex > 0) {
       const nextIndex = historyIndex - 1;
       const entry = history[nextIndex];
+      const restoredBlocks = findLessonById(activeLessonId, entry.chapters)?.blocks ?? [];
+      const nextActiveId = restoredBlocks[entry.activeIndex]?.id ?? restoredBlocks[0]?.id ?? null;
       setHistoryIndex(nextIndex);
       pendingCaretRestoreRef.current = {
         index: entry.activeIndex,
         offset: entry.caretOffset
       };
       setChapters(entry.chapters);
-      setActiveBlockIndex(entry.activeIndex);
+      syncBlockCommandState(nextActiveId);
     }
-  }, [history, historyIndex]);
+  }, [activeLessonId, findLessonById, history, historyIndex, syncBlockCommandState]);
 
   const handleRedo = useCallback(() => {
     if (historyIndex < history.length - 1) {
       const nextIndex = historyIndex + 1;
       const entry = history[nextIndex];
+      const restoredBlocks = findLessonById(activeLessonId, entry.chapters)?.blocks ?? [];
+      const nextActiveId = restoredBlocks[entry.activeIndex]?.id ?? restoredBlocks[0]?.id ?? null;
       setHistoryIndex(nextIndex);
       pendingCaretRestoreRef.current = {
         index: entry.activeIndex,
         offset: entry.caretOffset
       };
       setChapters(entry.chapters);
-      setActiveBlockIndex(entry.activeIndex);
+      syncBlockCommandState(nextActiveId);
     }
-  }, [history, historyIndex]);
+  }, [activeLessonId, findLessonById, history, historyIndex, syncBlockCommandState]);
 
-  const findLessonById = useCallback((id: string, list: Chapter[] = chapters): Lesson | null => {
-    for (const ch of list) {
-      const lesson = ch.lessons.find(l => l.id === id);
-      if (lesson) return lesson;
-    }
-    return null;
-  }, [chapters]);
-
-  const activeLesson = useMemo(() => findLessonById(activeLessonId), [activeLessonId, findLessonById]);
-  const currentBlocks = useMemo(() => activeLesson ? activeLesson.blocks : [], [activeLesson]);
+  // Removed duplicates of findLessonById, activeLesson, currentBlocks (defined above)
   const activeBlock = currentBlocks[activeBlockIndex] || {
     type: 'paragraph',
     align: 'left',
@@ -528,126 +568,21 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     }
   }, [activeBlock]);
 
-  // Caret style state
-  const [caretFormatting, setCaretFormatting] = useState({
-    isBold: false,
-    isItalic: false,
-    isUnderline: false,
-    isStrikethrough: false,
-    activeColor: '#1F2C3F',
-    activeHighlight: 'transparent',
-    activeFontSize: '16'
-  });
-
   const rgbToHex = (colorVal: string): string => {
     if (!colorVal) return '#1F2C3F';
     const val = colorVal.trim().toLowerCase();
     if (val.startsWith('#')) return val.toUpperCase();
     if (val === 'transparent' || val === 'rgba(0, 0, 0, 0)' || val === 'rgba(0,0,0,0)') return 'transparent';
-    
+
     const match = val.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*(\d+(?:\.\d+)?))?\)$/);
     if (!match) return colorVal;
-    
+
     const r = parseInt(match[1], 10).toString(16).padStart(2, '0');
     const g = parseInt(match[2], 10).toString(16).padStart(2, '0');
     const b = parseInt(match[3], 10).toString(16).padStart(2, '0');
-    
+
     return `#${r}${g}${b}`.toUpperCase();
   };
-
-  const syncCaretFormatting = useCallback(() => {
-    try {
-      const selection = window.getSelection();
-      let isInsideEditor = false;
-      if (selection && selection.anchorNode) {
-        let node: Node | null = selection.anchorNode;
-        while (node && node !== document.body) {
-          if (node instanceof HTMLElement && node.id && node.id.startsWith('block-editor-')) {
-            isInsideEditor = true;
-            break;
-          }
-          node = node.parentNode;
-        }
-      }
-
-      if (!isInsideEditor) {
-        setCaretFormatting({
-          isBold: false,
-          isItalic: false,
-          isUnderline: false,
-          isStrikethrough: false,
-          activeColor: '#1F2C3F',
-          activeHighlight: 'transparent',
-          activeFontSize: '16'
-        });
-        return;
-      }
-
-      const isBold = document.queryCommandState('bold');
-      const isItalic = document.queryCommandState('italic');
-      const isUnderline = document.queryCommandState('underline');
-      const isStrikethrough = document.queryCommandState('strikeThrough');
-
-      let activeColor = document.queryCommandValue('foreColor') || '#1F2C3F';
-      let activeHighlight = document.queryCommandValue('backColor') || 'transparent';
-
-      activeColor = rgbToHex(activeColor);
-      activeHighlight = rgbToHex(activeHighlight);
-
-      let activeFontSize = '16';
-      if (selection && selection.anchorNode) {
-        let node: Node | null = selection.anchorNode;
-        while (node && node !== document.body) {
-          if (node instanceof HTMLElement) {
-            const size = node.style.fontSize;
-            if (size) {
-              activeFontSize = size.replace('px', '');
-              break;
-            }
-          }
-          node = node.parentNode;
-        }
-      }
-
-      setCaretFormatting({
-        isBold,
-        isItalic,
-        isUnderline,
-        isStrikethrough,
-        activeColor,
-        activeHighlight,
-        activeFontSize
-      });
-
-      if (selection && selection.anchorNode) {
-        let node: Node | null = selection.anchorNode;
-        while (node && node !== document.body) {
-          if (node instanceof HTMLElement && node.id && node.id.startsWith('block-editor-')) {
-            const idxStr = node.id.replace('block-editor-', '');
-            const idx = parseInt(idxStr, 10);
-            if (!isNaN(idx) && idx !== activeBlockIndex) {
-              setActiveBlockIndex(idx);
-            }
-            break;
-          }
-          node = node.parentNode;
-        }
-      }
-    } catch {
-      // Ignore
-    }
-  }, [activeBlockIndex]);
-
-  useEffect(() => {
-    const handleSelectionChange = () => {
-      syncCaretFormatting();
-    };
-
-    document.addEventListener('selectionchange', handleSelectionChange);
-    return () => {
-      document.removeEventListener('selectionchange', handleSelectionChange);
-    };
-  }, [syncCaretFormatting]);
 
   const updateBlockText = useCallback((index: number, newHtml: string) => {
     let cleanHtml = newHtml;
@@ -680,7 +615,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
           if (lesson.id === activeLessonId) {
             return {
               ...lesson,
-              blocks: lesson.blocks.map((b, idx) => 
+              blocks: lesson.blocks.map((b, idx) =>
                 idx === index ? { ...b, text: cleanHtml } : b
               )
             };
@@ -699,23 +634,27 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     if (activeEl) {
       updateBlockText(activeBlockIndex, activeEl.innerHTML);
     }
-    syncCaretFormatting();
-  }, [activeBlockIndex, updateBlockText, syncCaretFormatting]);
+    syncFormattingRef.current?.();
+  }, [activeBlockIndex, updateBlockText]);
 
   const handleColorChange = useCallback((color: string) => {
-    const targetColor = caretFormatting.activeColor === rgbToHex(color) ? '#1F2C3F' : color;
+    let activeColor = document.queryCommandValue('foreColor') || '#1F2C3F';
+    activeColor = rgbToHex(activeColor);
+    const targetColor = activeColor === rgbToHex(color) ? '#1F2C3F' : color;
     executeFormat('foreColor', targetColor);
-  }, [caretFormatting.activeColor, executeFormat]);
+  }, [executeFormat]);
 
   const handleHighlightChange = useCallback((color: string) => {
-    const targetHighlight = caretFormatting.activeHighlight === rgbToHex(color) ? 'transparent' : color;
+    let activeHighlight = document.queryCommandValue('backColor') || 'transparent';
+    activeHighlight = rgbToHex(activeHighlight);
+    const targetHighlight = activeHighlight === rgbToHex(color) ? 'transparent' : color;
     executeFormat('backColor', targetHighlight);
-  }, [caretFormatting.activeHighlight, executeFormat]);
+  }, [executeFormat]);
 
   const applyFontSize = useCallback((size: string) => {
     pendingFontSizeRef.current = size;
     document.execCommand('fontSize', false, '7');
-    
+
     const activeEl = document.getElementById(`block-editor-${activeBlockIndex}`);
     if (activeEl) {
       const fonts = activeEl.querySelectorAll('font[size="7"]');
@@ -727,8 +666,8 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       });
       updateBlockText(activeBlockIndex, activeEl.innerHTML);
     }
-    syncCaretFormatting();
-  }, [activeBlockIndex, updateBlockText, syncCaretFormatting]);
+    syncFormattingRef.current?.();
+  }, [activeBlockIndex, updateBlockText]);
 
   const toggleBlockType = useCallback((type: DocBlock['type'], level?: 1 | 2 | 3) => {
     if (type === 'table') {
@@ -747,10 +686,9 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
               blocks: lesson.blocks.map((b, idx) => {
                 if (idx === activeBlockIndex) {
                   const isSameType = b.type === type && (type !== 'heading' || b.level === level);
-                  if (isSameType && type !== 'paragraph') {
-                    return { ...b, type: 'paragraph' as const, level: undefined };
-                  }
-                  return { ...b, type, level: level ?? undefined };
+                  const targetType = isSameType ? 'paragraph' : type;
+                  const targetLevel = isSameType ? undefined : level;
+                  return createDefaultBlock(targetType, b.id, b.align, b.indent, targetLevel);
                 }
                 return b;
               })
@@ -762,14 +700,20 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       pushHistoryState(nextChapters);
       return nextChapters;
     });
+    syncFormattingRef.current?.();
   }, [activeLessonId, activeBlockIndex, pushHistoryState]);
 
-  const toggleBlockAlign = useCallback((align: 'left' | 'center' | 'right' | 'justify') => {
-    // When a table cell is focused, align the cell text — not the block container
-    if (activeBlock.type === 'table' && tableCellAlignRef.current) {
-      tableCellAlignRef.current(align);
-      return;
-    }
+  const applyBlockAlignment = useCallback((blockIds: string[], align: DocBlock['align']) => {
+    const validIds = currentBlocks
+      .filter(block => blockIds.includes(block.id))
+      .map(block => block.id);
+    if (validIds.length === 0) return;
+
+    const nextActiveId = activeBlockId && validIds.includes(activeBlockId)
+      ? activeBlockId
+      : validIds[0];
+    const nextActiveIndex = currentBlocks.findIndex(block => block.id === nextActiveId);
+
     setChapters(prev => {
       const nextChapters = prev.map(ch => ({
         ...ch,
@@ -777,23 +721,45 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
           if (lesson.id === activeLessonId) {
             return {
               ...lesson,
-              blocks: lesson.blocks.map((b, idx) => {
-                if (idx === activeBlockIndex) {
-                  const isSameAlign = (b.align || 'left') === align;
-                  const targetAlign = isSameAlign && align !== 'left' ? 'left' : align;
-                  return { ...b, align: targetAlign };
-                }
-                return b;
-              })
+              blocks: lesson.blocks.map(b =>
+                validIds.includes(b.id) ? { ...b, align } : b
+              )
             };
           }
           return lesson;
         })
       }));
-      pushHistoryState(nextChapters);
+      pushHistoryState(nextChapters, false, nextActiveIndex === -1 ? activeBlockIndex : nextActiveIndex);
       return nextChapters;
     });
-  }, [activeLessonId, activeBlockIndex, activeBlock.type, pushHistoryState]);
+    syncBlockCommandState(nextActiveId, validIds);
+  }, [activeBlockId, activeBlockIndex, activeLessonId, currentBlocks, pushHistoryState, syncBlockCommandState]);
+
+  const toggleBlockAlign = useCallback((align: 'left' | 'center' | 'right' | 'justify') => {
+    // When a table cell is focused, align the cell text — not the block container
+    if (activeBlock.type === 'table' && tableCellAlignRef.current) {
+      tableCellAlignRef.current(align);
+      return;
+    }
+
+    if (editorMode === 'text') {
+      const command = align === 'left' ? 'justifyLeft' :
+                      align === 'center' ? 'justifyCenter' :
+                      align === 'right' ? 'justifyRight' : 'justifyFull';
+      document.execCommand(command, false, '');
+
+      const activeEl = document.getElementById(`block-editor-${activeBlockIndex}`);
+      if (activeEl) {
+        updateBlockText(activeBlockIndex, activeEl.innerHTML);
+      }
+      syncFormattingRef.current?.();
+    } else {
+      const targetIds = selectedBlockIds.length > 0
+        ? selectedBlockIds
+        : activeBlockId ? [activeBlockId] : [];
+      applyBlockAlignment(targetIds, align);
+    }
+  }, [activeBlock.type, activeBlockId, activeBlockIndex, editorMode, selectedBlockIds, updateBlockText, applyBlockAlignment]);
 
   const indentBlock = useCallback((index = activeBlockIndex) => {
     setChapters(prev => {
@@ -803,7 +769,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
           if (lesson.id === activeLessonId) {
             return {
               ...lesson,
-              blocks: lesson.blocks.map((b, idx) => 
+              blocks: lesson.blocks.map((b, idx) =>
                 idx === index ? { ...b, indent: Math.min(5, (b.indent || 0) + 1) } : b
               )
             };
@@ -824,7 +790,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
           if (lesson.id === activeLessonId) {
             return {
               ...lesson,
-              blocks: lesson.blocks.map((b, idx) => 
+              blocks: lesson.blocks.map((b, idx) =>
                 idx === index ? { ...b, indent: Math.max(0, (b.indent || 0) - 1) } : b
               )
             };
@@ -845,7 +811,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
           if (lesson.id === activeLessonId) {
             return {
               ...lesson,
-              blocks: lesson.blocks.map((b, idx) => 
+              blocks: lesson.blocks.map((b, idx) =>
                 idx === index ? { ...b, checked: !b.checked } : b
               )
             };
@@ -914,13 +880,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       for (const ch of prev) {
         const lesson = ch.lessons.find(l => l.id === activeLessonId);
         if (lesson) {
-          const newBlock: DocBlock = {
-            id: Math.random().toString(36).substring(2, 11),
-            type: 'paragraph',
-            text: '',
-            align: 'left',
-            indent: lesson.blocks[index]?.indent || 0
-          };
+          const newBlock = createDefaultBlock('paragraph', undefined, 'left', lesson.blocks[index]?.indent || 0);
           nextPages = prev.map(c => ({
             ...c,
             lessons: c.lessons.map(l => {
@@ -948,52 +908,76 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
   }, [activeLessonId, pushHistoryState]);
 
   const deleteBlocks = useCallback((ids: string[]) => {
+    const validIds = currentBlocks
+      .filter(block => ids.includes(block.id))
+      .map(block => block.id);
+    if (validIds.length === 0) return;
+
+    const firstDeletedIndex = currentBlocks.findIndex(block => block.id === validIds[0]);
+    const remainingBlocks = currentBlocks.filter(block => !validIds.includes(block.id));
+    const fallbackBlock = remainingBlocks.length === 0 ? createDefaultBlock('paragraph') : null;
+    const finalBlocks = fallbackBlock ? [fallbackBlock] : remainingBlocks;
+    const nextActiveIndex = Math.min(firstDeletedIndex, finalBlocks.length - 1);
+    const nextActiveId = finalBlocks[nextActiveIndex]?.id ?? null;
+
     setChapters(prev => {
       const nextChapters = prev.map(ch => ({
         ...ch,
         lessons: ch.lessons.map(lesson => {
           if (lesson.id === activeLessonId) {
-            const filtered = lesson.blocks.filter(b => !ids.includes(b.id));
-            const finalBlocks = filtered.length > 0 ? filtered : [{
-              id: `b-${Math.random().toString(36).substring(2, 9)}`,
-              type: 'paragraph' as const,
-              text: ''
-            }];
             return { ...lesson, blocks: finalBlocks };
           }
           return lesson;
         })
       }));
-      pushHistoryState(nextChapters);
+      pushHistoryState(nextChapters, false, nextActiveIndex);
       return nextChapters;
     });
-  }, [activeLessonId, pushHistoryState]);
+    syncBlockCommandState(nextActiveId);
+  }, [activeLessonId, currentBlocks, pushHistoryState, syncBlockCommandState]);
 
   const duplicateBlocks = useCallback((ids: string[]) => {
+    const validIds = currentBlocks
+      .filter(block => ids.includes(block.id))
+      .map(block => block.id);
+    if (validIds.length === 0) return;
+
+    const duplicateIds = new Map(validIds.map(id => [id, generateBlockId()]));
+    const nextBlocks: DocBlock[] = [];
+    currentBlocks.forEach(block => {
+      nextBlocks.push(block);
+      const duplicateId = duplicateIds.get(block.id);
+      if (duplicateId) {
+        nextBlocks.push({
+          ...block,
+          id: duplicateId,
+        });
+      }
+    });
+
+    const nextSelectedIds = validIds
+      .map(id => duplicateIds.get(id))
+      .filter((id): id is string => Boolean(id));
+    const nextActiveId = activeBlockId && duplicateIds.has(activeBlockId)
+      ? duplicateIds.get(activeBlockId) ?? nextSelectedIds[0]
+      : nextSelectedIds[0];
+    const nextActiveIndex = nextBlocks.findIndex(block => block.id === nextActiveId);
+
     setChapters(prev => {
       const nextChapters = prev.map(ch => ({
         ...ch,
         lessons: ch.lessons.map(lesson => {
           if (lesson.id === activeLessonId) {
-            const newBlocks: DocBlock[] = [];
-            lesson.blocks.forEach(b => {
-              newBlocks.push(b);
-              if (ids.includes(b.id)) {
-                newBlocks.push({
-                  ...b,
-                  id: `b-${Math.random().toString(36).substring(2, 9)}`,
-                });
-              }
-            });
-            return { ...lesson, blocks: newBlocks };
+            return { ...lesson, blocks: nextBlocks };
           }
           return lesson;
         })
       }));
-      pushHistoryState(nextChapters);
+      pushHistoryState(nextChapters, false, nextActiveIndex === -1 ? activeBlockIndex : nextActiveIndex);
       return nextChapters;
     });
-  }, [activeLessonId, pushHistoryState]);
+    syncBlockCommandState(nextActiveId ?? null, nextSelectedIds);
+  }, [activeBlockId, activeBlockIndex, activeLessonId, currentBlocks, pushHistoryState, syncBlockCommandState]);
 
   const pasteBlocks = useCallback((pasted: DocBlock[], targetBlockId: string | null) => {
     if (pasted.length === 0) return;
@@ -1007,7 +991,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
 
             const freshBlocks = pasted.map(b => ({
               ...b,
-              id: `b-${Math.random().toString(36).substring(2, 9)}`,
+              id: generateBlockId(),
             }));
 
             const updated = [
@@ -1034,7 +1018,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
           const currentBlock = lesson.blocks[index];
           const newBlock: DocBlock = {
             ...currentBlock,
-            id: `b-${Math.random().toString(36).substring(2, 9)}`,
+            id: generateBlockId(),
           };
           nextPages = prev.map(c => ({
             ...c,
@@ -1070,7 +1054,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
               ...lesson,
               blocks: lesson.blocks.map((b, idx) => {
                 if (idx === index) {
-                  return { ...b, type, level: level ?? undefined };
+                  return createDefaultBlock(type, b.id, b.align, b.indent, level, b.text);
                 }
                 return b;
               })
@@ -1091,7 +1075,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
         if (lesson.id === activeLessonId) {
           return {
             ...lesson,
-            blocks: lesson.blocks.map((b, idx) => 
+            blocks: lesson.blocks.map((b, idx) =>
               idx === index ? updatedBlock : b
             )
           };
@@ -1102,59 +1086,56 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     pushHistoryState(nextChapters, isDebounced);
   }, [chapters, activeLessonId, pushHistoryState]);
 
-  const moveBlockUp = useCallback((index: number) => {
-    if (index === 0) return;
+  const moveBlocks = useCallback((ids: string[], direction: 'up' | 'down') => {
+    const validIds = currentBlocks
+      .filter(block => ids.includes(block.id))
+      .map(block => block.id);
+    if (validIds.length === 0) return;
+
+    const selected = new Set(validIds);
+    const selectedIndexes = currentBlocks
+      .map((block, index) => selected.has(block.id) ? index : -1)
+      .filter(index => index !== -1);
+    if (selectedIndexes.length === 0) return;
+
+    const firstIndex = Math.min(...selectedIndexes);
+    const lastIndex = Math.max(...selectedIndexes);
+    if ((direction === 'up' && firstIndex === 0) || (direction === 'down' && lastIndex === currentBlocks.length - 1)) {
+      return;
+    }
+
+    const selectedBlocks = currentBlocks.filter(block => selected.has(block.id));
+    const remainingBlocks = currentBlocks.filter(block => !selected.has(block.id));
+    const adjacentId = direction === 'up'
+      ? currentBlocks[firstIndex - 1]?.id
+      : currentBlocks[lastIndex + 1]?.id;
+    const adjacentIndex = remainingBlocks.findIndex(block => block.id === adjacentId);
+    const insertIndex = direction === 'up' ? adjacentIndex : adjacentIndex + 1;
+    const nextBlocks = [
+      ...remainingBlocks.slice(0, insertIndex),
+      ...selectedBlocks,
+      ...remainingBlocks.slice(insertIndex)
+    ];
+
+    const nextActiveId = activeBlockId && selected.has(activeBlockId) ? activeBlockId : validIds[0];
+    const nextActiveIndex = nextBlocks.findIndex(block => block.id === nextActiveId);
+
     setChapters(prev => {
-      const nextPages = prev.map(ch => ({
+      const nextChapters = prev.map(ch => ({
         ...ch,
         lessons: ch.lessons.map(lesson => {
           if (lesson.id === activeLessonId) {
-            const updated = [...lesson.blocks];
-            const temp = updated[index];
-            updated[index] = updated[index - 1];
-            updated[index - 1] = temp;
-            return { ...lesson, blocks: updated };
+            return { ...lesson, blocks: nextBlocks };
           }
           return lesson;
         })
       }));
-      pushHistoryState(nextPages);
-      setActiveBlockIndex(index - 1);
-      focusBlock(index - 1);
-      return nextPages;
+      pushHistoryState(nextChapters, false, nextActiveIndex === -1 ? activeBlockIndex : nextActiveIndex);
+      return nextChapters;
     });
-  }, [activeLessonId, pushHistoryState]);
-
-  const moveBlockDown = useCallback((index: number) => {
-    setChapters(prev => {
-      let nextPages = prev;
-      for (const ch of prev) {
-        const lesson = ch.lessons.find(l => l.id === activeLessonId);
-        if (lesson) {
-          if (index === lesson.blocks.length - 1) return prev;
-          nextPages = prev.map(c => ({
-            ...c,
-            lessons: c.lessons.map(l => {
-              if (l.id === activeLessonId) {
-                const updated = [...l.blocks];
-                const temp = updated[index];
-                updated[index] = updated[index + 1];
-                updated[index + 1] = temp;
-                return { ...l, blocks: updated };
-              }
-              return l;
-            })
-          }));
-          break;
-        }
-      }
-      pushHistoryState(nextPages);
-      setActiveBlockIndex(index + 1);
-      focusBlock(index + 1);
-      return nextPages;
-    });
-  }, [activeLessonId, pushHistoryState]);
-
+    syncBlockCommandState(nextActiveId, validIds);
+    focusBlock(nextActiveIndex);
+  }, [activeBlockId, activeBlockIndex, activeLessonId, currentBlocks, pushHistoryState, syncBlockCommandState]);
   const handleBackspaceAtStart = useCallback((index: number) => {
     setChapters(prev => {
       let nextPages = prev;
@@ -1171,7 +1152,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
                 if (l.id === activeLessonId) {
                   return {
                     ...l,
-                    blocks: l.blocks.map((b, idx) => 
+                    blocks: l.blocks.map((b, idx) =>
                       idx === index ? { ...b, indent: Math.max(0, (b.indent || 0) - 1) } : b
                     )
                   };
@@ -1189,7 +1170,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
                 if (l.id === activeLessonId) {
                   return {
                     ...l,
-                    blocks: l.blocks.map((b, idx) => 
+                    blocks: l.blocks.map((b, idx) =>
                       idx === index ? { ...b, type: 'paragraph' as const, level: undefined } : b
                     )
                   };
@@ -1264,7 +1245,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
   const filteredCommands = useMemo(() => {
     if (!slashQuery) return BLOCK_COMMANDS;
     const q = slashQuery.toLowerCase();
-    return BLOCK_COMMANDS.filter(opt => 
+    return BLOCK_COMMANDS.filter(opt =>
       opt.label.toLowerCase().includes(q) ||
       opt.type.toLowerCase().includes(q) ||
       opt.desc.toLowerCase().includes(q)
@@ -1289,55 +1270,11 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
             ...lesson,
             blocks: lesson.blocks.map((b, idx) => {
               if (idx === activeBlockIndex) {
-                const updated: DocBlock = {
-                  id: b.id,
-                  type: 'paragraph',
-                  text: '', // clear text
-                  align: b.align || 'left',
-                  indent: b.indent || 0
-                };
-
                 if (cmdType.startsWith('heading-')) {
                   const level = parseInt(cmdType.split('-')[1], 10) as 1 | 2 | 3;
-                  updated.type = 'heading';
-                  updated.level = level;
-                } else if (cmdType === 'divider') {
-                  updated.type = 'divider';
-                } else if (cmdType === 'image') {
-                  updated.type = 'image';
-                  updated.src = '';
-                  updated.caption = '';
-                  updated.align = 'center';
-                  updated.width = '100%';
-                } else if (cmdType === 'table') {
-                  updated.type = 'table';
-                  updated.rows = [
-                    ['Cột 1', 'Cột 2', 'Cột 3'],
-                    ['Dữ liệu 1', 'Dữ liệu 2', 'Dữ liệu 3'],
-                    ['Dữ liệu 4', 'Dữ liệu 5', 'Dữ liệu 6']
-                  ];
-                } else if (cmdType === 'formula') {
-                  updated.type = 'formula';
-                  updated.latex = 'f(x) = x^2';
-                  updated.display = 'block';
-                } else if (cmdType === 'quiz') {
-                  updated.type = 'quiz';
-                } else if (cmdType === 'flashcard') {
-                  updated.type = 'flashcard';
-                } else if (cmdType === 'mindmap') {
-                  updated.type = 'mindmap';
-                } else if (cmdType === 'media') {
-                  updated.type = 'media';
-                } else if (cmdType === 'code') {
-                  updated.type = 'code';
-                  updated.language = 'typescript';
-                } else if (cmdType === 'callout') {
-                  updated.type = 'callout';
-                } else if (cmdType === 'quote') {
-                  updated.type = 'quote';
+                  return createDefaultBlock('heading', b.id, b.align, b.indent, level);
                 }
-
-                return updated;
+                return createDefaultBlock(cmdType as DocBlock['type'], b.id, b.align, b.indent);
               }
               return b;
             })
@@ -1360,13 +1297,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       for (const ch of prev) {
         const lesson = ch.lessons.find(l => l.id === activeLessonId);
         if (lesson) {
-          const newBlock: DocBlock = {
-            id: `b-${Math.random().toString(36).substring(2, 9)}`,
-            type: 'paragraph',
-            text: '',
-            align: 'left',
-            indent: lesson.blocks[index]?.indent || 0
-          };
+          const newBlock = createDefaultBlock('paragraph', undefined, 'left', lesson.blocks[index]?.indent || 0);
           nextPages = prev.map(c => ({
             ...c,
             lessons: c.lessons.map(l => {
@@ -1622,9 +1553,9 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
-        const isAtEnd = range.collapsed && 
-          (range.startContainer === e.currentTarget || 
-           (range.startContainer.nodeType === Node.TEXT_NODE && 
+        const isAtEnd = range.collapsed &&
+          (range.startContainer === e.currentTarget ||
+           (range.startContainer.nodeType === Node.TEXT_NODE &&
             range.startOffset === range.startContainer.textContent?.length)
           );
 
@@ -1715,7 +1646,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
 
   // Explorer handlers
   const handleToggleChapterExpand = useCallback((chapterId: string) => {
-    setChapters(prev => prev.map(ch => 
+    setChapters(prev => prev.map(ch =>
       ch.id === chapterId ? { ...ch, isExpanded: !ch.isExpanded } : ch
     ));
   }, []);
@@ -1770,13 +1701,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
         id: newId,
         title: 'Bài học chưa đặt tên',
         blocks: [
-          {
-            id: `b-${Math.random().toString(36).substring(2, 9)}`,
-            type: 'paragraph',
-            text: '',
-            align: 'left',
-            indent: 0
-          }
+          createDefaultBlock('paragraph')
         ]
       };
       return prev.map(ch => {
@@ -1851,7 +1776,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
         }
         return {
           ...ch,
-          lessons: ch.lessons.map(l => 
+          lessons: ch.lessons.map(l =>
             l.id === id ? { ...l, title: trimmedTitle } : l
           )
         };
@@ -1958,8 +1883,21 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     setActiveBlockIndex(0);
   }, []);
 
-  const handleScrollWrapperClick = () => {
+  const handleScrollWrapperClick = (e: React.MouseEvent) => {
     setShowSlashMenu(false);
+    if (e.target === e.currentTarget) {
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || (activeEl as HTMLElement).isContentEditable)) {
+        (activeEl as HTMLElement).blur();
+      }
+      window.getSelection()?.removeAllRanges();
+      setEditorMode('block');
+      if (activeBlockId) {
+        setSelectedBlockIds([activeBlockId]);
+      } else {
+        setSelectedBlockIds([]);
+      }
+    }
   };
 
   const handleBodyDrop = useCallback(async (e: React.DragEvent<HTMLDivElement>) => {
@@ -1969,7 +1907,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       if (file.type.startsWith('image/')) {
         e.preventDefault();
         e.stopPropagation();
-        
+
         try {
           const uploadedUrl = await uploadImageFile(file);
           const nextChapters = chapters.map(ch => ({
@@ -1985,7 +1923,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
                   align: 'center',
                   width: '100%'
                 };
-                
+
                 const currentIdx = activeBlockIndex;
                 const updatedBlocks = [
                   ...lesson.blocks.slice(0, currentIdx + 1),
@@ -2015,37 +1953,20 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       setShowTableModal(true);
       return;
     }
+    let targetType: DocBlock['type'] = 'paragraph';
+    if (label === 'Ảnh') targetType = 'image';
+    else if (label === 'Bảng') targetType = 'table';
+    else if (label === 'Công thức') targetType = 'formula';
+    else if (label === 'Quiz') targetType = 'quiz';
+    else if (label === 'Flashcard') targetType = 'flashcard';
+    else if (label === 'Mindmap') targetType = 'mindmap';
+    else if (label === 'Media') targetType = 'media';
+
     const nextChapters = chapters.map(ch => ({
       ...ch,
       lessons: ch.lessons.map(lesson => {
         if (lesson.id === activeLessonId) {
-          const newBlock: DocBlock = {
-            id: `b-${Math.random().toString(36).substring(2, 9)}`,
-            type: 'paragraph',
-            text: '',
-            align: 'left',
-            indent: 0
-          };
-
-          if (label === 'Ảnh') {
-            newBlock.type = 'image';
-            newBlock.src = '';
-            newBlock.caption = '';
-            newBlock.align = 'center';
-            newBlock.width = '100%';
-          } else if (label === 'Bảng') {
-            newBlock.type = 'table';
-            newBlock.rows = [
-              ['Cột 1', 'Cột 2', 'Cột 3'],
-              ['Dữ liệu 1', 'Dữ liệu 2', 'Dữ liệu 3'],
-              ['Dữ liệu 4', 'Dữ liệu 5', 'Dữ liệu 6']
-            ];
-          } else if (label === 'Công thức') {
-            newBlock.type = 'formula';
-            newBlock.latex = 'f(x) = x^2';
-            newBlock.display = 'block';
-          }
-
+          const newBlock = createDefaultBlock(targetType);
           const currentIdx = activeBlockIndex;
           const updatedBlocks = [
             ...lesson.blocks.slice(0, currentIdx + 1),
@@ -2066,21 +1987,26 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
   return (
     <BlockSelectionProvider
       blocks={currentBlocks}
-      activeBlockIndex={activeBlockIndex}
-      setActiveBlockIndex={setActiveBlockIndex}
+      activeBlockId={activeBlockId}
+      setActiveBlockId={setActiveBlockId}
+      selectedBlockIds={selectedBlockIds}
+      setSelectedBlockIds={setSelectedBlockIds}
+      editorMode={editorMode}
+      setEditorMode={setEditorMode}
       onDeleteBlocks={deleteBlocks}
       onDuplicateBlocks={duplicateBlocks}
       onPasteBlocks={pasteBlocks}
     >
-      <div className="w-full flex flex-col h-screen bg-[#F8FAFC] text-text-primary overflow-hidden font-sans animate-fadeIn">
-      
+      <FormattingStateProvider activeBlock={activeBlock} syncRef={syncFormattingRef}>
+        <div className="w-full flex flex-col h-screen bg-[#F8FAFC] text-text-primary overflow-hidden font-sans animate-fadeIn">
+
       {/* ========================================== */}
       {/* TOP BAR                                    */}
       {/* ========================================== */}
       <header className="h-14 bg-white border-b border-slate-100 px-4 flex items-center justify-between shrink-0 select-none">
         <div className="flex items-center gap-3.5">
           <Tooltip content="Quay lại">
-            <button 
+            <button
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => setMode('dashboard')}
               className="p-1.5 hover:bg-slate-50 text-slate-500 hover:text-slate-800 rounded-xl transition cursor-pointer"
@@ -2103,23 +2029,23 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
 
         {/* Mode Tab List (Soạn thảo | Xem trước) */}
         <div className="flex items-center gap-2 border border-slate-200 rounded-xl p-0.5 text-[10px] font-bold text-slate-500 select-none bg-slate-50/50">
-          <button 
+          <button
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setShowPreview(false)}
             className={`px-3 py-1 rounded-lg transition cursor-pointer ${
-              !showPreview 
-                ? 'bg-white text-primary shadow-sm font-black' 
+              !showPreview
+                ? 'bg-white text-primary shadow-sm font-black'
                 : 'hover:text-slate-800 hover:bg-slate-100/50'
             }`}
           >
             Soạn thảo
           </button>
-          <button 
+          <button
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setShowPreview(true)}
             className={`px-3 py-1 rounded-lg transition cursor-pointer ${
-              showPreview 
-                ? 'bg-white text-primary shadow-sm font-black' 
+              showPreview
+                ? 'bg-white text-primary shadow-sm font-black'
                 : 'hover:text-slate-800 hover:bg-slate-100/50'
             }`}
           >
@@ -2135,7 +2061,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
 
           <div className="flex items-center gap-2">
             <Tooltip content="Lưu nháp">
-              <button 
+              <button
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={async () => {
                   await showAlert({
@@ -2150,7 +2076,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
               </button>
             </Tooltip>
             <Tooltip content="Xuất bản tài liệu">
-              <button 
+              <button
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={handlePublish}
                 className="px-3 py-1.5 bg-gradient-to-r from-primary to-[#8F85F3] hover:from-primary-hover text-white text-[10px] font-black rounded-xl flex items-center gap-1 transition cursor-pointer shadow-sm shadow-indigo-100"
@@ -2166,9 +2092,9 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       {/* MAIN BODY LAYOUT (Left, Center, Right)    */}
       {/* ========================================== */}
       <div className="flex-1 flex overflow-hidden w-full">
-        
+
         {/* 1. LEFT SIDEBAR */}
-        <DocSidebar 
+        <DocSidebar
           chapters={chapters}
           activeLessonId={activeLessonId}
           onLessonSelect={handleLessonSelect}
@@ -2189,20 +2115,17 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
 
         {/* 2. CENTER PANEL: Rich Editor Workspace */}
         <main className="flex-1 bg-white border-r border-slate-100 flex flex-col overflow-hidden">
-          
+
           {/* Rich Editor Toolbar */}
-          <DocToolbar 
-            onAiSuggest={handleAiSuggest} 
+          <DocToolbar
+            onAiSuggest={handleAiSuggest}
             onBold={() => executeFormat('bold')}
             onItalic={() => executeFormat('italic')}
             onUnderline={() => executeFormat('underline')}
             onStrikethrough={() => executeFormat('strikeThrough')}
             onColorChange={handleColorChange}
             onHighlightChange={handleHighlightChange}
-            activeBlockType={activeBlock.type}
-            activeBlockLevel={activeBlock.level}
             onBlockTypeChange={toggleBlockType}
-            activeAlign={activeBlock.align || 'left'}
             onAlignChange={toggleBlockAlign}
             onIndent={() => indentBlock()}
             onOutdent={() => outdentBlock()}
@@ -2210,18 +2133,11 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
             onRedo={handleRedo}
             canUndo={historyIndex > 0}
             canRedo={historyIndex < history.length - 1}
-            isBold={caretFormatting.isBold}
-            isItalic={caretFormatting.isItalic}
-            isUnderline={caretFormatting.isUnderline}
-            isStrikethrough={caretFormatting.isStrikethrough}
-            activeColor={caretFormatting.activeColor}
-            activeHighlight={caretFormatting.activeHighlight}
-            activeFontSize={caretFormatting.activeFontSize}
             onFontSizeChange={applyFontSize}
           />
 
           {/* Editable Block Content List */}
-          <div 
+          <div
             id="editor-blocks-container"
             onKeyDown={(e) => handleKeyDown(e, activeBlockIndex)}
             onClick={handleScrollWrapperClick}
@@ -2256,7 +2172,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
               const tableNumber = block.type === 'table' ? getTableNumber(currentBlocks, idx) : undefined;
 
               return (
-                <MemoizedBlockRow 
+                <MemoizedBlockRow
                   key={block.id}
                   block={block}
                   idx={idx}
@@ -2270,20 +2186,20 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
                   handleKeyDown={handleKeyDown}
                   toggleTodoChecked={toggleTodoChecked}
                   onDeleteBlock={handleDeleteBlockWithConfirm}
-                  onDuplicateBlock={duplicateBlock}
+                  onDeleteBlocks={deleteBlocks}
+                  onDuplicateBlocks={duplicateBlocks}
                   onConvertBlock={convertBlockType}
                   onUpdateBlock={handleUpdateBlock}
                   onInsertAbove={insertBlockAbove}
                   onInsertBelow={insertBlockBelow}
                   onDragStart={handleBlockDragStart}
-                  moveBlockUp={moveBlockUp}
-                  moveBlockDown={moveBlockDown}
-                  blocksLength={currentBlocks.length}
+                  moveBlocks={moveBlocks}
                   onRegisterCellAlignHandler={(fn) => { tableCellAlignRef.current = fn; }}
                   liveTableResize={liveTableResize}
                   setLiveTableResize={setLiveTableResize}
                   liveTableActiveCell={liveTableActiveCell}
                   setLiveTableActiveCell={setLiveTableActiveCell}
+                  applyBlockAlignment={applyBlockAlignment}
                 />
               );
             })}
@@ -2292,15 +2208,15 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
             <DragIndicator top={dragIndicatorTop} visible={dragIndicatorVisible} />
 
             {/* Floating visual preview of the block being dragged */}
-            <BlockDragPreview 
-              text={draggingIndex !== null ? (currentBlocks[draggingIndex]?.text || '') : ''} 
-              type={draggingIndex !== null ? (currentBlocks[draggingIndex]?.type || '') : ''} 
-              coords={dragPointerCoords} 
-              visible={draggingIndex !== null} 
+            <BlockDragPreview
+              text={draggingIndex !== null ? (currentBlocks[draggingIndex]?.text || '') : ''}
+              type={draggingIndex !== null ? (currentBlocks[draggingIndex]?.type || '') : ''}
+              coords={dragPointerCoords}
+              visible={draggingIndex !== null}
             />
 
             {/* Presentation-only floating Slash Command Menu */}
-            <SlashMenu 
+            <SlashMenu
               isOpen={showSlashMenu}
               commands={filteredCommands}
               selectedIndex={slashMenuIndex}
@@ -2310,7 +2226,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
             />
 
             {/* Custom selection right click context menu */}
-            <SelectionContextMenu 
+            <SelectionContextMenu
               isOpen={showSelectionMenu}
               onClose={() => setShowSelectionMenu(false)}
               coords={selectionMenuCoords}
@@ -2319,12 +2235,10 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
               onPaste={handlePasteSelection}
               onFormat={executeFormat}
               onConvertBlock={(type, lvl) => convertBlockType(activeBlockIndex, type, lvl)}
-              activeColor={caretFormatting.activeColor}
-              activeHighlight={caretFormatting.activeHighlight}
             />
 
             {/* Custom table dimension creation modal */}
-            <TableInsertModal 
+            <TableInsertModal
               isOpen={showTableModal}
               onClose={() => {
                 setShowTableModal(false);
@@ -2342,7 +2256,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
 
         {/* 3. RIGHT SIDEBAR: Live Student Preview Simulator */}
         {showPreview && (
-          <DocPreviewSimulator 
+          <DocPreviewSimulator
             lessonTitle={activeLesson ? activeLesson.title : ''}
             blocks={currentBlocks}
             liveTableResize={liveTableResize}
@@ -2365,7 +2279,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
               { icon: <HelpCircle size={16} />, label: 'Khác' },
             ].map((tool, i) => (
               <Tooltip key={i} content={tool.label}>
-                <button 
+                <button
                   onClick={() => handleSideToolClick(tool.label)}
                   className="w-12 h-12 flex flex-col items-center justify-center text-slate-400 hover:text-primary hover:bg-primary-light rounded-xl transition cursor-pointer select-none"
                 >
@@ -2399,6 +2313,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       </footer>
 
     </div>
+      </FormattingStateProvider>
     </BlockSelectionProvider>
   );
 };
@@ -2415,21 +2330,21 @@ interface BlockRowProps {
   handleKeyDown: (e: React.KeyboardEvent<HTMLDivElement>, i: number) => void;
   toggleTodoChecked: (i: number) => void;
   onDeleteBlock: (i: number) => void;
-  onDuplicateBlock: (i: number) => void;
+  onDeleteBlocks: (ids: string[]) => void;
+  onDuplicateBlocks: (ids: string[]) => void;
   onConvertBlock: (index: number, type: DocBlock['type'], level?: 1 | 2 | 3) => void;
   onUpdateBlock: (index: number, updated: DocBlock, isDebounced?: boolean) => void;
   onInsertAbove: (i: number) => void;
   onInsertBelow: (i: number) => void;
   onDragStart: (e: React.PointerEvent<HTMLButtonElement>, i: number) => void;
-  moveBlockUp: (i: number) => void;
-  moveBlockDown: (i: number) => void;
-  blocksLength: number;
+  moveBlocks: (ids: string[], direction: 'up' | 'down') => void;
   tableNumber?: number;
   onRegisterCellAlignHandler: (fn: ((align: 'left' | 'center' | 'right' | 'justify') => void) | null) => void;
   liveTableResize: LiveTableResizeState | null;
   setLiveTableResize: (state: LiveTableResizeState | null) => void;
   liveTableActiveCell: LiveTableActiveCell | null;
   setLiveTableActiveCell: (state: LiveTableActiveCell | null) => void;
+  applyBlockAlignment?: (blockIds: string[], align: DocBlock['align']) => void;
 }
 
 const BlockRowComponent: React.FC<BlockRowProps> = ({
@@ -2444,21 +2359,21 @@ const BlockRowComponent: React.FC<BlockRowProps> = ({
   handleKeyDown,
   toggleTodoChecked,
   onDeleteBlock,
-  onDuplicateBlock,
+  onDeleteBlocks,
+  onDuplicateBlocks,
   onConvertBlock,
   onUpdateBlock,
   onInsertAbove,
   onInsertBelow,
   onDragStart,
-  moveBlockUp,
-  moveBlockDown,
-  blocksLength,
+  moveBlocks,
   tableNumber,
   onRegisterCellAlignHandler,
   liveTableResize,
   setLiveTableResize,
   liveTableActiveCell,
   setLiveTableActiveCell,
+  applyBlockAlignment,
 }) => {
   const indentStyle = { paddingLeft: `${indent * 24}px` };
 
@@ -2471,18 +2386,16 @@ const BlockRowComponent: React.FC<BlockRowProps> = ({
       <BlockWrapper
         block={block}
         idx={idx}
-        onUpdateBlock={onUpdateBlock}
-        onDeleteBlock={onDeleteBlock}
-        onDuplicateBlock={onDuplicateBlock}
+        onDeleteBlocks={onDeleteBlocks}
+        onDuplicateBlocks={onDuplicateBlocks}
         onConvertBlock={onConvertBlock}
         onInsertAbove={onInsertAbove}
         onInsertBelow={onInsertBelow}
-        moveBlockUp={moveBlockUp}
-        moveBlockDown={moveBlockDown}
-        blocksLength={blocksLength}
+                  moveBlocks={moveBlocks}
         onDragStart={onDragStart}
+        applyBlockAlignment={applyBlockAlignment}
       >
-        <BlockRenderer 
+        <BlockRenderer
           block={block}
           idx={idx}
           isActive={isActive}
