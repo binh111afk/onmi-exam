@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Settings, X } from 'lucide-react';
+import { SettingsSelect } from '../common/SettingsSelect';
 import type { FlowSettings as FlowSettingsType } from './FlowTypes';
 
 interface FlowSettingsProps {
@@ -51,7 +52,9 @@ export const FlowSettings: React.FC<FlowSettingsProps> = ({
   if (!isOpen) return null;
 
   const handleUpdateField = (fields: Partial<FlowSettingsType>) => {
-    setLocalSettings(prev => ({ ...prev, ...fields }));
+    const nextSettings = { ...localSettings, ...fields };
+    setLocalSettings(nextSettings);
+    onUpdateSettings(nextSettings);
   };
 
   const handleApply = () => {
@@ -98,81 +101,87 @@ export const FlowSettings: React.FC<FlowSettingsProps> = ({
         <div className="p-5 space-y-4 overflow-y-auto flex-1 text-[10px]">
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Bố cục</span>
-            <select
-              value={localSettings.layout}
-              onChange={(e) => handleUpdateField({ layout: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="horizontal">Ngang (Horizontal)</option>
-              <option value="vertical">Dọc (Vertical)</option>
-              <option value="zigzag">Zigzag</option>
-            </select>
+            <SettingsSelect
+              ariaLabel="Bố cục Quy trình"
+              value={localSettings.layout ?? 'horizontal'}
+              onChange={(value) => handleUpdateField({ layout: value as any })}
+              options={[
+                { value: 'horizontal', label: 'Ngang (Horizontal)' },
+                { value: 'vertical', label: 'Dọc (Vertical)' },
+                { value: 'zigzag', label: 'Zigzag' }
+              ]}
+            />
           </div>
 
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Kiểu mũi tên</span>
-            <select
-              value={localSettings.arrowStyle}
-              onChange={(e) => handleUpdateField({ arrowStyle: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="straight">Mũi tên thẳng</option>
-              <option value="dashed">Mũi tên đứt nét</option>
-              <option value="curved">Mũi tên cong</option>
-            </select>
+            <SettingsSelect
+              ariaLabel="Kiểu mũi tên Quy trình"
+              value={localSettings.arrowStyle ?? 'straight'}
+              onChange={(value) => handleUpdateField({ arrowStyle: value as any })}
+              options={[
+                { value: 'straight', label: 'Mũi tên thẳng' },
+                { value: 'dashed', label: 'Mũi tên đứt nét' },
+                { value: 'curved', label: 'Mũi tên cong' }
+              ]}
+            />
           </div>
 
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Kiểu đường nối</span>
-            <select
+            <SettingsSelect
+              ariaLabel="Kiểu đường nối Quy trình"
               value={localSettings.connectorStyle}
-              onChange={(e) => handleUpdateField({ connectorStyle: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="solid">Nét liền</option>
-              <option value="dashed">Nét đứt</option>
-              <option value="dotted">Chấm tròn</option>
-            </select>
+              onChange={(value) => handleUpdateField({ connectorStyle: value as any })}
+              options={[
+                { value: 'solid', label: 'Nét liền' },
+                { value: 'dashed', label: 'Nét đứt' },
+                { value: 'dotted', label: 'Chấm tròn' }
+              ]}
+            />
           </div>
 
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Đánh số bước</span>
-            <select
+            <SettingsSelect
+              ariaLabel="Đánh số bước Quy trình"
               value={localSettings.stepNumbering}
-              onChange={(e) => handleUpdateField({ stepNumbering: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="numbers">Số tự nhiên (1, 2, 3)</option>
-              <option value="roman">Số La Mã (I, II, III)</option>
-              <option value="alphabet">Chữ cái (A, B, C)</option>
-              <option value="none">Không hiển thị</option>
-            </select>
+              onChange={(value) => handleUpdateField({ stepNumbering: value as any })}
+              options={[
+                { value: 'numbers', label: 'Số tự nhiên (1, 2, 3)' },
+                { value: 'roman', label: 'Số La Mã (I, II, III)' },
+                { value: 'alphabet', label: 'Chữ cái (A, B, C)' },
+                { value: 'none', label: 'Không hiển thị' }
+              ]}
+            />
           </div>
 
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Kiểu thẻ card</span>
-            <select
+            <SettingsSelect
+              ariaLabel="Kiểu thẻ card Quy trình"
               value={localSettings.cardStyle}
-              onChange={(e) => handleUpdateField({ cardStyle: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="bordered">Có viền nhẹ</option>
-              <option value="flat">Không viền (Phẳng)</option>
-              <option value="shadow">Đổ bóng</option>
-            </select>
+              onChange={(value) => handleUpdateField({ cardStyle: value as any })}
+              options={[
+                { value: 'bordered', label: 'Có viền nhẹ' },
+                { value: 'flat', label: 'Không viền (Phẳng)' },
+                { value: 'shadow', label: 'Đổ bóng' }
+              ]}
+            />
           </div>
 
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Khoảng cách bước</span>
-            <select
+            <SettingsSelect
+              ariaLabel="Khoảng cách bước Quy trình"
               value={localSettings.stepSpacing}
-              onChange={(e) => handleUpdateField({ stepSpacing: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="compact">Hẹp</option>
-              <option value="normal">Thường</option>
-              <option value="wide">Rộng</option>
-            </select>
+              onChange={(value) => handleUpdateField({ stepSpacing: value as any })}
+              options={[
+                { value: 'compact', label: 'Hẹp' },
+                { value: 'normal', label: 'Thường' },
+                { value: 'wide', label: 'Rộng' }
+              ]}
+            />
           </div>
 
           <div className="space-y-2 pt-2 border-t border-slate-100">

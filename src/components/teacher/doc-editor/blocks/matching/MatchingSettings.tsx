@@ -56,7 +56,9 @@ export const MatchingSettings: React.FC<MatchingSettingsProps> = ({
   if (!isOpen) return null;
 
   const handleUpdateField = (fields: Partial<MatchingSettingsType>) => {
-    setLocalSettings(prev => ({ ...prev, ...fields }));
+    const nextSettings = { ...localSettings, ...fields };
+    setLocalSettings(nextSettings);
+    onUpdateSettings(nextSettings);
   };
 
   const handleApply = () => {

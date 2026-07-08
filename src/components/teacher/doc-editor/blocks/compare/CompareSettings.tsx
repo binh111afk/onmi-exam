@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Settings, X } from 'lucide-react';
 import { Checkbox } from '../../../../Checkbox';
+import { SettingsSelect } from '../common/SettingsSelect';
 import type { CompareSettings as CompareSettingsType } from './CompareTypes';
 
 interface CompareSettingsProps {
@@ -56,7 +57,9 @@ export const CompareSettings: React.FC<CompareSettingsProps> = ({
   if (!isOpen) return null;
 
   const handleUpdateField = (fields: Partial<CompareSettingsType>) => {
-    setLocalSettings(prev => ({ ...prev, ...fields }));
+    const nextSettings = { ...localSettings, ...fields };
+    setLocalSettings(nextSettings);
+    onUpdateSettings(nextSettings);
   };
 
   const handleApply = () => {
@@ -103,53 +106,57 @@ export const CompareSettings: React.FC<CompareSettingsProps> = ({
         <div className="p-5 space-y-4 overflow-y-auto flex-1 text-[10px]">
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Kiểu thẻ card</span>
-            <select
+            <SettingsSelect
+              ariaLabel="Kiểu thẻ card So sánh"
               value={localSettings.cardStyle}
-              onChange={(e) => handleUpdateField({ cardStyle: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="bordered">Có viền nhẹ</option>
-              <option value="flat">Không viền (Phẳng)</option>
-              <option value="shadow">Đổ bóng lớn</option>
-            </select>
+              onChange={(value) => handleUpdateField({ cardStyle: value as any })}
+              options={[
+                { value: 'bordered', label: 'Có viền nhẹ' },
+                { value: 'flat', label: 'Không viền (Phẳng)' },
+                { value: 'shadow', label: 'Đổ bóng lớn' }
+              ]}
+            />
           </div>
 
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Kiểu tiêu đề</span>
-            <select
+            <SettingsSelect
+              ariaLabel="Kiểu tiêu đề So sánh"
               value={localSettings.headerStyle}
-              onChange={(e) => handleUpdateField({ headerStyle: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="filled">Nền xám đầy (Filled)</option>
-              <option value="accent">Viền màu chủ đề (Accent)</option>
-              <option value="minimal">Đơn giản (Minimal)</option>
-            </select>
+              onChange={(value) => handleUpdateField({ headerStyle: value as any })}
+              options={[
+                { value: 'filled', label: 'Nền xám đầy (Filled)' },
+                { value: 'accent', label: 'Viền màu chủ đề (Accent)' },
+                { value: 'minimal', label: 'Đơn giản (Minimal)' }
+              ]}
+            />
           </div>
 
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Khoảng cách cột</span>
-            <select
+            <SettingsSelect
+              ariaLabel="Khoảng cách cột So sánh"
               value={localSettings.columnSpacing}
-              onChange={(e) => handleUpdateField({ columnSpacing: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="compact">Hẹp</option>
-              <option value="normal">Vừa phải</option>
-              <option value="wide">Rộng rãi</option>
-            </select>
+              onChange={(value) => handleUpdateField({ columnSpacing: value as any })}
+              options={[
+                { value: 'compact', label: 'Hẹp' },
+                { value: 'normal', label: 'Vừa phải' },
+                { value: 'wide', label: 'Rộng rãi' }
+              ]}
+            />
           </div>
 
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Thiết bị nhỏ</span>
-            <select
+            <SettingsSelect
+              ariaLabel="Thiết bị nhỏ So sánh"
               value={localSettings.responsiveMode}
-              onChange={(e) => handleUpdateField({ responsiveMode: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="stack">Xếp chồng dọc (Stack)</option>
-              <option value="scroll">Cuộn ngang (Scroll)</option>
-            </select>
+              onChange={(value) => handleUpdateField({ responsiveMode: value as any })}
+              options={[
+                { value: 'stack', label: 'Xếp chồng dọc (Stack)' },
+                { value: 'scroll', label: 'Cuộn ngang (Scroll)' }
+              ]}
+            />
           </div>
 
           <div className="space-y-3 pt-2 border-t border-slate-100">

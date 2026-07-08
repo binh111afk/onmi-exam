@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Settings, X } from 'lucide-react';
 import { Checkbox } from '../../../../Checkbox';
+import { SettingsSelect } from '../common/SettingsSelect';
 import type { TimelineSettings as TimelineSettingsType } from './TimelineTypes';
 
 interface TimelineSettingsProps {
@@ -56,7 +57,9 @@ export const TimelineSettings: React.FC<TimelineSettingsProps> = ({
   if (!isOpen) return null;
 
   const handleUpdateField = (fields: Partial<TimelineSettingsType>) => {
-    setLocalSettings(prev => ({ ...prev, ...fields }));
+    const nextSettings = { ...localSettings, ...fields };
+    setLocalSettings(nextSettings);
+    onUpdateSettings(nextSettings);
   };
 
   const handleApply = () => {
@@ -103,56 +106,60 @@ export const TimelineSettings: React.FC<TimelineSettingsProps> = ({
         <div className="p-5 space-y-4 overflow-y-auto flex-1 text-[10px]">
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Bố cục</span>
-            <select
-              value={localSettings.layout}
-              onChange={(e) => handleUpdateField({ layout: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="vertical">Dọc (Vertical)</option>
-              <option value="horizontal">Ngang (Horizontal)</option>
-            </select>
+            <SettingsSelect
+              ariaLabel="Bố cục Timeline"
+              value={localSettings.layout ?? 'vertical'}
+              onChange={(value) => handleUpdateField({ layout: value as any })}
+              options={[
+                { value: 'vertical', label: 'Dọc (Vertical)' },
+                { value: 'horizontal', label: 'Ngang (Horizontal)' }
+              ]}
+            />
           </div>
 
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Kiểu nút mốc</span>
-            <select
+            <SettingsSelect
+              ariaLabel="Kiểu nút mốc Timeline"
               value={localSettings.nodeStyle}
-              onChange={(e) => handleUpdateField({ nodeStyle: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="circle">Tròn</option>
-              <option value="square">Vuông</option>
-              <option value="pill">Bo góc vừa</option>
-            </select>
+              onChange={(value) => handleUpdateField({ nodeStyle: value as any })}
+              options={[
+                { value: 'circle', label: 'Tròn' },
+                { value: 'square', label: 'Vuông' },
+                { value: 'pill', label: 'Bo góc vừa' }
+              ]}
+            />
           </div>
 
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Kiểu đường nối</span>
-            <select
+            <SettingsSelect
+              ariaLabel="Kiểu đường nối Timeline"
               value={localSettings.connectorStyle}
-              onChange={(e) => handleUpdateField({ connectorStyle: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="solid">Nét liền</option>
-              <option value="dashed">Nét đứt</option>
-              <option value="dotted">Chấm tròn</option>
-            </select>
+              onChange={(value) => handleUpdateField({ connectorStyle: value as any })}
+              options={[
+                { value: 'solid', label: 'Nét liền' },
+                { value: 'dashed', label: 'Nét đứt' },
+                { value: 'dotted', label: 'Chấm tròn' }
+              ]}
+            />
           </div>
 
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Khoảng cách</span>
-            <select
+            <SettingsSelect
+              ariaLabel="Khoảng cách Timeline"
               value={localSettings.spacing}
-              onChange={(e) => handleUpdateField({ spacing: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="compact">Chật hẹp</option>
-              <option value="cozy">Vừa phải</option>
-              <option value="comfortable">Rộng rãi</option>
-            </select>
+              onChange={(value) => handleUpdateField({ spacing: value as any })}
+              options={[
+                { value: 'compact', label: 'Chật hẹp' },
+                { value: 'cozy', label: 'Vừa phải' },
+                { value: 'comfortable', label: 'Rộng rãi' }
+              ]}
+            />
           </div>
 
-          <div className="space-y-3 pt-2 border-t border-slate-100">
+          <div className="flex flex-col space-y-3 pt-2 border-t border-slate-100">
             <Checkbox
               checked={localSettings.direction === 'reverse'}
               onChange={(checked) => handleUpdateField({ direction: checked ? 'reverse' : 'normal' })}

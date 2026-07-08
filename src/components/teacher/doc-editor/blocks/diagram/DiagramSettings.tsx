@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Settings, X } from 'lucide-react';
 import { Checkbox } from '../../../../Checkbox';
+import { SettingsSelect } from '../common/SettingsSelect';
 import type { DiagramSettings as DiagramSettingsType } from './DiagramTypes';
 
 interface DiagramSettingsProps {
@@ -52,7 +53,9 @@ export const DiagramSettings: React.FC<DiagramSettingsProps> = ({
   if (!isOpen) return null;
 
   const handleUpdateField = (fields: Partial<DiagramSettingsType>) => {
-    setLocalSettings(prev => ({ ...prev, ...fields }));
+    const nextSettings = { ...localSettings, ...fields };
+    setLocalSettings(nextSettings);
+    onUpdateSettings(nextSettings);
   };
 
   const handleApply = () => {
@@ -96,55 +99,59 @@ export const DiagramSettings: React.FC<DiagramSettingsProps> = ({
         <div className="p-5 space-y-4 overflow-y-auto flex-1 text-[10px]">
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Bố cục</span>
-            <select
-              value={localSettings.layout}
-              onChange={(e) => handleUpdateField({ layout: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="horizontal">Ngang (A → B → C)</option>
-              <option value="vertical">Dọc (A ↓ B ↓ C)</option>
-              <option value="tree">Cây phân cấp (Tree)</option>
-              <option value="cycle">Vòng tuần hoàn (Cycle)</option>
-            </select>
+            <SettingsSelect
+              ariaLabel="Bố cục Sơ đồ"
+              value={localSettings.layout ?? 'horizontal'}
+              onChange={(value) => handleUpdateField({ layout: value as any })}
+              options={[
+                { value: 'horizontal', label: 'Ngang (A -> B -> C)' },
+                { value: 'vertical', label: 'Dọc (A -> B -> C)' },
+                { value: 'tree', label: 'Cây phân cấp (Tree)' },
+                { value: 'cycle', label: 'Vòng tuần hoàn (Cycle)' }
+              ]}
+            />
           </div>
 
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Kiểu liên kết</span>
-            <select
-              value={localSettings.arrowStyle}
-              onChange={(e) => handleUpdateField({ arrowStyle: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="straight">Mũi tên thẳng</option>
-              <option value="dashed">Mũi tên đứt nét</option>
-              <option value="curved">Mũi tên uốn cong</option>
-            </select>
+            <SettingsSelect
+              ariaLabel="Kiểu liên kết Sơ đồ"
+              value={localSettings.arrowStyle ?? 'straight'}
+              onChange={(value) => handleUpdateField({ arrowStyle: value as any })}
+              options={[
+                { value: 'straight', label: 'Mũi tên thẳng' },
+                { value: 'dashed', label: 'Mũi tên đứt nét' },
+                { value: 'curved', label: 'Mũi tên uốn cong' }
+              ]}
+            />
           </div>
 
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Kiểu nút mốc</span>
-            <select
+            <SettingsSelect
+              ariaLabel="Kiểu nút mốc Sơ đồ"
               value={localSettings.nodeStyle}
-              onChange={(e) => handleUpdateField({ nodeStyle: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="rounded">Bo góc tròn (Rounded)</option>
-              <option value="sharp">Góc vuông (Sharp)</option>
-              <option value="oval">Hình bầu dục (Oval)</option>
-            </select>
+              onChange={(value) => handleUpdateField({ nodeStyle: value as any })}
+              options={[
+                { value: 'rounded', label: 'Bo góc tròn (Rounded)' },
+                { value: 'sharp', label: 'Góc vuông (Sharp)' },
+                { value: 'oval', label: 'Hình bầu dục (Oval)' }
+              ]}
+            />
           </div>
 
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Khoảng cách nút</span>
-            <select
+            <SettingsSelect
+              ariaLabel="Khoảng cách nút Sơ đồ"
               value={localSettings.nodeSpacing}
-              onChange={(e) => handleUpdateField({ nodeSpacing: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="compact">Chật hẹp (Compact)</option>
-              <option value="normal">Vừa phải (Normal)</option>
-              <option value="wide">Rộng rãi (Wide)</option>
-            </select>
+              onChange={(value) => handleUpdateField({ nodeSpacing: value as any })}
+              options={[
+                { value: 'compact', label: 'Chật hẹp (Compact)' },
+                { value: 'normal', label: 'Vừa phải (Normal)' },
+                { value: 'wide', label: 'Rộng rãi (Wide)' }
+              ]}
+            />
           </div>
 
           <div className="space-y-3 pt-2 border-t border-slate-100">

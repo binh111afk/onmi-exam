@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Settings, X } from 'lucide-react';
 import { Checkbox } from '../../../../Checkbox';
+import { SettingsSelect } from '../common/SettingsSelect';
 import type { TabsSettings as TabsSettingsType } from './TabsTypes';
 
 interface TabsSettingsProps {
@@ -58,7 +59,9 @@ export const TabsSettings: React.FC<TabsSettingsProps> = ({
   if (!isOpen) return null;
 
   const handleUpdateField = (fields: Partial<TabsSettingsType>) => {
-    setLocalSettings(prev => ({ ...prev, ...fields }));
+    const nextSettings = { ...localSettings, ...fields };
+    setLocalSettings(nextSettings);
+    onUpdateSettings(nextSettings);
   };
 
   const handleApply = () => {
@@ -105,44 +108,47 @@ export const TabsSettings: React.FC<TabsSettingsProps> = ({
         <div className="p-5 space-y-4 overflow-y-auto flex-1 text-[10px]">
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Tab mặc định</span>
-            <select
+            <SettingsSelect
+              ariaLabel="Tab mặc định"
               value={localSettings.defaultActiveTab || ''}
-              onChange={(e) => handleUpdateField({ defaultActiveTab: e.target.value })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px] max-w-[160px] truncate"
-            >
-              <option value="">Tab đầu tiên</option>
-              {tabs.map((tab, idx) => (
-                <option key={tab.id} value={tab.id}>
-                  {tab.title || `Tab ${idx + 1}`}
-                </option>
-              ))}
-            </select>
+              onChange={(value) => handleUpdateField({ defaultActiveTab: value })}
+              className="max-w-[160px]"
+              options={[
+                { value: '', label: 'Tab đầu tiên' },
+                ...tabs.map((tab, idx) => ({
+                  value: tab.id,
+                  label: tab.title || `Tab ${idx + 1}`
+                }))
+              ]}
+            />
           </div>
 
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Kiểu dáng tab</span>
-            <select
+            <SettingsSelect
+              ariaLabel="Kiểu dáng tab"
               value={localSettings.tabStyle}
-              onChange={(e) => handleUpdateField({ tabStyle: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="underline">Gạch chân (Underline)</option>
-              <option value="pills">Nút kẹp (Pills)</option>
-              <option value="blocks">Khối liền (Blocks)</option>
-            </select>
+              onChange={(value) => handleUpdateField({ tabStyle: value as any })}
+              options={[
+                { value: 'underline', label: 'Gạch chân (Underline)' },
+                { value: 'pills', label: 'Nút kẹp (Pills)' },
+                { value: 'blocks', label: 'Khối liền (Blocks)' }
+              ]}
+            />
           </div>
 
           <div className="flex items-center justify-between gap-4">
             <span className="font-black text-slate-600 uppercase tracking-wider">Vị trí thanh Tab</span>
-            <select
+            <SettingsSelect
+              ariaLabel="Vị trí thanh Tab"
               value={localSettings.position}
-              onChange={(e) => handleUpdateField({ position: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="top">Phía trên (Top)</option>
-              <option value="bottom">Phía dưới (Bottom)</option>
-              <option value="left">Bên trái (Left)</option>
-            </select>
+              onChange={(value) => handleUpdateField({ position: value as any })}
+              options={[
+                { value: 'top', label: 'Phía trên (Top)' },
+                { value: 'bottom', label: 'Phía dưới (Bottom)' },
+                { value: 'left', label: 'Bên trái (Left)' }
+              ]}
+            />
           </div>
 
           <div className="space-y-3 pt-2 border-t border-slate-100">
