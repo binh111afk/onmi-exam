@@ -122,6 +122,9 @@ export const BlockSelectionProvider: React.FC<BlockSelectionProviderProps> = ({
   // Global key listener for shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Never intercept during IME composition
+      if (e.isComposing) return;
+
       const activeEl = document.activeElement;
       const isEditing = activeEl && (
         activeEl.tagName === 'INPUT' ||
@@ -138,11 +141,7 @@ export const BlockSelectionProvider: React.FC<BlockSelectionProviderProps> = ({
         return;
       }
 
-      // Delete/Backspace to delete selected blocks
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        e.preventDefault();
-        onDeleteBlocks(selectedBlockIds);
-      }
+      // Delete/Backspace to delete selected blocks is disabled
 
       // Ctrl+D (or Command+D) to duplicate blocks
       if (e.key === 'd' && (e.ctrlKey || e.metaKey)) {

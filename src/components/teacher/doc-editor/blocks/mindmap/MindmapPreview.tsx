@@ -12,7 +12,7 @@ export const MindmapPreview: React.FC<MindmapPreviewProps> = ({ block }) => {
   const [previewData, setPreviewData] = useState(initialData);
 
   return (
-    <div className="my-2.5 overflow-hidden rounded-3xl border border-indigo-100 bg-white p-2 shadow-sm">
+    <div className="my-2 border border-slate-200 bg-white rounded-xl overflow-hidden p-1">
       <MindmapCanvas
         data={previewData}
         mode="preview"

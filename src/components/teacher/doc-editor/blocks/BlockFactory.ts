@@ -76,6 +76,42 @@ export const createDefaultBlock = (
         mindmapContent: createDefaultMindmapData(),
       };
 
+    case 'timeline':
+      return {
+        ...base,
+        timelineContent: {
+          version: 1,
+          events: [],
+          settings: {
+            layout: 'vertical',
+            direction: 'normal',
+          },
+        },
+      };
+
+    case 'flow':
+      return {
+        ...base,
+        flowContent: {
+          version: 1,
+          steps: [],
+          settings: {
+            layout: 'horizontal',
+            arrowStyle: 'straight',
+          },
+        },
+      };
+
+    case 'tabs':
+      return {
+        ...base,
+        tabsContent: {
+          version: 1,
+          tabs: [],
+          settings: {},
+        },
+      };
+
     case 'code':
       return {
         ...base,

@@ -90,12 +90,6 @@ export const BLOCK_COMMANDS: DocCommand[] = [
     icon: <Award size={14} className="text-slate-500" /> 
   },
   { 
-    type: 'mindmap', 
-    label: 'Sơ đồ tư duy (Mindmap)', 
-    desc: 'Chèn sơ đồ tư duy liên kết', 
-    icon: <FolderOpen size={14} className="text-slate-500" /> 
-  },
-  { 
     type: 'media', 
     label: 'Phương tiện (Media)', 
     desc: 'Chèn video hoặc tệp âm thanh', 

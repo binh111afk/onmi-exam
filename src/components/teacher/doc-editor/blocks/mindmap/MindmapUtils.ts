@@ -4,16 +4,26 @@ export const MINDMAP_ZOOM_MIN = 20;
 export const MINDMAP_ZOOM_MAX = 300;
 export const MINDMAP_CANVAS_HEIGHT = 520;
 export const MINDMAP_CANVAS_WIDTH = 960;
-export const MINDMAP_DEFAULT_ROOT_TITLE = 'Chủ đề';
+export const MINDMAP_DEFAULT_ROOT_TITLE = 'Nhập chủ đề...';
 
 export const MINDMAP_COLORS = [
-  { id: 'purple', label: 'Purple', value: '#6C5DD3', className: 'bg-primary' },
-  { id: 'blue', label: 'Blue', value: '#3B82F6', className: 'bg-blue-500' },
-  { id: 'green', label: 'Green', value: '#10B981', className: 'bg-success' },
-  { id: 'orange', label: 'Orange', value: '#F59E0B', className: 'bg-amber-500' },
-  { id: 'red', label: 'Red', value: '#EF4444', className: 'bg-danger' },
-  { id: 'gray', label: 'Gray', value: '#64748B', className: 'bg-slate-500' },
+  { id: 'purple', label: 'Tím', value: '#6C5DD3', className: 'bg-primary' },
+  { id: 'blue', label: 'Xanh dương', value: '#3B82F6', className: 'bg-blue-500' },
+  { id: 'green', label: 'Xanh lá', value: '#10B981', className: 'bg-success' },
+  { id: 'orange', label: 'Cam', value: '#F97316', className: 'bg-orange-500' },
+  { id: 'pink', label: 'Hồng', value: '#FF758F', className: 'bg-accent' },
 ] as const;
+
+export const hexToRgba = (hex: string, opacity: number): string => {
+  let c = hex.replace('#', '');
+  if (c.length === 3) {
+    c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+  }
+  const r = parseInt(c.substring(0, 2), 16) || 0;
+  const g = parseInt(c.substring(2, 4), 16) || 0;
+  const b = parseInt(c.substring(4, 6), 16) || 0;
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+};
 
 export const createMindmapId = (): string => crypto.randomUUID();
 
@@ -33,7 +43,7 @@ export const createMindmapNode = (
 });
 
 export const createDefaultMindmapData = (): MindmapData => {
-  const root = createMindmapNode(null, MINDMAP_DEFAULT_ROOT_TITLE, { x: 0, y: 0 });
+  const root = createMindmapNode(null, '', { x: 0, y: 0 });
 
   return {
     rootId: root.id,
@@ -52,7 +62,7 @@ export const createDefaultMindmapData = (): MindmapData => {
 export const clampZoom = (zoom: number): number => Math.min(MINDMAP_ZOOM_MAX, Math.max(MINDMAP_ZOOM_MIN, Math.round(zoom)));
 
 export const getNodeMetrics = (node: MindmapNode, isRoot: boolean): MindmapNodeMetrics => {
-  const plainTitle = node.title.trim() || MINDMAP_DEFAULT_ROOT_TITLE;
+  const plainTitle = node.title.trim() || (isRoot ? 'Nhập chủ đề...' : 'Nhập nhánh...');
   const longestLine = plainTitle.split('\n').reduce((max, line) => Math.max(max, line.length), 0);
   const lineCount = Math.max(1, plainTitle.split('\n').length);
   const iconSpace = node.icon ? 24 : 0;

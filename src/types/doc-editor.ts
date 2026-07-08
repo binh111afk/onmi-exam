@@ -9,7 +9,7 @@ export interface TableCellStyle {
 
 export interface DocBlock {
   id: string;
-  type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code' | 'quiz' | 'flashcard' | 'mindmap' | 'media';
+  type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code' | 'quiz' | 'flashcard' | 'mindmap' | 'media' | 'timeline' | 'flow' | 'tabs';
   level?: 1 | 2 | 3;
   indent?: number;
   text: string;
@@ -32,6 +32,9 @@ export interface DocBlock {
   quizContent?: QuizContent;
   flashcardContent?: FlashcardContent;
   mindmapContent?: MindmapData;
+  timelineContent?: TimelineContent;
+  flowContent?: FlowContent;
+  tabsContent?: TabsContent;
 }
 
 export const QuestionType = {
@@ -122,4 +125,63 @@ export interface LiveTableActiveCell {
   blockId: string;
   row: number;
   col: number;
+}
+
+// Timeline Block Content Types
+export interface TimelineEvent {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  color: string;
+  icon?: string;
+}
+
+export interface TimelineSettings {
+  layout: 'vertical' | 'horizontal';
+  direction: 'normal' | 'reverse';
+  themeColor?: string;
+}
+
+export interface TimelineContent {
+  version: number;
+  events: TimelineEvent[];
+  settings: TimelineSettings;
+}
+
+// Flow / Process Block Content Types
+export interface FlowStep {
+  id: string;
+  title: string;
+  description: string;
+  color: string;
+}
+
+export interface FlowSettings {
+  layout: 'vertical' | 'horizontal' | 'zigzag';
+  arrowStyle: 'straight' | 'dashed' | 'curved';
+  themeColor?: string;
+}
+
+export interface FlowContent {
+  version: number;
+  steps: FlowStep[];
+  settings: FlowSettings;
+}
+
+// Tabs Block Content Types
+export interface TabItem {
+  id: string;
+  title: string;
+  content: string;
+}
+
+export interface TabsSettings {
+  themeColor?: string;
+}
+
+export interface TabsContent {
+  version: number;
+  tabs: TabItem[];
+  settings: TabsSettings;
 }

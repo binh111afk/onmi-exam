@@ -34,14 +34,11 @@ export const MindmapBlockComponent: React.FC<MindmapBlockProps> = ({
   return (
     <div
       onClick={() => setActiveBlockIndex(idx)}
-      className="flex-1 rounded-3xl border border-indigo-100 bg-indigo-50/20 p-3 shadow-sm"
+      className="flex-1 p-3 border border-indigo-100 bg-indigo-50/20 rounded-xl my-1 flex flex-col gap-2 cursor-default select-text"
     >
-      <div className="mb-2 flex items-center justify-between text-[9px] font-black uppercase tracking-wider text-primary">
+      <div className="flex items-center justify-between text-indigo-600 font-extrabold text-[8px] uppercase tracking-wide select-none">
         <span className="flex items-center gap-1.5">
-          <Network size={12} className="stroke-[2.5]" /> Sơ đồ tư duy
-        </span>
-        <span className="rounded-lg border border-indigo-100 bg-white px-2 py-1 text-[8px] text-slate-400">
-          Mindmap Block
+          <Network size={10} className="stroke-[2.5]" /> Sơ đồ tư duy
         </span>
       </div>
       <MindmapCanvas

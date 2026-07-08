@@ -34,6 +34,7 @@ import { TableInsertModal } from './TableInsertModal';
 import { DragIndicator } from './DragIndicator';
 import { BlockDragPreview } from './BlockDragPreview';
 import { matchKeyboardShortcut } from './KeyboardShortcutManager';
+import { OtherBlocksPopup } from './other-blocks/OtherBlocksPopup';
 
 interface DocEditorWorkspaceProps {
   setMode: (mode: 'dashboard' | 'editor' | 'upload' | 'exam-editor') => void;
@@ -341,6 +342,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
   const [slashQuery, setSlashQuery] = useState('');
   const [slashMenuIndex, setSlashMenuIndex] = useState(0);
   const [slashMenuCoords, setSlashMenuCoords] = useState({ top: 0, left: 0 });
+  const [showOtherBlocksPopup, setShowOtherBlocksPopup] = useState(false);
 
   // Selection states
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>('ch1');
@@ -429,7 +431,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     if (activeEl) {
       try {
         caretOffset = getCaretOffset(activeEl);
-      } catch (err) {}
+      } catch (err) { }
     }
 
     const newEntry: HistoryEntry = {
@@ -744,8 +746,8 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
 
     if (editorMode === 'text') {
       const command = align === 'left' ? 'justifyLeft' :
-                      align === 'center' ? 'justifyCenter' :
-                      align === 'right' ? 'justifyRight' : 'justifyFull';
+        align === 'center' ? 'justifyCenter' :
+          align === 'right' ? 'justifyRight' : 'justifyFull';
       document.execCommand(command, false, '');
 
       const activeEl = document.getElementById(`block-editor-${activeBlockIndex}`);
@@ -1045,6 +1047,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
   }, [activeLessonId, pushHistoryState]);
 
   const convertBlockType = useCallback((index: number, type: DocBlock['type'], level?: 1 | 2 | 3) => {
+    if (type === 'mindmap') return;
     setChapters(prev => {
       const nextChapters = prev.map(ch => ({
         ...ch,
@@ -1255,6 +1258,8 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
   const handleSelectSlashCommand = useCallback((cmdType: string) => {
     setShowSlashMenu(false);
 
+    if (cmdType === 'mindmap') return;
+
     if (cmdType === 'table') {
       setTableInsertIndex(activeBlockIndex);
       setTableInsertMode('replace');
@@ -1422,6 +1427,15 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
   };
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>, index: number) => {
+    // Guard: if the event originates from an INPUT or TEXTAREA, let it pass through
+    // completely unmodified. Those elements (e.g. EditableText) stop propagation
+    // themselves, but a second line of defence here avoids any race conditions.
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
+    // Guard: never intercept during IME composition (Vietnamese, CJK, etc.)
+    if (e.nativeEvent.isComposing) return;
+
     // 1. Check combinations using matchKeyboardShortcut
     const shortcut = matchKeyboardShortcut(e);
     if (shortcut) {
@@ -1495,70 +1509,33 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       return;
     }
 
-    // 4. Handle Backspace at start of block
+    // 4. Handle Backspace — only intercept at cursor offset 0 for contentEditable blocks
+    // INPUT/TEXTAREA elements stop propagation themselves via EditableText
     if (e.key === 'Backspace') {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
       const selection = window.getSelection();
       const cursorOffset = selection?.focusOffset ?? 0;
-
       if (cursorOffset === 0) {
-        const currentBlock = currentBlocks[index];
-        if (currentBlock) {
-          const isEmpty = currentBlock.text.replace(/<[^>]*>/g, '').trim() === '';
-          if (isEmpty) {
-            e.preventDefault();
-            deleteBlock(index);
-            return;
-          }
-        }
-
+        // Block is non-empty at start: merge with previous (normal editor behaviour)
         e.preventDefault();
         handleBackspaceAtStart(index);
         return;
       }
     }
 
-    // 5. Handle Delete key
+    // 5. Handle Delete key — only intercept for contentEditable blocks
     if (e.key === 'Delete') {
-      const currentBlock = currentBlocks[index];
-      if (currentBlock) {
-        const isEmpty = currentBlock.text.replace(/<[^>]*>/g, '').trim() === '';
-        if (isEmpty) {
-          e.preventDefault();
-          setChapters(prev => {
-            const nextChapters = prev.map(ch => ({
-              ...ch,
-              lessons: ch.lessons.map(l => {
-                if (l.id === activeLessonId) {
-                  return {
-                    ...l,
-                    blocks: l.blocks.filter((_, idx) => idx !== index)
-                  };
-                }
-                return l;
-              })
-            }));
-
-            const hasNext = index < currentBlocks.length - 1;
-            const targetIdx = hasNext ? index : Math.max(0, index - 1);
-            setActiveBlockIndex(targetIdx);
-            focusBlock(targetIdx);
-
-            pushHistoryState(nextChapters);
-            return nextChapters;
-          });
-          return;
-        }
-      }
-
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
         const isAtEnd = range.collapsed &&
           (range.startContainer === e.currentTarget ||
-           (range.startContainer.nodeType === Node.TEXT_NODE &&
-            range.startOffset === range.startContainer.textContent?.length)
+            (range.startContainer.nodeType === Node.TEXT_NODE &&
+              range.startOffset === range.startContainer.textContent?.length)
           );
-
         if (isAtEnd) {
           e.preventDefault();
           handleDeleteAtEnd(index);
@@ -1946,7 +1923,35 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     }
   }, [chapters, activeLessonId, activeBlockIndex, pushHistoryState]);
 
+  const handleSelectOtherBlock = useCallback((type: 'timeline' | 'flow' | 'tabs') => {
+    setShowOtherBlocksPopup(false);
+    setChapters(prev => {
+      const nextChapters = prev.map(ch => ({
+        ...ch,
+        lessons: ch.lessons.map(lesson => {
+          if (lesson.id === activeLessonId) {
+            const newBlock = createDefaultBlock(type);
+            const currentIdx = activeBlockIndex;
+            const updatedBlocks = [
+              ...lesson.blocks.slice(0, currentIdx + 1),
+              newBlock,
+              ...lesson.blocks.slice(currentIdx + 1)
+            ];
+            return { ...lesson, blocks: updatedBlocks };
+          }
+          return lesson;
+        })
+      }));
+      pushHistoryState(nextChapters);
+      return nextChapters;
+    });
+  }, [activeLessonId, activeBlockIndex, pushHistoryState]);
+
   const handleSideToolClick = useCallback((label: string) => {
+    if (label === 'Khác') {
+      setShowOtherBlocksPopup(true);
+      return;
+    }
     if (label === 'Bảng') {
       setTableInsertIndex(activeBlockIndex);
       setTableInsertMode('insert');
@@ -1959,7 +1964,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     else if (label === 'Công thức') targetType = 'formula';
     else if (label === 'Quiz') targetType = 'quiz';
     else if (label === 'Flashcard') targetType = 'flashcard';
-    else if (label === 'Mindmap') targetType = 'mindmap';
+    else if (label === 'Mindmap') return;
     else if (label === 'Media') targetType = 'media';
 
     const nextChapters = chapters.map(ch => ({
@@ -2000,319 +2005,306 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
       <FormattingStateProvider activeBlock={activeBlock} syncRef={syncFormattingRef}>
         <div className="w-full flex flex-col h-screen bg-[#F8FAFC] text-text-primary overflow-hidden font-sans animate-fadeIn">
 
-      {/* ========================================== */}
-      {/* TOP BAR                                    */}
-      {/* ========================================== */}
-      <header className="h-14 bg-white border-b border-slate-100 px-4 flex items-center justify-between shrink-0 select-none">
-        <div className="flex items-center gap-3.5">
-          <Tooltip content="Quay lại">
-            <button
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => setMode('dashboard')}
-              className="p-1.5 hover:bg-slate-50 text-slate-500 hover:text-slate-800 rounded-xl transition cursor-pointer"
-            >
-              <ChevronLeft size={18} className="stroke-[2.5]" />
-            </button>
-          </Tooltip>
-          <div>
-            <h1 className="text-xs font-black text-[#1E293B] truncate max-w-sm sm:max-w-md">
-              Tóm tắt lý thuyết Sinh học 10 học kỳ 2 - Đề cương ôn tập
-            </h1>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="px-1.5 py-0.5 rounded bg-purple-50 text-primary text-[8px] font-extrabold uppercase">Sinh học</span>
-              <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 text-[8px] font-extrabold uppercase">Lớp 10</span>
-              <span className="px-1.5 py-0.5 rounded bg-slate-50 text-slate-500 text-[8px] font-extrabold uppercase">Tài liệu lý thuyết</span>
-              <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 text-[8px] font-extrabold uppercase">Nháp</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Mode Tab List (Soạn thảo | Xem trước) */}
-        <div className="flex items-center gap-2 border border-slate-200 rounded-xl p-0.5 text-[10px] font-bold text-slate-500 select-none bg-slate-50/50">
-          <button
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => setShowPreview(false)}
-            className={`px-3 py-1 rounded-lg transition cursor-pointer ${
-              !showPreview
-                ? 'bg-white text-primary shadow-sm font-black'
-                : 'hover:text-slate-800 hover:bg-slate-100/50'
-            }`}
-          >
-            Soạn thảo
-          </button>
-          <button
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => setShowPreview(true)}
-            className={`px-3 py-1 rounded-lg transition cursor-pointer ${
-              showPreview
-                ? 'bg-white text-primary shadow-sm font-black'
-                : 'hover:text-slate-800 hover:bg-slate-100/50'
-            }`}
-          >
-            Xem trước
-          </button>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="hidden lg:flex items-center gap-1 text-[10px] text-emerald-500 font-bold">
-            <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-ping" />
-            Đã lưu 10:30:45
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Tooltip content="Lưu nháp">
-              <button
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={async () => {
-                  await showAlert({
-                    type: 'success',
-                    title: 'Thành công',
-                    description: 'Đã lưu nháp tài liệu thành công!'
-                  });
-                }}
-                className="px-3 py-1.5 border border-slate-200 text-slate-655 hover:bg-slate-50 text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer"
-              >
-                <Save size={12} /> Lưu
-              </button>
-            </Tooltip>
-            <Tooltip content="Xuất bản tài liệu">
-              <button
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={handlePublish}
-                className="px-3 py-1.5 bg-gradient-to-r from-primary to-[#8F85F3] hover:from-primary-hover text-white text-[10px] font-black rounded-xl flex items-center gap-1 transition cursor-pointer shadow-sm shadow-indigo-100"
-              >
-                <Send size={12} /> Publish
-              </button>
-            </Tooltip>
-          </div>
-        </div>
-      </header>
-
-      {/* ========================================== */}
-      {/* MAIN BODY LAYOUT (Left, Center, Right)    */}
-      {/* ========================================== */}
-      <div className="flex-1 flex overflow-hidden w-full">
-
-        {/* 1. LEFT SIDEBAR */}
-        <DocSidebar
-          chapters={chapters}
-          activeLessonId={activeLessonId}
-          onLessonSelect={handleLessonSelect}
-          onToggleChapterExpand={handleToggleChapterExpand}
-          selectedChapterId={selectedChapterId}
-          onSelectChapter={setSelectedChapterId}
-          editingItemId={editingItemId}
-          onStartEditing={setEditingItemId}
-          onSaveEdit={handleSaveEdit}
-          onCancelEdit={handleCancelEdit}
-          onCreateChapter={handleCreateChapter}
-          onCreateLesson={handleCreateLesson}
-          onDeleteChapter={handleDeleteChapter}
-          onDeleteLesson={handleDeleteLesson}
-          onLessonDragDrop={handleLessonDragDrop}
-          onChapterReorder={handleChapterReorder}
-        />
-
-        {/* 2. CENTER PANEL: Rich Editor Workspace */}
-        <main className="flex-1 bg-white border-r border-slate-100 flex flex-col overflow-hidden">
-
-          {/* Rich Editor Toolbar */}
-          <DocToolbar
-            onAiSuggest={handleAiSuggest}
-            onBold={() => executeFormat('bold')}
-            onItalic={() => executeFormat('italic')}
-            onUnderline={() => executeFormat('underline')}
-            onStrikethrough={() => executeFormat('strikeThrough')}
-            onColorChange={handleColorChange}
-            onHighlightChange={handleHighlightChange}
-            onBlockTypeChange={toggleBlockType}
-            onAlignChange={toggleBlockAlign}
-            onIndent={() => indentBlock()}
-            onOutdent={() => outdentBlock()}
-            onUndo={handleUndo}
-            onRedo={handleRedo}
-            canUndo={historyIndex > 0}
-            canRedo={historyIndex < history.length - 1}
-            onFontSizeChange={applyFontSize}
-          />
-
-          {/* Editable Block Content List */}
-          <div
-            id="editor-blocks-container"
-            onKeyDown={(e) => handleKeyDown(e, activeBlockIndex)}
-            onClick={handleScrollWrapperClick}
-            onContextMenu={(e) => {
-              const sel = window.getSelection();
-              if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
-                const container = e.currentTarget;
-                if (container.contains(sel.anchorNode)) {
-                  e.preventDefault();
-                  setSelectionMenuCoords({ x: e.clientX, y: e.clientY });
-                  setShowSelectionMenu(true);
-                }
-              }
-            }}
-            onDragOver={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-            }}
-            onDrop={handleBodyDrop}
-            className="flex-1 p-8 overflow-auto space-y-4 select-text relative"
-          >
-            {currentBlocks.map((block, idx) => {
-              const alignClass = block.align === 'center'
-                ? 'text-center'
-                : block.align === 'right'
-                  ? 'text-right'
-                  : block.align === 'justify'
-                    ? 'text-justify'
-                    : 'text-left';
-
-              const listIndex = block.type === 'numbered-list' ? getNumberedIndex(currentBlocks, idx) : undefined;
-              const tableNumber = block.type === 'table' ? getTableNumber(currentBlocks, idx) : undefined;
-
-              return (
-                <MemoizedBlockRow
-                  key={block.id}
-                  block={block}
-                  idx={idx}
-                  alignClass={alignClass}
-                  indent={block.indent || 0}
-                  isActive={activeBlockIndex === idx}
-                  listIndex={listIndex}
-                  tableNumber={tableNumber}
-                  setActiveBlockIndex={setActiveBlockIndex}
-                  updateBlockText={updateBlockText}
-                  handleKeyDown={handleKeyDown}
-                  toggleTodoChecked={toggleTodoChecked}
-                  onDeleteBlock={handleDeleteBlockWithConfirm}
-                  onDeleteBlocks={deleteBlocks}
-                  onDuplicateBlocks={duplicateBlocks}
-                  onConvertBlock={convertBlockType}
-                  onUpdateBlock={handleUpdateBlock}
-                  onInsertAbove={insertBlockAbove}
-                  onInsertBelow={insertBlockBelow}
-                  onDragStart={handleBlockDragStart}
-                  moveBlocks={moveBlocks}
-                  onRegisterCellAlignHandler={(fn) => { tableCellAlignRef.current = fn; }}
-                  liveTableResize={liveTableResize}
-                  setLiveTableResize={setLiveTableResize}
-                  liveTableActiveCell={liveTableActiveCell}
-                  setLiveTableActiveCell={setLiveTableActiveCell}
-                  applyBlockAlignment={applyBlockAlignment}
-                />
-              );
-            })}
-
-            {/* Visual insertion indicator for block dragging */}
-            <DragIndicator top={dragIndicatorTop} visible={dragIndicatorVisible} />
-
-            {/* Floating visual preview of the block being dragged */}
-            <BlockDragPreview
-              text={draggingIndex !== null ? (currentBlocks[draggingIndex]?.text || '') : ''}
-              type={draggingIndex !== null ? (currentBlocks[draggingIndex]?.type || '') : ''}
-              coords={dragPointerCoords}
-              visible={draggingIndex !== null}
-            />
-
-            {/* Presentation-only floating Slash Command Menu */}
-            <SlashMenu
-              isOpen={showSlashMenu}
-              commands={filteredCommands}
-              selectedIndex={slashMenuIndex}
-              coords={slashMenuCoords}
-              onSelect={handleSelectSlashCommand}
-              onClose={() => setShowSlashMenu(false)}
-            />
-
-            {/* Custom selection right click context menu */}
-            <SelectionContextMenu
-              isOpen={showSelectionMenu}
-              onClose={() => setShowSelectionMenu(false)}
-              coords={selectionMenuCoords}
-              onCopy={() => document.execCommand('copy')}
-              onCut={() => document.execCommand('cut')}
-              onPaste={handlePasteSelection}
-              onFormat={executeFormat}
-              onConvertBlock={(type, lvl) => convertBlockType(activeBlockIndex, type, lvl)}
-            />
-
-            {/* Custom table dimension creation modal */}
-            <TableInsertModal
-              isOpen={showTableModal}
-              onClose={() => {
-                setShowTableModal(false);
-                setTableInsertIndex(null);
-                setTableInsertMode(null);
-              }}
-              onConfirm={createTableWithDimensions}
-            />
-          </div>
-
-          <div className="h-8 border-t border-slate-50 px-6 flex items-center text-[10px] text-slate-400 font-bold select-none bg-white">
-            Nhấn Enter để thêm dòng mới, Tab để thụt lề, Backspace để xóa/gộp dòng, "/" để mở menu block
-          </div>
-        </main>
-
-        {/* 3. RIGHT SIDEBAR: Live Student Preview Simulator */}
-        {showPreview && (
-          <DocPreviewSimulator
-            lessonTitle={activeLesson ? activeLesson.title : ''}
-            blocks={currentBlocks}
-            liveTableResize={liveTableResize}
-          />
-        )}
-
-        {/* 4. FAR-RIGHT NARROW TOOLBAR */}
-        <aside className="w-16 bg-white border-l border-slate-100 flex flex-col items-center py-4 justify-between shrink-0 select-none overflow-y-auto">
-          <div className="w-full space-y-4 flex flex-col items-center">
-            {[
-              { icon: <FileCheck2 size={16} />, label: 'Block' },
-              { icon: <Brain size={16} />, label: 'AI' },
-              { icon: <ImageIcon size={16} />, label: 'Ảnh' },
-              { icon: <TableIcon size={16} />, label: 'Bảng' },
-              { icon: <Activity size={16} />, label: 'Công thức' },
-              { icon: <HelpCircle size={16} />, label: 'Quiz' },
-              { icon: <Award size={16} />, label: 'Flashcard' },
-              { icon: <FolderOpen size={16} />, label: 'Mindmap' },
-              { icon: <Video size={16} />, label: 'Media' },
-              { icon: <HelpCircle size={16} />, label: 'Khác' },
-            ].map((tool, i) => (
-              <Tooltip key={i} content={tool.label}>
+          {/* ========================================== */}
+          {/* TOP BAR                                    */}
+          {/* ========================================== */}
+          <header className="h-14 bg-white border-b border-slate-100 px-4 flex items-center justify-between shrink-0 select-none">
+            <div className="flex items-center gap-3.5">
+              <Tooltip content="Quay lại">
                 <button
-                  onClick={() => handleSideToolClick(tool.label)}
-                  className="w-12 h-12 flex flex-col items-center justify-center text-slate-400 hover:text-primary hover:bg-primary-light rounded-xl transition cursor-pointer select-none"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => setMode('dashboard')}
+                  className="p-1.5 hover:bg-slate-50 text-slate-500 hover:text-slate-800 rounded-xl transition cursor-pointer"
                 >
-                  {tool.icon}
-                  <span className="text-[7px] font-bold mt-1 text-slate-500">{tool.label}</span>
+                  <ChevronLeft size={18} className="stroke-[2.5]" />
                 </button>
               </Tooltip>
-            ))}
+              <div>
+                <h1 className="text-xs font-black text-[#1E293B] truncate max-w-sm sm:max-w-md">
+                  Tóm tắt lý thuyết Sinh học 10 học kỳ 2 - Đề cương ôn tập
+                </h1>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="px-1.5 py-0.5 rounded bg-purple-50 text-primary text-[8px] font-extrabold uppercase">Sinh học</span>
+                  <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 text-[8px] font-extrabold uppercase">Lớp 10</span>
+                  <span className="px-1.5 py-0.5 rounded bg-slate-50 text-slate-500 text-[8px] font-extrabold uppercase">Tài liệu lý thuyết</span>
+                  <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 text-[8px] font-extrabold uppercase">Nháp</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Mode Tab List (Soạn thảo | Xem trước) */}
+            <div className="flex items-center gap-2 border border-slate-200 rounded-xl p-0.5 text-[10px] font-bold text-slate-500 select-none bg-slate-50/50">
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setShowPreview(false)}
+                className={`px-3 py-1 rounded-lg transition cursor-pointer ${!showPreview
+                    ? 'bg-white text-primary shadow-sm font-black'
+                    : 'hover:text-slate-800 hover:bg-slate-100/50'
+                  }`}
+              >
+                Soạn thảo
+              </button>
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setShowPreview(true)}
+                className={`px-3 py-1 rounded-lg transition cursor-pointer ${showPreview
+                    ? 'bg-white text-primary shadow-sm font-black'
+                    : 'hover:text-slate-800 hover:bg-slate-100/50'
+                  }`}
+              >
+                Xem trước
+              </button>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="hidden lg:flex items-center gap-1 text-[10px] text-emerald-500 font-bold">
+                <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-ping" />
+                Đã lưu 10:30:45
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Tooltip content="Lưu nháp">
+                  <button
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={async () => {
+                      await showAlert({
+                        type: 'success',
+                        title: 'Thành công',
+                        description: 'Đã lưu nháp tài liệu thành công!'
+                      });
+                    }}
+                    className="px-3 py-1.5 border border-slate-200 text-slate-655 hover:bg-slate-50 text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer"
+                  >
+                    <Save size={12} /> Lưu
+                  </button>
+                </Tooltip>
+                <Tooltip content="Xuất bản tài liệu">
+                  <button
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={handlePublish}
+                    className="px-3 py-1.5 bg-gradient-to-r from-primary to-[#8F85F3] hover:from-primary-hover text-white text-[10px] font-black rounded-xl flex items-center gap-1 transition cursor-pointer shadow-sm shadow-indigo-100"
+                  >
+                    <Send size={12} /> Publish
+                  </button>
+                </Tooltip>
+              </div>
+            </div>
+          </header>
+
+          {/* ========================================== */}
+          {/* MAIN BODY LAYOUT (Left, Center, Right)    */}
+          {/* ========================================== */}
+          <div className="flex-1 flex overflow-hidden w-full">
+
+            {/* 1. LEFT SIDEBAR */}
+            <DocSidebar
+              chapters={chapters}
+              activeLessonId={activeLessonId}
+              onLessonSelect={handleLessonSelect}
+              onToggleChapterExpand={handleToggleChapterExpand}
+              selectedChapterId={selectedChapterId}
+              onSelectChapter={setSelectedChapterId}
+              editingItemId={editingItemId}
+              onStartEditing={setEditingItemId}
+              onSaveEdit={handleSaveEdit}
+              onCancelEdit={handleCancelEdit}
+              onCreateChapter={handleCreateChapter}
+              onCreateLesson={handleCreateLesson}
+              onDeleteChapter={handleDeleteChapter}
+              onDeleteLesson={handleDeleteLesson}
+              onLessonDragDrop={handleLessonDragDrop}
+              onChapterReorder={handleChapterReorder}
+            />
+
+            {/* 2. CENTER PANEL: Rich Editor Workspace */}
+            <main className="flex-1 bg-white border-r border-slate-100 flex flex-col overflow-hidden">
+
+              {/* Rich Editor Toolbar */}
+              <DocToolbar
+                onAiSuggest={handleAiSuggest}
+                onBold={() => executeFormat('bold')}
+                onItalic={() => executeFormat('italic')}
+                onUnderline={() => executeFormat('underline')}
+                onStrikethrough={() => executeFormat('strikeThrough')}
+                onColorChange={handleColorChange}
+                onHighlightChange={handleHighlightChange}
+                onBlockTypeChange={toggleBlockType}
+                onAlignChange={toggleBlockAlign}
+                onIndent={() => indentBlock()}
+                onOutdent={() => outdentBlock()}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
+                canUndo={historyIndex > 0}
+                canRedo={historyIndex < history.length - 1}
+                onFontSizeChange={applyFontSize}
+              />
+
+              {/* Editable Block Content List */}
+              <div
+                id="editor-blocks-container"
+                onKeyDown={(e) => handleKeyDown(e, activeBlockIndex)}
+                onClick={handleScrollWrapperClick}
+                onContextMenu={(e) => {
+                  const sel = window.getSelection();
+                  if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
+                    const container = e.currentTarget;
+                    if (container.contains(sel.anchorNode)) {
+                      e.preventDefault();
+                      setSelectionMenuCoords({ x: e.clientX, y: e.clientY });
+                      setShowSelectionMenu(true);
+                    }
+                  }
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onDrop={handleBodyDrop}
+                className="flex-1 p-8 overflow-auto space-y-4 select-text relative"
+              >
+                {currentBlocks.map((block, idx) => {
+                  const alignClass = block.align === 'center'
+                    ? 'text-center'
+                    : block.align === 'right'
+                      ? 'text-right'
+                      : block.align === 'justify'
+                        ? 'text-justify'
+                        : 'text-left';
+
+                  const listIndex = block.type === 'numbered-list' ? getNumberedIndex(currentBlocks, idx) : undefined;
+                  const tableNumber = block.type === 'table' ? getTableNumber(currentBlocks, idx) : undefined;
+
+                  return (
+                    <MemoizedBlockRow
+                      key={block.id}
+                      block={block}
+                      idx={idx}
+                      alignClass={alignClass}
+                      indent={block.indent || 0}
+                      isActive={activeBlockIndex === idx}
+                      listIndex={listIndex}
+                      tableNumber={tableNumber}
+                      setActiveBlockIndex={setActiveBlockIndex}
+                      updateBlockText={updateBlockText}
+                      handleKeyDown={handleKeyDown}
+                      toggleTodoChecked={toggleTodoChecked}
+                      onDeleteBlock={handleDeleteBlockWithConfirm}
+                      onDeleteBlocks={deleteBlocks}
+                      onDuplicateBlocks={duplicateBlocks}
+                      onConvertBlock={convertBlockType}
+                      onUpdateBlock={handleUpdateBlock}
+                      onInsertAbove={insertBlockAbove}
+                      onInsertBelow={insertBlockBelow}
+                      onDragStart={handleBlockDragStart}
+                      moveBlocks={moveBlocks}
+                      onRegisterCellAlignHandler={(fn) => { tableCellAlignRef.current = fn; }}
+                      liveTableResize={liveTableResize}
+                      setLiveTableResize={setLiveTableResize}
+                      liveTableActiveCell={liveTableActiveCell}
+                      setLiveTableActiveCell={setLiveTableActiveCell}
+                      applyBlockAlignment={applyBlockAlignment}
+                    />
+                  );
+                })}
+
+                {/* Visual insertion indicator for block dragging */}
+                <DragIndicator top={dragIndicatorTop} visible={dragIndicatorVisible} />
+
+                {/* Floating visual preview of the block being dragged */}
+                <BlockDragPreview
+                  text={draggingIndex !== null ? (currentBlocks[draggingIndex]?.text || '') : ''}
+                  type={draggingIndex !== null ? (currentBlocks[draggingIndex]?.type || '') : ''}
+                  coords={dragPointerCoords}
+                  visible={draggingIndex !== null}
+                />
+
+                {/* Presentation-only floating Slash Command Menu */}
+                <SlashMenu
+                  isOpen={showSlashMenu}
+                  commands={filteredCommands}
+                  selectedIndex={slashMenuIndex}
+                  coords={slashMenuCoords}
+                  onSelect={handleSelectSlashCommand}
+                  onClose={() => setShowSlashMenu(false)}
+                />
+
+                {/* Custom selection right click context menu */}
+                <SelectionContextMenu
+                  isOpen={showSelectionMenu}
+                  onClose={() => setShowSelectionMenu(false)}
+                  coords={selectionMenuCoords}
+                  onCopy={() => document.execCommand('copy')}
+                  onCut={() => document.execCommand('cut')}
+                  onPaste={handlePasteSelection}
+                  onFormat={executeFormat}
+                  onConvertBlock={(type, lvl) => convertBlockType(activeBlockIndex, type, lvl)}
+                />
+
+                {/* Custom table dimension creation modal */}
+                <TableInsertModal
+                  isOpen={showTableModal}
+                  onClose={() => {
+                    setShowTableModal(false);
+                    setTableInsertIndex(null);
+                    setTableInsertMode(null);
+                  }}
+                  onConfirm={createTableWithDimensions}
+                />
+
+                {showOtherBlocksPopup && (
+                  <OtherBlocksPopup
+                    onClose={() => setShowOtherBlocksPopup(false)}
+                    onSelectBlock={handleSelectOtherBlock}
+                  />
+                )}
+              </div>
+
+              <div className="h-8 border-t border-slate-50 px-6 flex items-center text-[10px] text-slate-400 font-bold select-none bg-white">
+                Nhấn Enter để thêm dòng mới, Tab để thụt lề, Backspace để xóa/gộp dòng, "/" để mở menu block
+              </div>
+            </main>
+
+            {/* 3. RIGHT SIDEBAR: Live Student Preview Simulator */}
+            {showPreview && (
+              <DocPreviewSimulator
+                lessonTitle={activeLesson ? activeLesson.title : ''}
+                blocks={currentBlocks}
+                liveTableResize={liveTableResize}
+              />
+            )}
+
+            {/* 4. FAR-RIGHT NARROW TOOLBAR */}
+            <aside className="w-16 bg-white border-l border-slate-100 flex flex-col items-center py-4 justify-between shrink-0 select-none overflow-y-auto">
+              <div className="w-full space-y-4 flex flex-col items-center">
+                {[
+                  { icon: <FileCheck2 size={16} />, label: 'Block' },
+                  { icon: <Brain size={16} />, label: 'AI' },
+                  { icon: <ImageIcon size={16} />, label: 'Ảnh' },
+                  { icon: <TableIcon size={16} />, label: 'Bảng' },
+                  { icon: <Activity size={16} />, label: 'Công thức' },
+                  { icon: <HelpCircle size={16} />, label: 'Quiz' },
+                  { icon: <Award size={16} />, label: 'Flashcard' },
+                  { icon: <Video size={16} />, label: 'Media' },
+                  { icon: <HelpCircle size={16} />, label: 'Khác' },
+                ].map((tool, i) => (
+                  <Tooltip key={i} content={tool.label}>
+                    <button
+                      onClick={() => handleSideToolClick(tool.label)}
+                      className="w-12 h-12 flex flex-col items-center justify-center text-slate-400 hover:text-primary hover:bg-primary-light rounded-xl transition cursor-pointer select-none"
+                    >
+                      {tool.icon}
+                      <span className="text-[7px] font-bold mt-1 text-slate-500">{tool.label}</span>
+                    </button>
+                  </Tooltip>
+                ))}
+              </div>
+            </aside>
+
           </div>
-        </aside>
 
-      </div>
 
-      {/* ========================================== */}
-      {/* FOOTER STATUS BAR                          */}
-      {/* ========================================== */}
-      <footer className="h-8 bg-white border-t border-slate-100 px-4 flex items-center justify-between text-[9px] font-black text-slate-400 uppercase tracking-wide shrink-0 select-none">
-        <div className="flex items-center gap-6">
-          <span>Tổng số block: <strong>{currentBlocks.length}</strong></span>
-          <span>Số chữ: <strong>{currentBlocks.reduce((acc, b) => acc + b.text.replace(/<[^>]*>/g, '').length, 0)}</strong></span>
-          <span>Số công thức: <strong>0</strong></span>
-          <span>Số hình ảnh: <strong>0</strong></span>
+
         </div>
-
-        <div>Lần sửa cuối: 10:30 30/05/2024</div>
-
-        <div className="flex items-center gap-1.5 text-emerald-500 font-bold">
-          <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full shrink-0" />
-          Tự động lưu
-        </div>
-      </footer>
-
-    </div>
       </FormattingStateProvider>
     </BlockSelectionProvider>
   );
@@ -2391,7 +2383,7 @@ const BlockRowComponent: React.FC<BlockRowProps> = ({
         onConvertBlock={onConvertBlock}
         onInsertAbove={onInsertAbove}
         onInsertBelow={onInsertBelow}
-                  moveBlocks={moveBlocks}
+        moveBlocks={moveBlocks}
         onDragStart={onDragStart}
         applyBlockAlignment={applyBlockAlignment}
       >

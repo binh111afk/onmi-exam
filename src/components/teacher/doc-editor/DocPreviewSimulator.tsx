@@ -5,6 +5,9 @@ import { SharedTableRenderer } from './blocks/table/SharedTableRenderer';
 import { QuizPreview } from './blocks/quiz/QuizPreview';
 import { FlashcardPreview } from './blocks/flashcard/FlashcardPreview';
 import { MindmapPreview } from './blocks/mindmap/MindmapPreview';
+import { TimelinePreview } from './blocks/timeline/TimelinePreview';
+import { FlowPreview } from './blocks/flow/FlowPreview';
+import { TabsPreview } from './blocks/tabs/TabsPreview';
 import type { DocBlock, LiveTableResizeState } from '../../../types/doc-editor';
 
 interface DocPreviewSimulatorProps {
@@ -313,6 +316,24 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
           if (block.type === 'mindmap') {
             return (
               <MindmapPreview key={block.id} block={block} />
+            );
+          }
+
+          if (block.type === 'timeline') {
+            return (
+              <TimelinePreview key={block.id} block={block} />
+            );
+          }
+
+          if (block.type === 'flow') {
+            return (
+              <FlowPreview key={block.id} block={block} />
+            );
+          }
+
+          if (block.type === 'tabs') {
+            return (
+              <TabsPreview key={block.id} block={block} />
             );
           }
 

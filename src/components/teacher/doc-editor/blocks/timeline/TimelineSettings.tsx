@@ -1,0 +1,80 @@
+import React from 'react';
+import { createPortal } from 'react-dom';
+import { Settings, X } from 'lucide-react';
+import { Checkbox } from '../../../../Checkbox';
+import type { TimelineSettings as TimelineSettingsType } from './TimelineTypes';
+
+interface TimelineSettingsProps {
+  isOpen: boolean;
+  settings: TimelineSettingsType;
+  onClose: () => void;
+  onUpdateSettings: (settings: Partial<TimelineSettingsType>) => void;
+}
+
+export const TimelineSettings: React.FC<TimelineSettingsProps> = ({
+  isOpen,
+  settings,
+  onClose,
+  onUpdateSettings,
+}) => {
+  if (!isOpen) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+      <div
+        className="fixed inset-0 bg-slate-900/15 backdrop-blur-md transition-opacity duration-300 animate-fadeIn"
+        onClick={onClose}
+      />
+
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-label="Cấu hình Dòng thời gian"
+        className="bg-white rounded-[24px] border border-slate-100 shadow-2xl w-full max-w-sm overflow-hidden z-10 animate-scaleIn select-none"
+      >
+        <div className="p-5 border-b border-slate-100 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-primary border border-indigo-100/50">
+              <Settings size={18} className="stroke-[2.5]" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-slate-800 leading-tight">Cấu hình Timeline</h3>
+              <p className="text-[10px] font-bold text-slate-400 mt-0.5">Thiết lập dòng thời gian</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition cursor-pointer"
+            aria-label="Đóng cấu hình"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-[10px] font-black text-slate-600 uppercase tracking-wider">Bố cục</span>
+            <select
+              value={settings.layout}
+              onChange={(e) => onUpdateSettings({ layout: e.target.value as 'vertical' | 'horizontal' })}
+              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 text-[10px] font-bold text-slate-800 outline-none focus:ring-1 focus:ring-primary/10 transition cursor-pointer"
+            >
+              <option value="vertical">Dọc (Vertical)</option>
+              <option value="horizontal">Ngang (Horizontal)</option>
+            </select>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <Checkbox
+              checked={settings.direction === 'reverse'}
+              onChange={(checked) => onUpdateSettings({ direction: checked ? 'reverse' : 'normal' })}
+              label={<span className="text-[10px] font-black text-slate-600">Đảo ngược thứ tự các mốc</span>}
+            />
+          </div>
+        </div>
+      </section>
+    </div>,
+    document.body
+  );
+};

@@ -28,6 +28,7 @@ import { Blog } from './pages/Blog';
 import { Profile } from './pages/Profile';
 import { Teacher } from './pages/Teacher';
 import { AssessmentTest } from './pages/AssessmentTest';
+import { NotFound } from './pages/NotFound';
 import { OnboardingModal } from './components/OnboardingModal';
 import { AlertProvider } from './components/common/Alert';
 
@@ -80,7 +81,7 @@ const getCurrentView = (pathname: string) => {
   if (pathname === '/contact') return 'contact';
   if (pathname === '/blog') return 'blog';
   if (pathname === '/profile' || pathname === '/settings') return 'profile';
-  return 'home';
+  return 'not-found';
 };
 
 const isAuthPage = (pathname: string) => pathname === '/login' || pathname === '/register';
@@ -332,7 +333,7 @@ function AppShell() {
       )}
 
       <div className="flex-1 w-full flex overflow-hidden">
-        {showHeaderFooter && (
+        {showHeaderFooter && currentView !== 'not-found' && (
           <Sidebar currentView={currentView} onViewChange={navigateToView} user={user} />
         )}
 
@@ -417,11 +418,11 @@ function AppShell() {
               />
               <Route path="/mbti" element={<AssessmentTest onBackToHome={() => navigate('/')} />} />
               <Route path="/assessment-test" element={<AssessmentTest onBackToHome={() => navigate('/')} />} />
-              <Route path="*" element={<Home user={user} onViewChange={navigateToView} onSelectDoc={handleSelectDoc} />} />
+              <Route path="*" element={<NotFound onViewChange={navigateToView} />} />
             </Routes>
           </div>
 
-          {showHeaderFooter && <Footer onViewChange={navigateToView} />}
+          {showHeaderFooter && currentView !== 'not-found' && currentView !== 'teacher' && <Footer onViewChange={navigateToView} />}
         </div>
       </div>
 

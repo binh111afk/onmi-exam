@@ -12,6 +12,9 @@ import { CodeBlock } from './CodeBlock';
 import { QuizBlock } from './quiz/QuizBlock';
 import { FlashcardBlock } from './flashcard/FlashcardBlock';
 import { MindmapBlock } from './mindmap/MindmapBlock';
+import { TimelineBlock } from './timeline/TimelineBlock';
+import { FlowBlock } from './flow/FlowBlock';
+import { TabsBlock } from './tabs/TabsBlock';
 import { Video } from 'lucide-react';
 
 const MediaBlockComponent: React.FC<{
@@ -196,6 +199,39 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
     case 'mindmap':
       return (
         <MindmapBlock 
+          block={block}
+          idx={idx}
+          isActive={isActive}
+          setActiveBlockIndex={setActiveBlockIndex}
+          onUpdateBlock={onUpdateBlock}
+          showUniversalToolbar={false}
+        />
+      );
+    case 'timeline':
+      return (
+        <TimelineBlock 
+          block={block}
+          idx={idx}
+          isActive={isActive}
+          setActiveBlockIndex={setActiveBlockIndex}
+          onUpdateBlock={onUpdateBlock}
+          showUniversalToolbar={false}
+        />
+      );
+    case 'flow':
+      return (
+        <FlowBlock 
+          block={block}
+          idx={idx}
+          isActive={isActive}
+          setActiveBlockIndex={setActiveBlockIndex}
+          onUpdateBlock={onUpdateBlock}
+          showUniversalToolbar={false}
+        />
+      );
+    case 'tabs':
+      return (
+        <TabsBlock 
           block={block}
           idx={idx}
           isActive={isActive}
