@@ -15,6 +15,9 @@ import { MindmapBlock } from './mindmap/MindmapBlock';
 import { TimelineBlock } from './timeline/TimelineBlock';
 import { FlowBlock } from './flow/FlowBlock';
 import { TabsBlock } from './tabs/TabsBlock';
+import { CompareBlock } from './compare/CompareBlock';
+import { DiagramBlock } from './diagram/DiagramBlock';
+import { MatchingBlock } from './matching/MatchingBlock';
 import { Video } from 'lucide-react';
 
 const MediaBlockComponent: React.FC<{
@@ -232,6 +235,39 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
     case 'tabs':
       return (
         <TabsBlock 
+          block={block}
+          idx={idx}
+          isActive={isActive}
+          setActiveBlockIndex={setActiveBlockIndex}
+          onUpdateBlock={onUpdateBlock}
+          showUniversalToolbar={false}
+        />
+      );
+    case 'compare':
+      return (
+        <CompareBlock 
+          block={block}
+          idx={idx}
+          isActive={isActive}
+          setActiveBlockIndex={setActiveBlockIndex}
+          onUpdateBlock={onUpdateBlock}
+          showUniversalToolbar={false}
+        />
+      );
+    case 'diagram':
+      return (
+        <DiagramBlock 
+          block={block}
+          idx={idx}
+          isActive={isActive}
+          setActiveBlockIndex={setActiveBlockIndex}
+          onUpdateBlock={onUpdateBlock}
+          showUniversalToolbar={false}
+        />
+      );
+    case 'matching':
+      return (
+        <MatchingBlock 
           block={block}
           idx={idx}
           isActive={isActive}

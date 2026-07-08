@@ -13,6 +13,7 @@ export const FlowPreview: React.FC<FlowPreviewProps> = ({
 }) => {
   const content = block.flowContent || createNewFlowContent();
   const steps = content.steps || [];
+  const settings = content.settings;
 
   if (steps.length === 0) {
     return (
@@ -22,11 +23,47 @@ export const FlowPreview: React.FC<FlowPreviewProps> = ({
     );
   }
 
+  const themeColor = settings.themeColor || '#6366f1';
+
+  const getStepLabel = (index: number) => {
+    const numbering = settings.stepNumbering || 'numbers';
+    if (numbering === 'none') return '';
+    if (numbering === 'roman') {
+      const romanSymbols = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+      return `Bước ${romanSymbols[index] || index + 1}`;
+    }
+    if (numbering === 'alphabet') {
+      const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      return `Bước ${alphabet[index] || index + 1}`;
+    }
+    return `Bước ${index + 1}`;
+  };
+
+  const cardStyleClass = {
+    bordered: 'bg-white border border-slate-150',
+    flat: 'bg-slate-50/60 border border-transparent shadow-none',
+    shadow: 'bg-white border border-slate-100 shadow-md'
+  }[settings.cardStyle || 'bordered'] || 'bg-white border border-slate-150';
+
+  const horizontalSpacingClass = {
+    compact: 'gap-x-3 gap-y-4',
+    normal: 'gap-x-5 gap-y-6',
+    wide: 'gap-x-8 gap-y-10'
+  }[settings.stepSpacing || 'normal'] || 'gap-x-5 gap-y-6';
+
+  const verticalSpacingClass = {
+    compact: 'gap-3',
+    normal: 'gap-5',
+    wide: 'gap-8'
+  }[settings.stepSpacing || 'normal'] || 'gap-5';
+
   const renderArrow = (direction: 'right' | 'down', style: 'straight' | 'dashed' | 'curved') => {
-    const isDashed = style === 'dashed' ? '3,3' : undefined;
+    const isDashed = settings.connectorStyle === 'dashed' ? '4,4' : (settings.connectorStyle === 'dotted' ? '2,2' : undefined);
+    const strokeColor = themeColor;
+    
     if (direction === 'right') {
       return (
-        <svg className="w-5 h-5 overflow-visible text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className="w-5 h-5 overflow-visible" style={{ color: strokeColor }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path
             strokeDasharray={isDashed}
             strokeLinecap="round"
@@ -38,7 +75,7 @@ export const FlowPreview: React.FC<FlowPreviewProps> = ({
       );
     } else {
       return (
-        <svg className="w-5 h-5 overflow-visible text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className="w-5 h-5 overflow-visible" style={{ color: strokeColor }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path
             strokeDasharray={isDashed}
             strokeLinecap="round"
@@ -51,21 +88,23 @@ export const FlowPreview: React.FC<FlowPreviewProps> = ({
     }
   };
 
-  if (content.settings.layout === 'horizontal') {
+  if (settings.layout === 'horizontal') {
     return (
-      <div className={`my-4 flex flex-wrap items-center justify-center gap-y-6 gap-x-4 select-none ${indentClassName}`}>
+      <div className={`my-4 flex flex-wrap items-center justify-center select-none ${indentClassName} ${horizontalSpacingClass}`}>
         {steps.map((step, index) => (
           <React.Fragment key={step.id}>
-            <div className="w-48 bg-white border border-slate-150 rounded-2xl p-4 shadow-3xs hover:shadow-xs transition flex flex-col gap-1 text-center items-center relative animate-fadeIn">
-              <span className="text-[8px] font-black text-white px-2 py-0.5 rounded-full select-none" style={{ backgroundColor: step.color }}>
-                Bước {index + 1}
-              </span>
-              <h4 className="text-[10px] font-bold text-[#1E293B] mt-1.5">{step.title}</h4>
-              <p className="text-[9px] text-slate-500 font-medium leading-relaxed mt-0.5">{step.description}</p>
+            <div className={`w-48 rounded-2xl p-4 shadow-3xs hover:shadow-xs transition flex flex-col gap-1 text-center items-center relative animate-fadeIn ${cardStyleClass}`}>
+              {settings.stepNumbering !== 'none' && (
+                <span className="text-[8px] font-black text-white px-2 py-0.5 rounded-full select-none animate-fadeIn" style={{ backgroundColor: step.color || themeColor }}>
+                  {getStepLabel(index)}
+                </span>
+              )}
+              <h4 className="text-[10px] font-bold text-[#1E293B] mt-1.5">{step.title || 'Bước mới'}</h4>
+              <p className="text-[9px] text-slate-500 font-medium leading-relaxed mt-0.5">{step.description || 'Không có mô tả cho bước này.'}</p>
             </div>
             {index < steps.length - 1 && (
               <div className="flex items-center justify-center select-none">
-                {renderArrow('right', content.settings.arrowStyle)}
+                {renderArrow('right', settings.arrowStyle || 'straight')}
               </div>
             )}
           </React.Fragment>
@@ -74,21 +113,23 @@ export const FlowPreview: React.FC<FlowPreviewProps> = ({
     );
   }
 
-  if (content.settings.layout === 'vertical') {
+  if (settings.layout === 'vertical') {
     return (
-      <div className={`my-4 flex flex-col items-center gap-4 select-none ${indentClassName}`}>
+      <div className={`my-4 flex flex-col items-center select-none ${indentClassName} ${verticalSpacingClass}`}>
         {steps.map((step, index) => (
           <React.Fragment key={step.id}>
-            <div className="w-64 bg-white border border-slate-150 rounded-2xl p-4 shadow-3xs hover:shadow-xs transition flex flex-col gap-1 text-center items-center animate-fadeIn">
-              <span className="text-[8px] font-black text-white px-2 py-0.5 rounded-full" style={{ backgroundColor: step.color }}>
-                Bước {index + 1}
-              </span>
-              <h4 className="text-[10px] font-bold text-[#1E293B] mt-1.5">{step.title}</h4>
-              <p className="text-[9px] text-slate-500 font-medium leading-relaxed mt-0.5">{step.description}</p>
+            <div className={`w-64 rounded-2xl p-4 shadow-3xs hover:shadow-xs transition flex flex-col gap-1 text-center items-center animate-fadeIn ${cardStyleClass}`}>
+              {settings.stepNumbering !== 'none' && (
+                <span className="text-[8px] font-black text-white px-2 py-0.5 rounded-full animate-fadeIn" style={{ backgroundColor: step.color || themeColor }}>
+                  {getStepLabel(index)}
+                </span>
+              )}
+              <h4 className="text-[10px] font-bold text-[#1E293B] mt-1.5">{step.title || 'Bước mới'}</h4>
+              <p className="text-[9px] text-slate-500 font-medium leading-relaxed mt-0.5">{step.description || 'Không có mô tả cho bước này.'}</p>
             </div>
             {index < steps.length - 1 && (
               <div className="select-none my-1">
-                {renderArrow('down', content.settings.arrowStyle)}
+                {renderArrow('down', settings.arrowStyle || 'straight')}
               </div>
             )}
           </React.Fragment>
@@ -97,20 +138,23 @@ export const FlowPreview: React.FC<FlowPreviewProps> = ({
     );
   }
 
+  // default/fallback or 'zigzag'
   return (
-    <div className={`my-4 flex flex-wrap items-center justify-center gap-6 select-none ${indentClassName}`}>
+    <div className={`my-4 flex flex-wrap items-center justify-center select-none ${indentClassName} ${horizontalSpacingClass}`}>
       {steps.map((step, index) => (
         <div key={step.id} className="flex items-center gap-4 animate-fadeIn">
-          <div className="w-44 bg-white border border-slate-150 rounded-2xl p-4 shadow-3xs hover:shadow-xs transition flex flex-col gap-1 text-center items-center">
-            <span className="text-[8px] font-black text-white px-2 py-0.5 rounded-full" style={{ backgroundColor: step.color }}>
-              Bước {index + 1}
-            </span>
-            <h4 className="text-[10px] font-bold text-[#1E293B] mt-1.5">{step.title}</h4>
-            <p className="text-[9px] text-slate-500 font-medium leading-relaxed mt-0.5">{step.description}</p>
+          <div className={`w-44 rounded-2xl p-4 shadow-3xs hover:shadow-xs transition flex flex-col gap-1 text-center items-center ${cardStyleClass}`}>
+            {settings.stepNumbering !== 'none' && (
+              <span className="text-[8px] font-black text-white px-2 py-0.5 rounded-full animate-fadeIn" style={{ backgroundColor: step.color || themeColor }}>
+                {getStepLabel(index)}
+              </span>
+            )}
+            <h4 className="text-[10px] font-bold text-[#1E293B] mt-1.5">{step.title || 'Bước mới'}</h4>
+            <p className="text-[9px] text-slate-500 font-medium leading-relaxed mt-0.5">{step.description || 'Không có mô tả cho bước này.'}</p>
           </div>
           {index < steps.length - 1 && (
             <div>
-              {renderArrow('right', content.settings.arrowStyle)}
+              {renderArrow(index % 2 === 0 ? 'right' : 'down', settings.arrowStyle || 'straight')}
             </div>
           )}
         </div>

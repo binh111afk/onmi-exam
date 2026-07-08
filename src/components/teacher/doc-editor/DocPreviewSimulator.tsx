@@ -8,6 +8,9 @@ import { MindmapPreview } from './blocks/mindmap/MindmapPreview';
 import { TimelinePreview } from './blocks/timeline/TimelinePreview';
 import { FlowPreview } from './blocks/flow/FlowPreview';
 import { TabsPreview } from './blocks/tabs/TabsPreview';
+import { ComparePreview } from './blocks/compare/ComparePreview';
+import { DiagramPreview } from './blocks/diagram/DiagramPreview';
+import { MatchingPreview } from './blocks/matching/MatchingPreview';
 import type { DocBlock, LiveTableResizeState } from '../../../types/doc-editor';
 
 interface DocPreviewSimulatorProps {
@@ -334,6 +337,24 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
           if (block.type === 'tabs') {
             return (
               <TabsPreview key={block.id} block={block} />
+            );
+          }
+
+          if (block.type === 'compare' && block.compareContent) {
+            return (
+              <ComparePreview key={block.id} content={block.compareContent} />
+            );
+          }
+
+          if (block.type === 'diagram' && block.diagramContent) {
+            return (
+              <DiagramPreview key={block.id} content={block.diagramContent} />
+            );
+          }
+
+          if (block.type === 'matching' && block.matchingContent) {
+            return (
+              <MatchingPreview key={block.id} content={block.matchingContent} />
             );
           }
 

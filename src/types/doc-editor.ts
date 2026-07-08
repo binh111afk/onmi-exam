@@ -9,7 +9,7 @@ export interface TableCellStyle {
 
 export interface DocBlock {
   id: string;
-  type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code' | 'quiz' | 'flashcard' | 'mindmap' | 'media' | 'timeline' | 'flow' | 'tabs';
+  type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code' | 'quiz' | 'flashcard' | 'mindmap' | 'media' | 'timeline' | 'flow' | 'tabs' | 'compare' | 'diagram' | 'matching';
   level?: 1 | 2 | 3;
   indent?: number;
   text: string;
@@ -35,6 +35,9 @@ export interface DocBlock {
   timelineContent?: TimelineContent;
   flowContent?: FlowContent;
   tabsContent?: TabsContent;
+  compareContent?: CompareContent;
+  diagramContent?: DiagramContent;
+  matchingContent?: MatchingContent;
 }
 
 export const QuestionType = {
@@ -141,6 +144,12 @@ export interface TimelineSettings {
   layout: 'vertical' | 'horizontal';
   direction: 'normal' | 'reverse';
   themeColor?: string;
+  nodeStyle?: 'circle' | 'square' | 'pill';
+  connectorStyle?: 'solid' | 'dashed' | 'dotted';
+  showDate?: boolean;
+  showNumber?: boolean;
+  spacing?: 'compact' | 'cozy' | 'comfortable';
+  compactMode?: boolean;
 }
 
 export interface TimelineContent {
@@ -161,6 +170,10 @@ export interface FlowSettings {
   layout: 'vertical' | 'horizontal' | 'zigzag';
   arrowStyle: 'straight' | 'dashed' | 'curved';
   themeColor?: string;
+  connectorStyle?: 'solid' | 'dashed' | 'dotted';
+  stepNumbering?: 'numbers' | 'roman' | 'alphabet' | 'none';
+  cardStyle?: 'flat' | 'bordered' | 'shadow';
+  stepSpacing?: 'compact' | 'normal' | 'wide';
 }
 
 export interface FlowContent {
@@ -178,10 +191,86 @@ export interface TabItem {
 
 export interface TabsSettings {
   themeColor?: string;
+  defaultActiveTab?: string;
+  tabStyle?: 'underline' | 'pills' | 'blocks';
+  position?: 'top' | 'bottom' | 'left';
+  equalWidth?: boolean;
+  scrollMode?: boolean;
+  roundedTabs?: boolean;
 }
 
 export interface TabsContent {
   version: number;
   tabs: TabItem[];
   settings: TabsSettings;
+}
+
+// Compare Block Content Types
+export interface CompareColumn {
+  id: string;
+  title: string;
+  content: string;
+}
+
+export interface CompareSettings {
+  themeColor?: string;
+  cardStyle?: 'flat' | 'bordered' | 'shadow';
+  showBorder?: boolean;
+  equalHeight?: boolean;
+  columnSpacing?: 'compact' | 'normal' | 'wide';
+  headerStyle?: 'filled' | 'minimal' | 'accent';
+  responsiveMode?: 'stack' | 'scroll';
+}
+
+export interface CompareContent {
+  version: number;
+  columns: CompareColumn[];
+  settings: CompareSettings;
+}
+
+// Diagram Block Content Types
+export interface DiagramNode {
+  id: string;
+  title: string;
+  description: string;
+  color: string;
+}
+
+export interface DiagramSettings {
+  layout: 'horizontal' | 'vertical' | 'tree' | 'cycle';
+  arrowStyle: 'straight' | 'dashed' | 'curved';
+  themeColor?: string;
+  nodeStyle?: 'rounded' | 'sharp' | 'oval';
+  nodeSpacing?: 'compact' | 'normal' | 'wide';
+  showArrows?: boolean;
+  showDescriptions?: boolean;
+}
+
+export interface DiagramContent {
+  version: number;
+  nodes: DiagramNode[];
+  settings: DiagramSettings;
+}
+
+// Matching Block Content Types
+export interface MatchingPair {
+  id: string;
+  leftText: string;
+  rightText: string;
+}
+
+export interface MatchingSettings {
+  themeColor?: string;
+  shuffleAnswers?: boolean;
+  allowRetries?: boolean;
+  showScore?: boolean;
+  showFeedback?: boolean;
+  revealAnswers?: boolean;
+  autoCheck?: boolean;
+}
+
+export interface MatchingContent {
+  version: number;
+  pairs: MatchingPair[];
+  settings: MatchingSettings;
 }

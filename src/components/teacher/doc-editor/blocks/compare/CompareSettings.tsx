@@ -2,16 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Settings, X } from 'lucide-react';
 import { Checkbox } from '../../../../Checkbox';
-import type { TimelineSettings as TimelineSettingsType } from './TimelineTypes';
+import type { CompareSettings as CompareSettingsType } from './CompareTypes';
 
-interface TimelineSettingsProps {
+interface CompareSettingsProps {
   isOpen: boolean;
-  settings: TimelineSettingsType;
+  settings: CompareSettingsType;
   onClose: () => void;
-  onUpdateSettings: (settings: Partial<TimelineSettingsType>) => void;
+  onUpdateSettings: (settings: Partial<CompareSettingsType>) => void;
 }
 
-const ACCENT_COLORS = [
+const THEME_COLORS = [
   { name: 'Indigo', value: '#6366f1' },
   { name: 'Xanh dương', value: '#3b82f6' },
   { name: 'Tím', value: '#8b5cf6' },
@@ -21,33 +21,33 @@ const ACCENT_COLORS = [
   { name: 'Xám', value: '#64748b' }
 ];
 
-export const TimelineSettings: React.FC<TimelineSettingsProps> = ({
+export const CompareSettings: React.FC<CompareSettingsProps> = ({
   isOpen,
   settings,
   onClose,
   onUpdateSettings,
 }) => {
-  const [localSettings, setLocalSettings] = useState<TimelineSettingsType>({
-    showDate: true,
-    showNumber: true,
-    compactMode: false,
-    spacing: 'cozy',
-    nodeStyle: 'circle',
-    connectorStyle: 'solid',
+  const [localSettings, setLocalSettings] = useState<CompareSettingsType>({
     themeColor: '#6366f1',
+    cardStyle: 'bordered',
+    showBorder: true,
+    equalHeight: true,
+    columnSpacing: 'normal',
+    headerStyle: 'filled',
+    responsiveMode: 'stack',
     ...settings
   });
 
   useEffect(() => {
     if (isOpen) {
       setLocalSettings({
-        showDate: true,
-        showNumber: true,
-        compactMode: false,
-        spacing: 'cozy',
-        nodeStyle: 'circle',
-        connectorStyle: 'solid',
         themeColor: '#6366f1',
+        cardStyle: 'bordered',
+        showBorder: true,
+        equalHeight: true,
+        columnSpacing: 'normal',
+        headerStyle: 'filled',
+        responsiveMode: 'stack',
         ...settings
       });
     }
@@ -55,7 +55,7 @@ export const TimelineSettings: React.FC<TimelineSettingsProps> = ({
 
   if (!isOpen) return null;
 
-  const handleUpdateField = (fields: Partial<TimelineSettingsType>) => {
+  const handleUpdateField = (fields: Partial<CompareSettingsType>) => {
     setLocalSettings(prev => ({ ...prev, ...fields }));
   };
 
@@ -76,7 +76,7 @@ export const TimelineSettings: React.FC<TimelineSettingsProps> = ({
       <section
         role="dialog"
         aria-modal="true"
-        aria-label="Cấu hình Dòng thời gian"
+        aria-label="Cấu hình So sánh"
         className="bg-white rounded-[24px] border border-slate-100 shadow-2xl w-full max-w-sm overflow-hidden z-10 animate-scaleIn flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
@@ -86,8 +86,8 @@ export const TimelineSettings: React.FC<TimelineSettingsProps> = ({
               <Settings size={18} className="stroke-[2.5]" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-slate-800 leading-tight">Cấu hình Timeline</h3>
-              <p className="text-[10px] font-bold text-slate-400 mt-0.5">Thiết lập dòng thời gian</p>
+              <h3 className="text-sm font-black text-slate-800 leading-tight">Cấu hình So sánh</h3>
+              <p className="text-[10px] font-bold text-slate-400 mt-0.5">Thiết lập bảng so sánh</p>
             </div>
           </div>
           <button
@@ -102,89 +102,79 @@ export const TimelineSettings: React.FC<TimelineSettingsProps> = ({
 
         <div className="p-5 space-y-4 overflow-y-auto flex-1 text-[10px]">
           <div className="flex items-center justify-between gap-4">
-            <span className="font-black text-slate-600 uppercase tracking-wider">Bố cục</span>
+            <span className="font-black text-slate-600 uppercase tracking-wider">Kiểu thẻ card</span>
             <select
-              value={localSettings.layout}
-              onChange={(e) => handleUpdateField({ layout: e.target.value as any })}
+              value={localSettings.cardStyle}
+              onChange={(e) => handleUpdateField({ cardStyle: e.target.value as any })}
               className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
             >
-              <option value="vertical">Dọc (Vertical)</option>
-              <option value="horizontal">Ngang (Horizontal)</option>
+              <option value="bordered">Có viền nhẹ</option>
+              <option value="flat">Không viền (Phẳng)</option>
+              <option value="shadow">Đổ bóng lớn</option>
             </select>
           </div>
 
           <div className="flex items-center justify-between gap-4">
-            <span className="font-black text-slate-600 uppercase tracking-wider">Kiểu nút mốc</span>
+            <span className="font-black text-slate-600 uppercase tracking-wider">Kiểu tiêu đề</span>
             <select
-              value={localSettings.nodeStyle}
-              onChange={(e) => handleUpdateField({ nodeStyle: e.target.value as any })}
+              value={localSettings.headerStyle}
+              onChange={(e) => handleUpdateField({ headerStyle: e.target.value as any })}
               className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
             >
-              <option value="circle">Tròn</option>
-              <option value="square">Vuông</option>
-              <option value="pill">Bo góc vừa</option>
+              <option value="filled">Nền xám đầy (Filled)</option>
+              <option value="accent">Viền màu chủ đề (Accent)</option>
+              <option value="minimal">Đơn giản (Minimal)</option>
             </select>
           </div>
 
           <div className="flex items-center justify-between gap-4">
-            <span className="font-black text-slate-600 uppercase tracking-wider">Kiểu đường nối</span>
+            <span className="font-black text-slate-600 uppercase tracking-wider">Khoảng cách cột</span>
             <select
-              value={localSettings.connectorStyle}
-              onChange={(e) => handleUpdateField({ connectorStyle: e.target.value as any })}
+              value={localSettings.columnSpacing}
+              onChange={(e) => handleUpdateField({ columnSpacing: e.target.value as any })}
               className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
             >
-              <option value="solid">Nét liền</option>
-              <option value="dashed">Nét đứt</option>
-              <option value="dotted">Chấm tròn</option>
+              <option value="compact">Hẹp</option>
+              <option value="normal">Vừa phải</option>
+              <option value="wide">Rộng rãi</option>
             </select>
           </div>
 
           <div className="flex items-center justify-between gap-4">
-            <span className="font-black text-slate-600 uppercase tracking-wider">Khoảng cách</span>
+            <span className="font-black text-slate-600 uppercase tracking-wider">Thiết bị nhỏ</span>
             <select
-              value={localSettings.spacing}
-              onChange={(e) => handleUpdateField({ spacing: e.target.value as any })}
+              value={localSettings.responsiveMode}
+              onChange={(e) => handleUpdateField({ responsiveMode: e.target.value as any })}
               className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
             >
-              <option value="compact">Chật hẹp</option>
-              <option value="cozy">Vừa phải</option>
-              <option value="comfortable">Rộng rãi</option>
+              <option value="stack">Xếp chồng dọc (Stack)</option>
+              <option value="scroll">Cuộn ngang (Scroll)</option>
             </select>
           </div>
 
           <div className="space-y-3 pt-2 border-t border-slate-100">
             <Checkbox
-              checked={localSettings.direction === 'reverse'}
-              onChange={(checked) => handleUpdateField({ direction: checked ? 'reverse' : 'normal' })}
-              label={<span className="font-black text-slate-600">Đảo ngược thứ tự các mốc</span>}
+              checked={!!localSettings.showBorder}
+              onChange={(checked) => handleUpdateField({ showBorder: checked })}
+              label={<span className="font-black text-slate-600">Hiển thị đường viền các cột</span>}
             />
             <Checkbox
-              checked={!!localSettings.showDate}
-              onChange={(checked) => handleUpdateField({ showDate: checked })}
-              label={<span className="font-black text-slate-600">Hiển thị ngày/mốc thời gian</span>}
-            />
-            <Checkbox
-              checked={!!localSettings.showNumber}
-              onChange={(checked) => handleUpdateField({ showNumber: checked })}
-              label={<span className="font-black text-slate-600">Hiển thị số thứ tự thẻ</span>}
-            />
-            <Checkbox
-              checked={!!localSettings.compactMode}
-              onChange={(checked) => handleUpdateField({ compactMode: checked })}
-              label={<span className="font-black text-slate-600">Chế độ thu gọn chữ (Compact)</span>}
+              checked={!!localSettings.equalHeight}
+              onChange={(checked) => handleUpdateField({ equalHeight: checked })}
+              label={<span className="font-black text-slate-600">Các cột luôn có chiều cao bằng nhau</span>}
             />
           </div>
 
           <div className="space-y-2 pt-2 border-t border-slate-100">
             <span className="font-black text-slate-600 uppercase tracking-wider block">Màu sắc chủ đề</span>
             <div className="grid grid-cols-4 gap-2">
-              {ACCENT_COLORS.map((color) => {
+              {THEME_COLORS.map((color) => {
                 const isSelected = localSettings.themeColor === color.value;
                 return (
                   <button
                     key={color.value}
                     onClick={() => handleUpdateField({ themeColor: color.value })}
-                    className={`flex flex-col items-center gap-1 p-1 rounded-xl border transition cursor-pointer ${
+                    className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border transition cursor-pointer ${
                       isSelected
                         ? 'border-slate-800 bg-slate-50'
                         : 'border-slate-100 hover:border-slate-200'
@@ -192,9 +182,9 @@ export const TimelineSettings: React.FC<TimelineSettingsProps> = ({
                   >
                     <span
                       style={{ backgroundColor: color.value }}
-                      className="w-4 h-4 rounded-full border border-white shadow-2xs"
+                      className="w-5 h-5 rounded-full border border-white shadow-2xs"
                     />
-                    <span className="text-[8px] font-bold text-slate-500">{color.name}</span>
+                    <span className="text-[9px] font-bold text-slate-500">{color.name}</span>
                   </button>
                 );
               })}

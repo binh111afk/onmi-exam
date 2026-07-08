@@ -1,10 +1,10 @@
 import React from 'react';
-import { X, Clock, Workflow, Layers } from 'lucide-react';
+import { X, Clock, Workflow, Layers, Columns, Network, Link } from 'lucide-react';
 import { OtherBlockCard } from './OtherBlockCard';
 
 interface OtherBlocksPopupProps {
   onClose: () => void;
-  onSelectBlock: (type: 'timeline' | 'flow' | 'tabs') => void;
+  onSelectBlock: (type: 'timeline' | 'flow' | 'tabs' | 'compare' | 'diagram' | 'matching') => void;
 }
 
 export const OtherBlocksPopup: React.FC<OtherBlocksPopupProps> = ({
@@ -29,7 +29,7 @@ export const OtherBlocksPopup: React.FC<OtherBlocksPopupProps> = ({
           Chọn khối chức năng bạn muốn chèn thêm vào tài liệu.
         </p>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 max-h-[360px] overflow-y-auto pr-1">
           <OtherBlockCard
             onClick={() => onSelectBlock('timeline')}
             icon={<Clock size={18} />}
@@ -49,6 +49,27 @@ export const OtherBlocksPopup: React.FC<OtherBlocksPopupProps> = ({
             icon={<Layers size={18} />}
             title="Tabs"
             description="Hiển thị nội dung theo tab"
+          />
+
+          <OtherBlockCard
+            onClick={() => onSelectBlock('compare')}
+            icon={<Columns size={18} />}
+            title="So sánh"
+            description="Bảng so sánh đối chiếu cột song song"
+          />
+
+          <OtherBlockCard
+            onClick={() => onSelectBlock('diagram')}
+            icon={<Network size={18} />}
+            title="Sơ đồ"
+            description="Sơ đồ khối khái niệm SmartArt"
+          />
+
+          <OtherBlockCard
+            onClick={() => onSelectBlock('matching')}
+            icon={<Link size={18} />}
+            title="Ghép nối"
+            description="Bài tập nối cặp vế trái và vế phải"
           />
         </div>
 

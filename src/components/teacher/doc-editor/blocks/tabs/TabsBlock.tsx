@@ -186,6 +186,7 @@ export const TabsBlockComponent: React.FC<TabsBlockProps> = ({
       <TabsSettings
         isOpen={isSettingsOpen}
         settings={settings}
+        tabs={tabs}
         onClose={() => setIsSettingsOpen(false)}
         onUpdateSettings={updateSettings}
       />

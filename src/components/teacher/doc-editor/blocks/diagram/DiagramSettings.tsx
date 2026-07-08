@@ -2,16 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Settings, X } from 'lucide-react';
 import { Checkbox } from '../../../../Checkbox';
-import type { TimelineSettings as TimelineSettingsType } from './TimelineTypes';
+import type { DiagramSettings as DiagramSettingsType } from './DiagramTypes';
 
-interface TimelineSettingsProps {
+interface DiagramSettingsProps {
   isOpen: boolean;
-  settings: TimelineSettingsType;
+  settings: DiagramSettingsType;
   onClose: () => void;
-  onUpdateSettings: (settings: Partial<TimelineSettingsType>) => void;
+  onUpdateSettings: (settings: Partial<DiagramSettingsType>) => void;
 }
 
-const ACCENT_COLORS = [
+const THEME_COLORS = [
   { name: 'Indigo', value: '#6366f1' },
   { name: 'Xanh dương', value: '#3b82f6' },
   { name: 'Tím', value: '#8b5cf6' },
@@ -21,19 +21,17 @@ const ACCENT_COLORS = [
   { name: 'Xám', value: '#64748b' }
 ];
 
-export const TimelineSettings: React.FC<TimelineSettingsProps> = ({
+export const DiagramSettings: React.FC<DiagramSettingsProps> = ({
   isOpen,
   settings,
   onClose,
   onUpdateSettings,
 }) => {
-  const [localSettings, setLocalSettings] = useState<TimelineSettingsType>({
-    showDate: true,
-    showNumber: true,
-    compactMode: false,
-    spacing: 'cozy',
-    nodeStyle: 'circle',
-    connectorStyle: 'solid',
+  const [localSettings, setLocalSettings] = useState<DiagramSettingsType>({
+    nodeStyle: 'rounded',
+    nodeSpacing: 'normal',
+    showArrows: true,
+    showDescriptions: true,
     themeColor: '#6366f1',
     ...settings
   });
@@ -41,12 +39,10 @@ export const TimelineSettings: React.FC<TimelineSettingsProps> = ({
   useEffect(() => {
     if (isOpen) {
       setLocalSettings({
-        showDate: true,
-        showNumber: true,
-        compactMode: false,
-        spacing: 'cozy',
-        nodeStyle: 'circle',
-        connectorStyle: 'solid',
+        nodeStyle: 'rounded',
+        nodeSpacing: 'normal',
+        showArrows: true,
+        showDescriptions: true,
         themeColor: '#6366f1',
         ...settings
       });
@@ -55,7 +51,7 @@ export const TimelineSettings: React.FC<TimelineSettingsProps> = ({
 
   if (!isOpen) return null;
 
-  const handleUpdateField = (fields: Partial<TimelineSettingsType>) => {
+  const handleUpdateField = (fields: Partial<DiagramSettingsType>) => {
     setLocalSettings(prev => ({ ...prev, ...fields }));
   };
 
@@ -65,20 +61,17 @@ export const TimelineSettings: React.FC<TimelineSettingsProps> = ({
   };
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[10000] flex items-center justify-center p-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
       <div
-        className="fixed inset-0 bg-slate-900/15 backdrop-blur-md pointer-events-none"
+        className="fixed inset-0 bg-slate-900/15 backdrop-blur-md transition-opacity duration-300 animate-fadeIn"
+        onClick={onClose}
       />
 
       <section
         role="dialog"
         aria-modal="true"
-        aria-label="Cấu hình Dòng thời gian"
+        aria-label="Cấu hình Sơ đồ"
         className="bg-white rounded-[24px] border border-slate-100 shadow-2xl w-full max-w-sm overflow-hidden z-10 animate-scaleIn flex flex-col max-h-[90vh]"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="p-5 border-b border-slate-100 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
@@ -86,8 +79,8 @@ export const TimelineSettings: React.FC<TimelineSettingsProps> = ({
               <Settings size={18} className="stroke-[2.5]" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-slate-800 leading-tight">Cấu hình Timeline</h3>
-              <p className="text-[10px] font-bold text-slate-400 mt-0.5">Thiết lập dòng thời gian</p>
+              <h3 className="text-sm font-black text-slate-800 leading-tight">Cấu hình Sơ đồ</h3>
+              <p className="text-[10px] font-bold text-slate-400 mt-0.5">Thiết lập kiểu dáng sơ đồ</p>
             </div>
           </div>
           <button
@@ -108,8 +101,23 @@ export const TimelineSettings: React.FC<TimelineSettingsProps> = ({
               onChange={(e) => handleUpdateField({ layout: e.target.value as any })}
               className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
             >
-              <option value="vertical">Dọc (Vertical)</option>
-              <option value="horizontal">Ngang (Horizontal)</option>
+              <option value="horizontal">Ngang (A → B → C)</option>
+              <option value="vertical">Dọc (A ↓ B ↓ C)</option>
+              <option value="tree">Cây phân cấp (Tree)</option>
+              <option value="cycle">Vòng tuần hoàn (Cycle)</option>
+            </select>
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <span className="font-black text-slate-600 uppercase tracking-wider">Kiểu liên kết</span>
+            <select
+              value={localSettings.arrowStyle}
+              onChange={(e) => handleUpdateField({ arrowStyle: e.target.value as any })}
+              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
+            >
+              <option value="straight">Mũi tên thẳng</option>
+              <option value="dashed">Mũi tên đứt nét</option>
+              <option value="curved">Mũi tên uốn cong</option>
             </select>
           </div>
 
@@ -120,71 +128,48 @@ export const TimelineSettings: React.FC<TimelineSettingsProps> = ({
               onChange={(e) => handleUpdateField({ nodeStyle: e.target.value as any })}
               className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
             >
-              <option value="circle">Tròn</option>
-              <option value="square">Vuông</option>
-              <option value="pill">Bo góc vừa</option>
+              <option value="rounded">Bo góc tròn (Rounded)</option>
+              <option value="sharp">Góc vuông (Sharp)</option>
+              <option value="oval">Hình bầu dục (Oval)</option>
             </select>
           </div>
 
           <div className="flex items-center justify-between gap-4">
-            <span className="font-black text-slate-600 uppercase tracking-wider">Kiểu đường nối</span>
+            <span className="font-black text-slate-600 uppercase tracking-wider">Khoảng cách nút</span>
             <select
-              value={localSettings.connectorStyle}
-              onChange={(e) => handleUpdateField({ connectorStyle: e.target.value as any })}
+              value={localSettings.nodeSpacing}
+              onChange={(e) => handleUpdateField({ nodeSpacing: e.target.value as any })}
               className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
             >
-              <option value="solid">Nét liền</option>
-              <option value="dashed">Nét đứt</option>
-              <option value="dotted">Chấm tròn</option>
-            </select>
-          </div>
-
-          <div className="flex items-center justify-between gap-4">
-            <span className="font-black text-slate-600 uppercase tracking-wider">Khoảng cách</span>
-            <select
-              value={localSettings.spacing}
-              onChange={(e) => handleUpdateField({ spacing: e.target.value as any })}
-              className="bg-white border border-slate-200 focus:border-primary rounded-xl px-3 py-2 font-bold text-slate-800 outline-none transition cursor-pointer text-[10px]"
-            >
-              <option value="compact">Chật hẹp</option>
-              <option value="cozy">Vừa phải</option>
-              <option value="comfortable">Rộng rãi</option>
+              <option value="compact">Chật hẹp (Compact)</option>
+              <option value="normal">Vừa phải (Normal)</option>
+              <option value="wide">Rộng rãi (Wide)</option>
             </select>
           </div>
 
           <div className="space-y-3 pt-2 border-t border-slate-100">
             <Checkbox
-              checked={localSettings.direction === 'reverse'}
-              onChange={(checked) => handleUpdateField({ direction: checked ? 'reverse' : 'normal' })}
-              label={<span className="font-black text-slate-600">Đảo ngược thứ tự các mốc</span>}
+              checked={!!localSettings.showArrows}
+              onChange={(checked) => handleUpdateField({ showArrows: checked })}
+              label={<span className="font-black text-slate-600">Hiển thị các mũi tên liên kết</span>}
             />
             <Checkbox
-              checked={!!localSettings.showDate}
-              onChange={(checked) => handleUpdateField({ showDate: checked })}
-              label={<span className="font-black text-slate-600">Hiển thị ngày/mốc thời gian</span>}
-            />
-            <Checkbox
-              checked={!!localSettings.showNumber}
-              onChange={(checked) => handleUpdateField({ showNumber: checked })}
-              label={<span className="font-black text-slate-600">Hiển thị số thứ tự thẻ</span>}
-            />
-            <Checkbox
-              checked={!!localSettings.compactMode}
-              onChange={(checked) => handleUpdateField({ compactMode: checked })}
-              label={<span className="font-black text-slate-600">Chế độ thu gọn chữ (Compact)</span>}
+              checked={!!localSettings.showDescriptions}
+              onChange={(checked) => handleUpdateField({ showDescriptions: checked })}
+              label={<span className="font-black text-slate-600">Hiển thị mô tả của các nút</span>}
             />
           </div>
 
           <div className="space-y-2 pt-2 border-t border-slate-100">
             <span className="font-black text-slate-600 uppercase tracking-wider block">Màu sắc chủ đề</span>
             <div className="grid grid-cols-4 gap-2">
-              {ACCENT_COLORS.map((color) => {
+              {THEME_COLORS.map((color) => {
                 const isSelected = localSettings.themeColor === color.value;
                 return (
                   <button
                     key={color.value}
                     onClick={() => handleUpdateField({ themeColor: color.value })}
-                    className={`flex flex-col items-center gap-1 p-1 rounded-xl border transition cursor-pointer ${
+                    className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border transition cursor-pointer ${
                       isSelected
                         ? 'border-slate-800 bg-slate-50'
                         : 'border-slate-100 hover:border-slate-200'
@@ -192,9 +177,9 @@ export const TimelineSettings: React.FC<TimelineSettingsProps> = ({
                   >
                     <span
                       style={{ backgroundColor: color.value }}
-                      className="w-4 h-4 rounded-full border border-white shadow-2xs"
+                      className="w-5 h-5 rounded-full border border-white shadow-2xs"
                     />
-                    <span className="text-[8px] font-bold text-slate-500">{color.name}</span>
+                    <span className="text-[9px] font-bold text-slate-500">{color.name}</span>
                   </button>
                 );
               })}

@@ -1923,7 +1923,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     }
   }, [chapters, activeLessonId, activeBlockIndex, pushHistoryState]);
 
-  const handleSelectOtherBlock = useCallback((type: 'timeline' | 'flow' | 'tabs') => {
+  const handleSelectOtherBlock = useCallback((type: 'timeline' | 'flow' | 'tabs' | 'compare' | 'diagram' | 'matching') => {
     setShowOtherBlocksPopup(false);
     setChapters(prev => {
       const nextChapters = prev.map(ch => ({

@@ -112,6 +112,44 @@ export const createDefaultBlock = (
         },
       };
 
+    case 'compare':
+      return {
+        ...base,
+        compareContent: {
+          version: 1,
+          columns: [],
+          settings: {
+            themeColor: '#6366f1'
+          }
+        }
+      };
+
+    case 'diagram':
+      return {
+        ...base,
+        diagramContent: {
+          version: 1,
+          nodes: [],
+          settings: {
+            layout: 'horizontal',
+            arrowStyle: 'straight',
+            themeColor: '#6366f1'
+          }
+        }
+      };
+
+    case 'matching':
+      return {
+        ...base,
+        matchingContent: {
+          version: 1,
+          pairs: [],
+          settings: {
+            themeColor: '#6366f1'
+          }
+        }
+      };
+
     case 'code':
       return {
         ...base,
