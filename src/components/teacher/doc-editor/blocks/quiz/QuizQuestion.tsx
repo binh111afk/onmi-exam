@@ -27,7 +27,7 @@ export const QuizQuestionComponent: React.FC<QuizQuestionProps> = ({
         onPointerDown={stopEditorPointerHandling}
         onKeyDown={stopEditorKeyHandling}
         onChange={e => onUpdateQuestion({ ...question, text: e.target.value })}
-        placeholder="Nhập nội dung câu hỏi..."
+        placeholder="Nhập câu hỏi..."
         className="w-full bg-transparent border-none outline-none font-bold text-xs text-slate-800 focus:ring-0 resize-y min-h-[24px] placeholder-slate-400 p-0"
       />
       {/* Description area */}

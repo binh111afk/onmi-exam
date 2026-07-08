@@ -1,5 +1,7 @@
 import type { DocBlock } from '../../../../types/doc-editor';
 import { createNewQuizContent } from './quiz/QuizUtils';
+import { createNewFlashcardContent } from './flashcard/FlashcardUtils';
+import { createDefaultMindmapData } from './mindmap/MindmapUtils';
 
 export const generateBlockId = (): string => `b-${crypto.randomUUID()}`;
 
@@ -62,6 +64,18 @@ export const createDefaultBlock = (
         quizContent: createNewQuizContent(),
       };
 
+    case 'flashcard':
+      return {
+        ...base,
+        flashcardContent: createNewFlashcardContent(),
+      };
+
+    case 'mindmap':
+      return {
+        ...base,
+        mindmapContent: createDefaultMindmapData(),
+      };
+
     case 'code':
       return {
         ...base,
@@ -75,8 +89,6 @@ export const createDefaultBlock = (
     case 'callout':
     case 'quote':
     case 'divider':
-    case 'flashcard':
-    case 'mindmap':
     case 'media':
     default:
       return base;

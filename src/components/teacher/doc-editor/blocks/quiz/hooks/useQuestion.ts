@@ -7,10 +7,9 @@ export function useQuestion(
   onUpdateQuestion: (updated: QuizQuestion) => void
 ) {
   const addOption = useCallback(() => {
-    const nextChar = String.fromCharCode(65 + question.options.length);
     onUpdateQuestion({
       ...question,
-      options: [...question.options, createNewOption(`Phương án ${nextChar}`)]
+      options: [...question.options, createNewOption('')]
     });
   }, [question, onUpdateQuestion]);
 

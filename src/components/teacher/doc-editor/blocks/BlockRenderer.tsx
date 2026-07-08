@@ -10,79 +10,9 @@ import { TableBlock } from './table/TableBlock';
 import { FormulaBlock } from './FormulaBlock';
 import { CodeBlock } from './CodeBlock';
 import { QuizBlock } from './quiz/QuizBlock';
-import { Award, FolderOpen, Video } from 'lucide-react';
-
-const FlashcardBlockComponent: React.FC<{
-  block: DocBlock;
-  idx: number;
-  isActive: boolean;
-  setActiveBlockIndex: (i: number) => void;
-  onUpdateBlock: (i: number, updated: DocBlock) => void;
-  showUniversalToolbar?: boolean;
-}> = ({ block, idx, isActive, setActiveBlockIndex, onUpdateBlock }) => {
-  return (
-    <div
-      onClick={() => setActiveBlockIndex(idx)}
-      className="flex-1 p-4 border border-indigo-100 bg-indigo-50/20 rounded-xl my-1 flex flex-col items-center justify-center text-center gap-1.5 relative overflow-hidden shadow-sm select-text"
-    >
-      <div className="flex items-center justify-between w-full text-indigo-500 font-extrabold text-[8px] uppercase tracking-wide select-none mb-1">
-        <span className="flex items-center gap-1"><Award size={9} /> Flashcard</span>
-        {isActive && (
-          <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-white border border-slate-200 rounded-lg shadow-sm text-[8px] text-slate-500 font-bold">
-            Flashcard Toolbar
-          </div>
-        )}
-      </div>
-      <input
-        type="text"
-        value={block.text || ''}
-        onChange={(e) => onUpdateBlock(idx, { ...block, text: e.target.value })}
-        placeholder="Thuật ngữ / Từ vựng..."
-        className="w-full bg-transparent border-none outline-none text-center font-black text-xs text-indigo-900 focus:ring-0"
-      />
-      <div className="w-12 h-px bg-indigo-100 my-1" />
-      <div className="text-[9px] text-slate-500 font-medium select-none">Định nghĩa / Ý nghĩa giải thích</div>
-    </div>
-  );
-};
-const FlashcardBlock = React.memo(FlashcardBlockComponent);
-
-const MindmapBlockComponent: React.FC<{
-  block: DocBlock;
-  idx: number;
-  isActive: boolean;
-  setActiveBlockIndex: (i: number) => void;
-  onUpdateBlock: (i: number, updated: DocBlock) => void;
-  showUniversalToolbar?: boolean;
-}> = ({ block, idx, isActive, setActiveBlockIndex, onUpdateBlock }) => {
-  return (
-    <div
-      onClick={() => setActiveBlockIndex(idx)}
-      className="flex-1 p-3 border border-slate-200 bg-slate-55 rounded-xl my-1 flex flex-col gap-2 items-center justify-center text-center py-4 select-text"
-    >
-      <div className="flex items-center justify-between w-full text-primary font-black text-[9px] uppercase tracking-wider select-none mb-1">
-        <span className="flex items-center gap-1"><FolderOpen size={10} /> Sơ đồ tư duy (Mindmap)</span>
-        {isActive && (
-          <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-white border border-slate-200 rounded-lg shadow-sm text-[8px] text-slate-500 font-bold">
-            Mindmap Toolbar
-          </div>
-        )}
-      </div>
-      <div className="flex items-center gap-2 text-[9px] font-bold text-slate-600">
-        <div className="px-2.5 py-1 bg-white border border-slate-200 rounded-full shadow-sm text-primary select-none">Chủ đề chính</div>
-        <div className="text-slate-355 select-none">─</div>
-        <input
-          type="text"
-          value={block.text || ''}
-          onChange={(e) => onUpdateBlock(idx, { ...block, text: e.target.value })}
-          placeholder="Nhánh con..."
-          className="bg-white border border-slate-200 rounded-md px-3 py-1 text-center text-[9px] font-bold text-slate-700 outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-        />
-      </div>
-    </div>
-  );
-};
-const MindmapBlock = React.memo(MindmapBlockComponent);
+import { FlashcardBlock } from './flashcard/FlashcardBlock';
+import { MindmapBlock } from './mindmap/MindmapBlock';
+import { Video } from 'lucide-react';
 
 const MediaBlockComponent: React.FC<{
   block: DocBlock;

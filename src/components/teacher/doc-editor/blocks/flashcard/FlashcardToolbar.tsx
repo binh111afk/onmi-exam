@@ -1,24 +1,24 @@
 import React from 'react';
-import { Plus, Shuffle, Settings } from 'lucide-react';
-import type { QuizSettings } from './QuizTypes';
-import { QuizSettingsDialog } from './QuizSettingsDialog';
+import { Plus, Settings, Shuffle } from 'lucide-react';
+import type { FlashcardSettings as FlashcardSettingsType } from './FlashcardTypes';
+import { FlashcardSettings } from './FlashcardSettings';
 
-interface QuizToolbarProps {
-  onAddQuestion: () => void;
-  onShuffleQuestions: () => void;
-  settings: QuizSettings;
-  onUpdateSettings: (settings: Partial<QuizSettings>) => void;
+interface FlashcardToolbarProps {
   isBlockActive: boolean;
+  settings: FlashcardSettingsType;
+  onAddCard: () => void;
+  onShuffleCards: () => void;
+  onUpdateSettings: (settings: Partial<FlashcardSettingsType>) => void;
 }
 
 const SEP = () => <div className="w-px h-3.5 bg-slate-200 mx-0.5" />;
 
-export const QuizToolbar: React.FC<QuizToolbarProps> = ({
-  onAddQuestion,
-  onShuffleQuestions,
+export const FlashcardToolbar: React.FC<FlashcardToolbarProps> = ({
+  isBlockActive,
   settings,
+  onAddCard,
+  onShuffleCards,
   onUpdateSettings,
-  isBlockActive
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
 
@@ -28,33 +28,37 @@ export const QuizToolbar: React.FC<QuizToolbarProps> = ({
     <div className="mb-2 animate-fadeIn select-none">
       <div className="inline-flex items-center gap-0.5 px-1.5 py-1 bg-white border border-slate-200 rounded-xl shadow-sm">
         <button
-          onMouseDown={e => e.preventDefault()}
-          onClick={onAddQuestion}
-          className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-purple-600 hover:bg-purple-50 transition cursor-pointer"
+          type="button"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onAddCard}
+          className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-indigo-600 hover:bg-indigo-50 transition cursor-pointer"
         >
-          <Plus size={12} className="stroke-[2.5]" /> Thêm câu hỏi
+          <Plus size={12} className="stroke-[2.5]" /> Thêm thẻ
         </button>
-        
+
         <SEP />
-        
+
         <button
-          onMouseDown={e => e.preventDefault()}
-          onClick={onShuffleQuestions}
+          type="button"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onShuffleCards}
           className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition cursor-pointer"
-          title="Trộn câu hỏi"
+          title="Trộn thẻ"
         >
-          <Shuffle size={11} /> Trộn câu hỏi
+          <Shuffle size={11} /> Trộn thẻ
         </button>
         <button
-          onMouseDown={e => e.preventDefault()}
+          type="button"
+          onMouseDown={(event) => event.preventDefault()}
           onClick={() => setIsSettingsOpen(true)}
           className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition cursor-pointer"
-          title="Cấu hình Quiz"
+          title="Cấu hình Flashcard"
         >
           <Settings size={11} /> Cấu hình
         </button>
       </div>
-      <QuizSettingsDialog
+
+      <FlashcardSettings
         isOpen={isSettingsOpen}
         settings={settings}
         onClose={() => setIsSettingsOpen(false)}

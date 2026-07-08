@@ -1,3 +1,5 @@
+import type { MindmapData } from '../components/teacher/doc-editor/blocks/mindmap/MindmapTypes';
+
 export interface TableCellStyle {
   align?: 'left' | 'center' | 'right';
   valign?: 'top' | 'middle' | 'bottom';
@@ -28,6 +30,8 @@ export interface DocBlock {
   rowHeights?: number[];
   cellStyles?: TableCellStyle[][];
   quizContent?: QuizContent;
+  flashcardContent?: FlashcardContent;
+  mindmapContent?: MindmapData;
 }
 
 export const QuestionType = {
@@ -69,6 +73,30 @@ export interface QuizContent {
   settings: QuizSettings;
 }
 
+export type FlashcardOrder = 'manual' | 'created';
+
+export interface FlashcardCard {
+  id: string;
+  front: string;
+  back: string;
+  note?: string;
+  tags?: string[];
+}
+
+export interface FlashcardSettings {
+  shuffleCards: boolean;
+  flipAnimation: boolean;
+  autoPlay: boolean;
+  showProgress: boolean;
+  cardOrder: FlashcardOrder;
+}
+
+export interface FlashcardContent {
+  version: number;
+  settings: FlashcardSettings;
+  cards: FlashcardCard[];
+}
+
 export interface Lesson {
   id: string;
   title: string;
@@ -95,5 +123,3 @@ export interface LiveTableActiveCell {
   row: number;
   col: number;
 }
-
-

@@ -22,10 +22,13 @@ export const QuizBlockComponent: React.FC<QuizBlockProps> = ({
 }) => {
   const {
     questions,
+    settings,
     addQuestion,
     deleteQuestion,
     duplicateQuestion,
     moveQuestion,
+    shuffleQuestions,
+    updateQuizSettings,
     updateQuestions,
   } = useQuiz(block, idx, onUpdateBlock);
 
@@ -58,6 +61,9 @@ export const QuizBlockComponent: React.FC<QuizBlockProps> = ({
         questions={questions}
         isBlockActive={isActive}
         onAddQuestion={addQuestion}
+        onShuffleQuestions={shuffleQuestions}
+        settings={settings}
+        onUpdateSettings={updateQuizSettings}
         onDeleteQuestion={deleteQuestion}
         onDuplicateQuestion={duplicateQuestion}
         onMoveQuestion={moveQuestion}

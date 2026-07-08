@@ -58,7 +58,7 @@ export const QuizOptionComponent: React.FC<QuizOptionProps> = ({
         onPointerDown={stopEditorPointerHandling}
         onKeyDown={stopEditorKeyHandling}
         onChange={e => onUpdateText(e.target.value)}
-        placeholder="Nhập nội dung phương án..."
+        placeholder="Nhập đáp án..."
         className="flex-1 bg-transparent border-none outline-none text-xs text-slate-700 py-0.5 focus:ring-0 focus:border-purple-400 border-b border-transparent hover:border-slate-200 transition-colors"
       />
 

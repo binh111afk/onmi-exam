@@ -1,12 +1,12 @@
 import { useCallback } from 'react';
 import type { DocBlock } from '../../../../../../types/doc-editor';
-import type { QuizQuestion } from '../QuizTypes';
-import { createNewQuestion } from '../QuizUtils';
+import type { QuizContent, QuizQuestion, QuizSettings } from '../QuizTypes';
+import { createNewQuestion, shuffleQuizQuestions } from '../QuizUtils';
 
 export function useQuiz(
   block: DocBlock,
   idx: number,
-  onUpdateBlock: (idx: number, updated: DocBlock) => void
+  onUpdateBlock: (idx: number, updated: DocBlock, isDebounced?: boolean) => void
 ) {
   const quizContent = block.quizContent || {
     version: 1,
@@ -20,18 +20,32 @@ export function useQuiz(
   };
   const questions = quizContent.questions;
 
-  const updateQuestions = useCallback((nextQuestions: QuizQuestion[]) => {
+  const updateQuizContent = useCallback((nextQuizContent: QuizContent) => {
     onUpdateBlock(idx, {
       ...block,
-      quizContent: {
-        ...quizContent,
-        questions: nextQuestions
+      quizContent: nextQuizContent
+    }, false);
+  }, [block, idx, onUpdateBlock]);
+
+  const updateQuestions = useCallback((nextQuestions: QuizQuestion[]) => {
+    updateQuizContent({
+      ...quizContent,
+      questions: nextQuestions
+    });
+  }, [quizContent, updateQuizContent]);
+
+  const updateQuizSettings = useCallback((nextSettings: Partial<QuizSettings>) => {
+    updateQuizContent({
+      ...quizContent,
+      settings: {
+        ...quizContent.settings,
+        ...nextSettings
       }
     });
-  }, [block, idx, onUpdateBlock, quizContent]);
+  }, [quizContent, updateQuizContent]);
 
   const addQuestion = useCallback(() => {
-    updateQuestions([...questions, createNewQuestion('Câu hỏi mới')]);
+    updateQuestions([...questions, createNewQuestion()]);
   }, [questions, updateQuestions]);
 
   const deleteQuestion = useCallback((qId: string) => {
@@ -67,6 +81,11 @@ export function useQuiz(
     updateQuestions(next);
   }, [questions, updateQuestions]);
 
+  const shuffleQuestions = useCallback(() => {
+    if (questions.length < 2) return;
+    updateQuestions(shuffleQuizQuestions(questions));
+  }, [questions, updateQuestions]);
+
   return {
     questions,
     settings: quizContent.settings,
@@ -74,6 +93,9 @@ export function useQuiz(
     deleteQuestion,
     duplicateQuestion,
     moveQuestion,
+    shuffleQuestions,
+    updateQuizContent,
+    updateQuizSettings,
     updateQuestions,
   };
 }

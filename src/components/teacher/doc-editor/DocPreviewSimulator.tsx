@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { RefreshCw, Maximize2, Minimize2, ZoomIn, ZoomOut, RotateCcw, X, Award, FolderOpen, Video } from 'lucide-react';
+import { RefreshCw, Maximize2, Minimize2, ZoomIn, ZoomOut, RotateCcw, X, Video } from 'lucide-react';
 import { Tooltip } from './Tooltip';
 import { SharedTableRenderer } from './blocks/table/SharedTableRenderer';
 import { QuizPreview } from './blocks/quiz/QuizPreview';
+import { FlashcardPreview } from './blocks/flashcard/FlashcardPreview';
+import { MindmapPreview } from './blocks/mindmap/MindmapPreview';
 import type { DocBlock, LiveTableResizeState } from '../../../types/doc-editor';
 
 interface DocPreviewSimulatorProps {
@@ -301,29 +303,16 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
 
           if (block.type === 'flashcard') {
             return (
-              <div key={block.id} style={indentStyle} className="p-4 border border-indigo-100 bg-indigo-50/20 rounded-xl my-2.5 flex flex-col items-center justify-center text-center gap-1.5 relative overflow-hidden shadow-sm">
-                <div className="absolute top-2 left-2 text-indigo-500 font-extrabold text-[8px] uppercase tracking-wide flex items-center gap-1">
-                  <Award size={9} /> Flashcard
-                </div>
-                <div className="text-[11px] text-indigo-900 font-black tracking-wide mt-2" dangerouslySetInnerHTML={{ __html: block.text || 'Thuật ngữ / Từ vựng' }} />
-                <div className="w-12 h-px bg-indigo-100 my-1" />
-                <div className="text-[9px] text-slate-500 font-medium">Định nghĩa / Ý nghĩa giải thích</div>
-              </div>
+              <FlashcardPreview
+                key={block.id}
+                block={block}
+              />
             );
           }
 
           if (block.type === 'mindmap') {
             return (
-              <div key={block.id} style={indentStyle} className="p-3 border border-slate-200 bg-slate-50 rounded-xl my-2.5 flex flex-col gap-2 items-center justify-center text-center py-5">
-                <div className="text-primary font-black text-[9px] uppercase tracking-wider flex items-center gap-1 mb-1">
-                  <FolderOpen size={10} /> Sơ đồ tư duy (Mindmap)
-                </div>
-                <div className="flex items-center gap-2 text-[9px] font-bold text-slate-600">
-                  <div className="px-2.5 py-1 bg-white border border-slate-200 rounded-full shadow-sm text-primary">Chủ đề chính</div>
-                  <div className="text-slate-350">─</div>
-                  <div className="px-2 py-0.5 bg-white border border-slate-200 rounded-md shadow-sm">{block.text.replace(/<[^>]*>/g, '').trim() || 'Nhánh con'}</div>
-                </div>
-              </div>
+              <MindmapPreview key={block.id} block={block} />
             );
           }
 

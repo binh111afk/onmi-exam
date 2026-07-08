@@ -1,5 +1,9 @@
 import { QuestionType } from './QuizTypes';
 import type { QuizOption, QuizQuestion, QuizContent } from './QuizTypes';
+import {
+  getDeterministicShuffledItems as getSharedDeterministicShuffledItems,
+  shuffleItems,
+} from '../interactiveBlockUtils';
 
 export const createQuizId = (): string => crypto.randomUUID();
 export const createQuestionId = (): string => crypto.randomUUID();
@@ -16,16 +20,16 @@ export const createNewQuestion = (text = '', type = QuestionType.SINGLE_CHOICE):
   text,
   type,
   options: [
-    createNewOption('Phương án A', true),
-    createNewOption('Phương án B', false),
-    createNewOption('Phương án C', false),
-    createNewOption('Phương án D', false),
+    createNewOption('', true),
+    createNewOption('', false),
+    createNewOption('', false),
+    createNewOption('', false),
   ],
 });
 
 export const createNewQuizContent = (): QuizContent => ({
   version: 1,
-  questions: [createNewQuestion('Câu hỏi trắc nghiệm số 1')],
+  questions: [],
   settings: {
     shuffleQuestions: false,
     shuffleOptions: false,
@@ -33,3 +37,11 @@ export const createNewQuizContent = (): QuizContent => ({
     passingScore: 50,
   },
 });
+
+export const shuffleQuizQuestions = (questions: QuizQuestion[]): QuizQuestion[] => {
+  return shuffleItems(questions);
+};
+
+export const getDeterministicShuffledItems = <T extends { id: string }>(items: T[], seed: string): T[] => {
+  return getSharedDeterministicShuffledItems(items, seed);
+};

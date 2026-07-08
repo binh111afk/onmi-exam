@@ -1,6 +1,7 @@
 import React from 'react';
 import { HelpCircle } from 'lucide-react';
 import type { DocBlock, QuizQuestion, QuizOption } from '../../../../../types/doc-editor';
+import { getDeterministicShuffledItems } from './QuizUtils';
 
 interface QuizPreviewProps {
   block: DocBlock;
@@ -11,8 +12,19 @@ export const QuizPreview: React.FC<QuizPreviewProps> = ({
   block,
   indentStyle,
 }) => {
-  const quizContent = block.quizContent || { questions: [], settings: {} };
-  const questions = quizContent.questions || [];
+  const quizContent = block.quizContent || {
+    questions: [],
+    settings: {
+      shuffleQuestions: false,
+      shuffleOptions: false,
+      showCorrectAnswers: true,
+      passingScore: 50,
+    },
+  };
+  const settings = quizContent.settings;
+  const questions = settings.shuffleQuestions
+    ? getDeterministicShuffledItems(quizContent.questions || [], block.id)
+    : quizContent.questions || [];
 
   if (questions.length === 0) {
     return (
@@ -20,7 +32,7 @@ export const QuizPreview: React.FC<QuizPreviewProps> = ({
         <div className="flex items-center gap-1.5 text-purple-600 font-extrabold text-[8px] uppercase tracking-wide">
           <HelpCircle size={10} /> Câu hỏi trắc nghiệm
         </div>
-        <div className="text-[10px] text-slate-400 italic">Bộ câu hỏi chưa có câu hỏi nào.</div>
+        <div className="text-[10px] text-slate-400 italic">Chưa có câu hỏi. Nhấn 'Thêm câu hỏi' để bắt đầu.</div>
       </div>
     );
   }
@@ -44,23 +56,27 @@ export const QuizPreview: React.FC<QuizPreviewProps> = ({
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-1 text-[9px] font-semibold text-slate-600 w-full">
-            {question.options.map((option: QuizOption, oIdx: number) => {
+            {(settings.shuffleOptions
+              ? getDeterministicShuffledItems(question.options, question.id)
+              : question.options
+            ).map((option: QuizOption, oIdx: number) => {
               const letter = String.fromCharCode(65 + oIdx);
+              const shouldShowCorrect = settings.showCorrectAnswers && option.isCorrect;
               return (
                 <div 
                   key={option.id}
                   className={`border p-2 rounded-lg transition-colors flex items-center gap-2 bg-white ${
-                    option.isCorrect 
+                    shouldShowCorrect
                       ? 'border-emerald-200 bg-emerald-50/10 text-emerald-700' 
                       : 'border-slate-100 text-slate-600'
                   }`}
                 >
                   <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${
-                    option.isCorrect 
+                    shouldShowCorrect
                       ? 'border-emerald-500 bg-emerald-50' 
                       : 'border-slate-350'
                   }`}>
-                    {option.isCorrect && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
+                    {shouldShowCorrect && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
                   </div>
                   <span>{letter}. {option.text || 'Phương án chưa nhập...'}</span>
                 </div>
