@@ -176,11 +176,10 @@ export const DiagramSettings: React.FC<DiagramSettingsProps> = ({
                   <button
                     key={color.value}
                     onClick={() => handleUpdateField({ themeColor: color.value })}
-                    className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border transition cursor-pointer ${
-                      isSelected
-                        ? 'border-slate-800 bg-slate-50'
+                    className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border transition cursor-pointer ${isSelected
+                        ? 'border-indigo-400 bg-indigo-50'
                         : 'border-slate-100 hover:border-slate-200'
-                    }`}
+                      }`}
                   >
                     <span
                       style={{ backgroundColor: color.value }}

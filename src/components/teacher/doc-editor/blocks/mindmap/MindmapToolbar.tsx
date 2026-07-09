@@ -29,13 +29,12 @@ const ToolbarButton: React.FC<{
     onClick={onClick}
     disabled={disabled}
     title={label}
-    className={`flex h-7 items-center gap-1 rounded-md px-2 text-[10px] font-bold transition cursor-pointer ${
-      disabled
+    className={`flex h-7 items-center gap-1 rounded-md px-2 text-[10px] font-bold transition cursor-pointer ${disabled
         ? 'cursor-not-allowed text-slate-300'
         : active
           ? 'bg-primary-light text-primary'
           : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-    }`}
+      }`}
   >
     {icon}
     <span>{label}</span>
@@ -70,7 +69,7 @@ export const MindmapToolbar: React.FC<MindmapToolbarProps> = ({
           disabled={!selectedNode.parentId}
         />
         <div className="w-px h-3 bg-slate-200 mx-0.5" />
-        
+
         {/* Màu sắc dropdown */}
         <div className="relative">
           <ToolbarButton
@@ -94,7 +93,7 @@ export const MindmapToolbar: React.FC<MindmapToolbarProps> = ({
                         onColorChange(color.value);
                         setOpenPanel(null);
                       }}
-                      className={`h-5.5 w-5.5 rounded-full border-2 ${selectedNode.color === color.value ? 'border-slate-800' : 'border-white'} ${color.className} cursor-pointer shadow-3xs`}
+                      className={`h-5.5 w-5.5 rounded-full border-2 ${selectedNode.color === color.value ? 'border-indigo-500' : 'border-white'} ${color.className} cursor-pointer shadow-3xs`}
                     />
                   ))}
                 </div>

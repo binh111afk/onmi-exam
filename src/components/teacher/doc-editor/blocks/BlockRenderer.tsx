@@ -18,6 +18,9 @@ import { TabsBlock } from './tabs/TabsBlock';
 import { CompareBlock } from './compare/CompareBlock';
 import { DiagramBlock } from './diagram/DiagramBlock';
 import { MatchingBlock } from './matching/MatchingBlock';
+import { FillBlankBlock } from './fillblank/Block';
+import { DragDropBlock } from './dragdrop/Block';
+import { SortOrderBlock } from './sortorder/Block';
 import { Video } from 'lucide-react';
 
 const MediaBlockComponent: React.FC<{
@@ -96,7 +99,7 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
   switch (block.type) {
     case 'heading':
       return (
-        <HeadingBlock 
+        <HeadingBlock
           block={block}
           idx={idx}
           isActive={isActive}
@@ -108,7 +111,7 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
       );
     case 'quote':
       return (
-        <QuoteBlock 
+        <QuoteBlock
           block={block}
           idx={idx}
           isActive={isActive}
@@ -120,7 +123,7 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
       );
     case 'callout':
       return (
-        <CalloutBlock 
+        <CalloutBlock
           block={block}
           idx={idx}
           isActive={isActive}
@@ -132,14 +135,14 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
       );
     case 'divider':
       return (
-        <DividerBlock 
+        <DividerBlock
           idx={idx}
           setActiveBlockIndex={setActiveBlockIndex}
         />
       );
     case 'image':
       return (
-        <ImageBlock 
+        <ImageBlock
           block={block}
           idx={idx}
           isActive={isActive}
@@ -149,7 +152,7 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
       );
     case 'table':
       return (
-        <TableBlock 
+        <TableBlock
           block={block}
           idx={idx}
           isActive={isActive}
@@ -167,7 +170,7 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
       );
     case 'formula':
       return (
-        <FormulaBlock 
+        <FormulaBlock
           block={block}
           idx={idx}
           isActive={isActive}
@@ -179,7 +182,7 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
       );
     case 'quiz':
       return (
-        <QuizBlock 
+        <QuizBlock
           block={block}
           idx={idx}
           isActive={isActive}
@@ -190,7 +193,7 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
       );
     case 'flashcard':
       return (
-        <FlashcardBlock 
+        <FlashcardBlock
           block={block}
           idx={idx}
           isActive={isActive}
@@ -201,7 +204,7 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
       );
     case 'mindmap':
       return (
-        <MindmapBlock 
+        <MindmapBlock
           block={block}
           idx={idx}
           isActive={isActive}
@@ -212,7 +215,7 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
       );
     case 'timeline':
       return (
-        <TimelineBlock 
+        <TimelineBlock
           block={block}
           idx={idx}
           isActive={isActive}
@@ -223,7 +226,7 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
       );
     case 'flow':
       return (
-        <FlowBlock 
+        <FlowBlock
           block={block}
           idx={idx}
           isActive={isActive}
@@ -234,7 +237,7 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
       );
     case 'tabs':
       return (
-        <TabsBlock 
+        <TabsBlock
           block={block}
           idx={idx}
           isActive={isActive}
@@ -245,7 +248,7 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
       );
     case 'compare':
       return (
-        <CompareBlock 
+        <CompareBlock
           block={block}
           idx={idx}
           isActive={isActive}
@@ -256,7 +259,7 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
       );
     case 'diagram':
       return (
-        <DiagramBlock 
+        <DiagramBlock
           block={block}
           idx={idx}
           isActive={isActive}
@@ -267,7 +270,7 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
       );
     case 'matching':
       return (
-        <MatchingBlock 
+        <MatchingBlock
           block={block}
           idx={idx}
           isActive={isActive}
@@ -276,9 +279,39 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
           showUniversalToolbar={false}
         />
       );
+    case 'fillblank':
+      return (
+        <FillBlankBlock
+          block={block}
+          idx={idx}
+          isActive={isActive}
+          setActiveBlockIndex={setActiveBlockIndex}
+          onUpdateBlock={onUpdateBlock}
+        />
+      );
+    case 'dragdrop':
+      return (
+        <DragDropBlock
+          block={block}
+          idx={idx}
+          isActive={isActive}
+          setActiveBlockIndex={setActiveBlockIndex}
+          onUpdateBlock={onUpdateBlock}
+        />
+      );
+    case 'sortorder':
+      return (
+        <SortOrderBlock
+          block={block}
+          idx={idx}
+          isActive={isActive}
+          setActiveBlockIndex={setActiveBlockIndex}
+          onUpdateBlock={onUpdateBlock}
+        />
+      );
     case 'media':
       return (
-        <MediaBlock 
+        <MediaBlock
           block={block}
           idx={idx}
           isActive={isActive}
@@ -289,7 +322,7 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
       );
     case 'code':
       return (
-        <CodeBlock 
+        <CodeBlock
           block={block}
           idx={idx}
           setActiveBlockIndex={setActiveBlockIndex}
@@ -298,7 +331,7 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
       );
     default:
       return (
-        <ParagraphBlock 
+        <ParagraphBlock
           block={block}
           idx={idx}
           isActive={isActive}

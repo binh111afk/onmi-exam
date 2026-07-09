@@ -74,7 +74,7 @@ export const QuizPreview: React.FC<QuizPreviewProps> = ({
                   <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${
                     shouldShowCorrect
                       ? 'border-emerald-500 bg-emerald-50' 
-                      : 'border-slate-350'
+                      : 'border-slate-300'
                   }`}>
                     {shouldShowCorrect && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
                   </div>

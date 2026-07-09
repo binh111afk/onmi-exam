@@ -20,12 +20,12 @@ export const ComparePreview: React.FC<ComparePreviewProps> = ({ content }) => {
 
   // Card styles
   const cardStyleClass = {
-    bordered: 'bg-white border border-slate-150',
+    bordered: 'bg-white border border-slate-200',
     flat: 'bg-slate-50/50 border border-transparent shadow-none',
     shadow: 'bg-white border border-slate-100 shadow-md'
-  }[settings.cardStyle || 'bordered'] || 'bg-white border border-slate-150';
+  }[settings.cardStyle || 'bordered'] || 'bg-white border border-slate-200';
 
-  const borderClass = settings.showBorder !== false ? 'border border-slate-150' : 'border border-transparent';
+  const borderClass = settings.showBorder !== false ? 'border border-slate-200' : 'border border-transparent';
   const heightClass = settings.equalHeight !== false ? 'items-stretch' : 'items-start';
 
   const spacingClass = {
@@ -64,7 +64,7 @@ export const ComparePreview: React.FC<ComparePreviewProps> = ({ content }) => {
           headerStyleObj = { borderBottom: `2.5px solid ${themeColor}` };
         } else {
           // Default: filled
-          headerClass += 'bg-slate-50/50 border-slate-150';
+          headerClass += 'bg-slate-50/50 border-slate-200';
           headerStyleObj = { borderTop: `4px solid ${themeColor}` };
         }
 

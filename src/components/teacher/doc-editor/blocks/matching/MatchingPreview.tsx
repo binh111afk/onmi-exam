@@ -164,7 +164,7 @@ export const MatchingPreview: React.FC<MatchingPreviewProps> = ({ content }) => 
   return (
     <div className="flex flex-col gap-4 w-full mt-1 animate-fadeIn">
       {/* Game Board */}
-      <div ref={containerRef} className="relative w-full grid grid-cols-2 gap-16 select-none bg-slate-50/30 p-6 rounded-2xl border border-slate-150 overflow-hidden">
+      <div ref={containerRef} className="relative w-full grid grid-cols-2 gap-16 select-none bg-slate-50/30 p-6 rounded-2xl border border-slate-200 overflow-hidden">
         
         {/* SVG Drawing Layer */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none z-10 overflow-visible">
@@ -218,7 +218,7 @@ export const MatchingPreview: React.FC<MatchingPreviewProps> = ({ content }) => 
                 key={pair.id}
                 id={`left-item-${pair.id}`}
                 onClick={() => handleLeftClick(pair.id)}
-                className={`bg-white border border-slate-150 rounded-xl p-3.5 hover:bg-slate-50/50 transition cursor-pointer flex items-center justify-between gap-3 min-h-[50px] relative ${
+                className={`bg-white border border-slate-200 rounded-xl p-3.5 hover:bg-slate-50/50 transition cursor-pointer flex items-center justify-between gap-3 min-h-[50px] relative ${
                   isSelected ? 'ring-2 ring-offset-1 ring-primary/20' : ''
                 }`}
                 style={borderStyle}
@@ -272,7 +272,7 @@ export const MatchingPreview: React.FC<MatchingPreviewProps> = ({ content }) => 
                 key={pair.id}
                 id={`right-item-${pair.id}`}
                 onClick={() => handleRightClick(pair.id)}
-                className={`bg-white border border-slate-150 rounded-xl p-3.5 hover:bg-slate-50/50 transition cursor-pointer flex items-center gap-3 min-h-[50px] relative ${
+                className={`bg-white border border-slate-200 rounded-xl p-3.5 hover:bg-slate-50/50 transition cursor-pointer flex items-center gap-3 min-h-[50px] relative ${
                   isSelected ? 'ring-2 ring-offset-1 ring-primary/20' : ''
                 }`}
                 style={borderStyle}
@@ -295,7 +295,7 @@ export const MatchingPreview: React.FC<MatchingPreviewProps> = ({ content }) => 
       </div>
 
       {/* Control Buttons & Validation Messages */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-1.5 bg-slate-50/50 p-3.5 rounded-2xl border border-slate-150">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-1.5 bg-slate-50/50 p-3.5 rounded-2xl border border-slate-200">
         <div className="flex items-center gap-2">
           {!settings.autoCheck && (
             <button

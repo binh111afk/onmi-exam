@@ -75,7 +75,7 @@ export const MatchingBlockComponent: React.FC<MatchingBlockProps> = ({
             {pairs.map((pair, index) => (
               <div
                 key={pair.id}
-                className="bg-white rounded-xl border border-slate-150 p-3 shadow-2xs hover:shadow-sm transition flex items-center justify-between gap-3 group"
+                className="bg-white rounded-xl border border-slate-200 p-3 shadow-2xs hover:shadow-sm transition flex items-center justify-between gap-3 group"
               >
                 {/* Number indicator */}
                 <span
@@ -94,7 +94,7 @@ export const MatchingBlockComponent: React.FC<MatchingBlockProps> = ({
                       value={pair.leftText}
                       onChange={(val) => updatePair(pair.id, { ...pair, leftText: val })}
                       placeholder="VD: Thủ đô Hà Nội..."
-                      className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-150 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-bold text-slate-700 outline-none transition"
+                      className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-200 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-bold text-slate-700 outline-none transition"
                     />
                   </div>
 
@@ -105,7 +105,7 @@ export const MatchingBlockComponent: React.FC<MatchingBlockProps> = ({
                       value={pair.rightText}
                       onChange={(val) => updatePair(pair.id, { ...pair, rightText: val })}
                       placeholder="VD: Việt Nam..."
-                      className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-150 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-bold text-slate-700 outline-none transition"
+                      className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-200 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-bold text-slate-700 outline-none transition"
                     />
                   </div>
                 </div>

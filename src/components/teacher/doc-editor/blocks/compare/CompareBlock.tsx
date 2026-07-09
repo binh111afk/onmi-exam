@@ -83,7 +83,7 @@ export const CompareBlockComponent: React.FC<CompareBlockProps> = ({
             {columns.map((col, index) => (
               <div
                 key={col.id}
-                className="bg-white rounded-xl border border-slate-150 p-3 shadow-2xs hover:shadow-sm transition flex flex-col gap-3 group relative"
+                className="bg-white rounded-xl border border-slate-200 p-3 shadow-2xs hover:shadow-sm transition flex flex-col gap-3 group relative"
               >
                 {/* Actions row inside each column card */}
                 <div className="flex items-center justify-between gap-3 select-none">
@@ -138,7 +138,7 @@ export const CompareBlockComponent: React.FC<CompareBlockProps> = ({
                     value={col.title}
                     onChange={(val) => updateColumn(col.id, { ...col, title: val })}
                     placeholder="Tên đối tượng (VD: Động vật)..."
-                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-150 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-black text-slate-800 outline-none transition"
+                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-200 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-black text-slate-800 outline-none transition"
                   />
                   <EditableText
                     mode="textarea"
@@ -146,7 +146,7 @@ export const CompareBlockComponent: React.FC<CompareBlockProps> = ({
                     value={col.content}
                     onChange={(val) => updateColumn(col.id, { ...col, content: val })}
                     placeholder="Mô tả hoặc đặc điểm chi tiết để so sánh..."
-                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-150 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-semibold text-slate-650 outline-none transition resize-none leading-relaxed flex-1"
+                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-200 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-semibold text-slate-650 outline-none transition resize-none leading-relaxed flex-1"
                   />
                 </div>
               </div>

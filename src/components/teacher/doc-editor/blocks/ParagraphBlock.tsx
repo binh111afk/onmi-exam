@@ -60,7 +60,7 @@ export const ParagraphBlockComponent: React.FC<ParagraphBlockProps> = ({
             type="checkbox" 
             checked={!!block.checked}
             onChange={() => toggleTodoChecked(idx)}
-            className="w-3.5 h-3.5 rounded border-slate-350 accent-primary cursor-pointer mt-0.5"
+            className="w-3.5 h-3.5 rounded border-slate-300 accent-primary cursor-pointer mt-0.5"
           />
         )}
       </div>

@@ -1,10 +1,10 @@
 import React from 'react';
-import { X, Clock, Workflow, Layers, Columns, Network, Link } from 'lucide-react';
+import { X, Clock, Workflow, Layers, Columns, Network, Link, TextCursorInput, Move, ListOrdered } from 'lucide-react';
 import { OtherBlockCard } from './OtherBlockCard';
 
 interface OtherBlocksPopupProps {
   onClose: () => void;
-  onSelectBlock: (type: 'timeline' | 'flow' | 'tabs' | 'compare' | 'diagram' | 'matching') => void;
+  onSelectBlock: (type: 'timeline' | 'flow' | 'tabs' | 'compare' | 'diagram' | 'matching' | 'fillblank' | 'dragdrop' | 'sortorder') => void;
 }
 
 export const OtherBlocksPopup: React.FC<OtherBlocksPopupProps> = ({
@@ -71,12 +71,33 @@ export const OtherBlocksPopup: React.FC<OtherBlocksPopupProps> = ({
             title="Ghép nối"
             description="Bài tập nối cặp vế trái và vế phải"
           />
+
+          <OtherBlockCard
+            onClick={() => onSelectBlock('fillblank')}
+            icon={<TextCursorInput size={18} />}
+            title="Điền vào chỗ trống"
+            description="Bài tập điền từ vào chỗ trống trong câu"
+          />
+
+          <OtherBlockCard
+            onClick={() => onSelectBlock('dragdrop')}
+            icon={<Move size={18} />}
+            title="Kéo & Thả"
+            description="Bài tập phân loại kéo thả thẻ vào các nhóm"
+          />
+
+          <OtherBlockCard
+            onClick={() => onSelectBlock('sortorder')}
+            icon={<ListOrdered size={18} />}
+            title="Sắp xếp thứ tự"
+            description="Bài tập sắp xếp các mục theo thứ tự đúng"
+          />
         </div>
 
         <div className="mt-6 flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 border border-slate-200 text-slate-650 hover:bg-slate-50 font-bold text-[10px] rounded-xl cursor-pointer transition select-none"
+            className="px-4 py-2 border border-slate-200 text-slate-655 hover:bg-slate-50 font-bold text-[10px] rounded-xl cursor-pointer transition select-none"
           >
             Đóng
           </button>

@@ -93,7 +93,7 @@ export const TimelinePreview: React.FC<TimelinePreviewProps> = ({
                 {renderIcon(event.icon, event.color)}
               </div>
 
-              <div className={`mt-3 w-full bg-white border border-slate-150 rounded-2xl shadow-3xs flex flex-col gap-1 hover:shadow-xs transition duration-200 ${cardPadding}`}>
+              <div className={`mt-3 w-full bg-white border border-slate-200 rounded-2xl shadow-3xs flex flex-col gap-1 hover:shadow-xs transition duration-200 ${cardPadding}`}>
                 <div className="flex items-center justify-between gap-2">
                   <h4 className={`${headingTextSize} font-bold`} style={{ color: event.color }}>
                     {event.title || 'Mốc thời gian mới'}
@@ -126,7 +126,7 @@ export const TimelinePreview: React.FC<TimelinePreviewProps> = ({
               {renderIcon(event.icon, event.color)}
             </div>
 
-            <div className={`flex-1 bg-white border border-slate-150 rounded-2xl shadow-3xs flex flex-col gap-1.5 hover:shadow-xs transition duration-200 ${cardPadding}`}>
+            <div className={`flex-1 bg-white border border-slate-200 rounded-2xl shadow-3xs flex flex-col gap-1.5 hover:shadow-xs transition duration-200 ${cardPadding}`}>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <h4 className={`${headingTextSize} font-black text-slate-800`} style={{ color: event.color }}>

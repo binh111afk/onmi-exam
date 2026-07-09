@@ -133,7 +133,7 @@ export const DiagramPreview: React.FC<DiagramPreviewProps> = ({ content }) => {
     return (
       <div
         key={node.id || idx}
-        className={`flex-1 bg-white border border-slate-150 p-3 shadow-2xs hover:shadow-xs transition duration-200 min-w-[140px] max-w-[200px] flex flex-col ${nodeRadiusClass}`}
+        className={`flex-1 bg-white border border-slate-200 p-3 shadow-2xs hover:shadow-xs transition duration-200 min-w-[140px] max-w-[200px] flex flex-col ${nodeRadiusClass}`}
         style={{ borderLeft: `3px solid ${cardColor}` }}
       >
         <h4 className="text-[11px] font-black text-slate-800 leading-tight">

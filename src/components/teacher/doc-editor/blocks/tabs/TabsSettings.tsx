@@ -178,11 +178,10 @@ export const TabsSettings: React.FC<TabsSettingsProps> = ({
                   <button
                     key={color.hex}
                     onClick={() => handleUpdateField({ themeColor: color.hex })}
-                    className={`flex flex-col items-center gap-1 p-1 rounded-xl border transition cursor-pointer ${
-                      isSelected
-                        ? 'border-slate-800 bg-slate-50'
+                    className={`flex flex-col items-center gap-1 p-1 rounded-xl border transition cursor-pointer ${isSelected
+                        ? 'border-indigo-400 bg-indigo-50'
                         : 'border-slate-100 hover:border-slate-200'
-                    }`}
+                      }`}
                   >
                     <span
                       style={{ backgroundColor: color.hex }}

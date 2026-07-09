@@ -259,7 +259,7 @@ export const ImageBlockComponent: React.FC<ImageBlockProps> = ({
             className={`w-full py-10 rounded-2xl border border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer select-none transition ${
               isDragOver 
                 ? 'border-primary bg-primary-light/40 text-primary scale-[1.01]' 
-                : 'border-slate-350 bg-slate-50/50 text-slate-400 hover:border-primary hover:text-primary hover:bg-slate-50'
+                : 'border-slate-300 bg-slate-50/50 text-slate-400 hover:border-primary hover:text-primary hover:bg-slate-50'
             }`}
           >
             <ImageIcon size={22} className="stroke-[2]" />

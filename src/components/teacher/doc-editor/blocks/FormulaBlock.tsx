@@ -492,7 +492,7 @@ export const FormulaBlockComponent: React.FC<FormulaBlockProps> = ({
                               insertAtCursor(item.value);
                               setShowPicker(false);
                             }}
-                            className="p-1.5 border border-slate-150 bg-slate-50/30 hover:bg-indigo-50/40 hover:border-indigo-200 rounded-lg flex flex-col items-center justify-center text-center text-slate-700 transition cursor-pointer max-w-full overflow-hidden"
+                            className="p-1.5 border border-slate-200 bg-slate-50/30 hover:bg-indigo-50/40 hover:border-indigo-200 rounded-lg flex flex-col items-center justify-center text-center text-slate-700 transition cursor-pointer max-w-full overflow-hidden"
                           >
                             {itemHtml ? (
                               <div dangerouslySetInnerHTML={{ __html: itemHtml }} className="scale-[0.85] leading-none shrink-0" />

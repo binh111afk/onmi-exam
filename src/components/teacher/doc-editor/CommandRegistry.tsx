@@ -11,12 +11,11 @@ import {
   Activity, 
   HelpCircle, 
   Award, 
-  FolderOpen, 
   Video 
 } from 'lucide-react';
 
 export interface DocCommand {
-  type: 'paragraph' | 'heading-1' | 'heading-2' | 'heading-3' | 'divider' | 'callout' | 'image' | 'table' | 'formula' | 'quiz' | 'flashcard' | 'mindmap' | 'media';
+  type: 'paragraph' | 'heading-1' | 'heading-2' | 'heading-3' | 'divider' | 'callout' | 'image' | 'table' | 'formula' | 'quiz' | 'flashcard' | 'mindmap' | 'media' | 'fillblank' | 'dragdrop' | 'sortorder';
   label: string;
   desc: string;
   icon: React.ReactNode;

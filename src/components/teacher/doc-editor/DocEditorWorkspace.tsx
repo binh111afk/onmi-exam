@@ -10,7 +10,6 @@ import {
   Activity,
   HelpCircle,
   Award,
-  FolderOpen,
   Video,
 } from 'lucide-react';
 import { DocSidebar } from './DocSidebar';
@@ -1923,7 +1922,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
     }
   }, [chapters, activeLessonId, activeBlockIndex, pushHistoryState]);
 
-  const handleSelectOtherBlock = useCallback((type: 'timeline' | 'flow' | 'tabs' | 'compare' | 'diagram' | 'matching') => {
+  const handleSelectOtherBlock = useCallback((type: 'timeline' | 'flow' | 'tabs' | 'compare' | 'diagram' | 'matching' | 'fillblank' | 'dragdrop' | 'sortorder') => {
     setShowOtherBlocksPopup(false);
     setChapters(prev => {
       const nextChapters = prev.map(ch => ({

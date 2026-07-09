@@ -2,6 +2,9 @@ import type { DocBlock } from '../../../../types/doc-editor';
 import { createNewQuizContent } from './quiz/QuizUtils';
 import { createNewFlashcardContent } from './flashcard/FlashcardUtils';
 import { createDefaultMindmapData } from './mindmap/MindmapUtils';
+import { createDefaultFillBlankContent } from './fillblank/Utils';
+import { createDefaultDragDropContent } from './dragdrop/Utils';
+import { createDefaultSortOrderContent } from './sortorder/Utils';
 
 export const generateBlockId = (): string => `b-${crypto.randomUUID()}`;
 
@@ -148,6 +151,24 @@ export const createDefaultBlock = (
             themeColor: '#6366f1'
           }
         }
+      };
+
+    case 'fillblank':
+      return {
+        ...base,
+        fillblankContent: createDefaultFillBlankContent()
+      };
+
+    case 'dragdrop':
+      return {
+        ...base,
+        dragdropContent: createDefaultDragDropContent()
+      };
+
+    case 'sortorder':
+      return {
+        ...base,
+        sortorderContent: createDefaultSortOrderContent()
       };
 
     case 'code':

@@ -9,7 +9,7 @@ export interface TableCellStyle {
 
 export interface DocBlock {
   id: string;
-  type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code' | 'quiz' | 'flashcard' | 'mindmap' | 'media' | 'timeline' | 'flow' | 'tabs' | 'compare' | 'diagram' | 'matching';
+  type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code' | 'quiz' | 'flashcard' | 'mindmap' | 'media' | 'timeline' | 'flow' | 'tabs' | 'compare' | 'diagram' | 'matching' | 'fillblank' | 'dragdrop' | 'sortorder';
   level?: 1 | 2 | 3;
   indent?: number;
   text: string;
@@ -38,6 +38,9 @@ export interface DocBlock {
   compareContent?: CompareContent;
   diagramContent?: DiagramContent;
   matchingContent?: MatchingContent;
+  fillblankContent?: FillBlankContent;
+  dragdropContent?: DragDropContent;
+  sortorderContent?: SortOrderContent;
 }
 
 export const QuestionType = {
@@ -274,3 +277,97 @@ export interface MatchingContent {
   pairs: MatchingPair[];
   settings: MatchingSettings;
 }
+
+// Fill Blank Block Content Types
+export interface BlankItem {
+  id: string;
+  answer: string;
+  caseSensitive: boolean;
+  hint: string;
+  score: number;
+  alternativeAnswers: string[];
+  width?: number; // width in pixels
+  placeholder?: string;
+}
+
+export interface FillBlankSettings {
+  shuffleBlanks: boolean;
+  caseSensitive: boolean;
+  showHints: boolean;
+  showAnswerAfterSubmit: boolean;
+  partialScoring: boolean;
+  acceptMultipleAnswers: boolean;
+  blankStyle: 'underline' | 'box' | 'dashed';
+  maxAttempts: number;
+  themeColor?: string;
+}
+
+export interface FillBlankParagraph {
+  id: string;
+  text: string; // HTML string containing static text and <span data-blank-id="uuid"></span>
+}
+
+export interface FillBlankContent {
+  version: number;
+  paragraphs: FillBlankParagraph[];
+  blanks: Record<string, BlankItem>;
+  settings: FillBlankSettings;
+}
+
+// Drag & Drop Block Content Types
+export interface DragDropCard {
+  id: string;
+  type: 'text' | 'image' | 'icon';
+  content: string; // The text content, image URL, or icon name
+}
+
+export interface DragDropZone {
+  id: string;
+  type: 'text' | 'image' | 'icon';
+  content: string; // The zone header content
+  correctCardIds: string[]; // The cards that map correctly to this zone
+}
+
+export interface DragDropSettings {
+  shuffleCards: boolean;
+  shuffleZones: boolean;
+  allowRetry: boolean;
+  snapAnimation: boolean;
+  showCorrectAnswer: boolean;
+  autoCheck: boolean;
+  multipleCorrect: boolean;
+  randomOrder: boolean;
+  themeColor?: string;
+}
+
+export interface DragDropContent {
+  version: number;
+  cards: DragDropCard[];
+  zones: DragDropZone[];
+  settings: DragDropSettings;
+}
+
+// Sort Order Block Content Types
+export interface SortOrderItem {
+  id: string;
+  type: 'text' | 'image' | 'icon';
+  content: string; // The text content, image URL, or icon name
+}
+
+export interface SortOrderSettings {
+  shuffleInitialOrder: boolean;
+  order: 'ascending' | 'descending';
+  allowRetry: boolean;
+  showExplanation: boolean;
+  explanationText?: string;
+  autoCheck: boolean;
+  score: number;
+  themeColor?: string;
+}
+
+export interface SortOrderContent {
+  version: number;
+  items: SortOrderItem[];
+  settings: SortOrderSettings;
+}
+

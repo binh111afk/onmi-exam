@@ -80,7 +80,7 @@ export const DiagramBlockComponent: React.FC<DiagramBlockProps> = ({
             {nodes.map((node, index) => (
               <div
                 key={node.id}
-                className="bg-white rounded-xl border border-slate-150 p-3.5 shadow-2xs hover:shadow-sm transition flex flex-col gap-3 group relative"
+                className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs hover:shadow-sm transition flex flex-col gap-3 group relative"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
@@ -104,7 +104,7 @@ export const DiagramBlockComponent: React.FC<DiagramBlockProps> = ({
                       />
 
                       {activeColorPickerId === node.id && (
-                        <div className="absolute top-6 left-0 z-20 bg-white border border-slate-150 rounded-xl p-1.5 shadow-lg flex gap-1 animate-fadeIn">
+                        <div className="absolute top-6 left-0 z-20 bg-white border border-slate-200 rounded-xl p-1.5 shadow-lg flex gap-1 animate-fadeIn">
                           {DIAGRAM_COLORS.map((c) => (
                             <button
                               key={c}
@@ -176,7 +176,7 @@ export const DiagramBlockComponent: React.FC<DiagramBlockProps> = ({
                     value={node.title}
                     onChange={(val) => updateNode(node.id, { ...node, title: val })}
                     placeholder="Tên nút (VD: Khái niệm A)..."
-                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-150 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-black text-slate-800 outline-none transition"
+                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-200 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-black text-slate-800 outline-none transition"
                   />
                   <EditableText
                     mode="textarea"
@@ -184,7 +184,7 @@ export const DiagramBlockComponent: React.FC<DiagramBlockProps> = ({
                     value={node.description}
                     onChange={(val) => updateNode(node.id, { ...node, description: val })}
                     placeholder="Mô tả hoặc chi tiết của nút..."
-                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-150 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-semibold text-slate-650 outline-none transition resize-none leading-relaxed"
+                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-200 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-semibold text-slate-650 outline-none transition resize-none leading-relaxed"
                   />
                 </div>
               </div>

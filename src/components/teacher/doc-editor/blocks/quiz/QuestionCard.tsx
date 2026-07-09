@@ -108,7 +108,7 @@ export const QuestionCardComponent: React.FC<QuestionCardProps> = ({
 
         {/* Add option link */}
         <div className="flex items-center gap-2 pl-1.5 mt-1 select-none">
-          <div className="w-4 h-4 rounded-full border border-dashed border-slate-350 shrink-0" />
+          <div className="w-4 h-4 rounded-full border border-dashed border-slate-300 shrink-0" />
           <button
             type="button"
             onClick={addOption}

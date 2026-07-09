@@ -11,6 +11,9 @@ import { TabsPreview } from './blocks/tabs/TabsPreview';
 import { ComparePreview } from './blocks/compare/ComparePreview';
 import { DiagramPreview } from './blocks/diagram/DiagramPreview';
 import { MatchingPreview } from './blocks/matching/MatchingPreview';
+import { Preview as FillBlankPreview } from './blocks/fillblank/Preview';
+import { Preview as DragDropPreview } from './blocks/dragdrop/Preview';
+import { Preview as SortOrderPreview } from './blocks/sortorder/Preview';
 import type { DocBlock, LiveTableResizeState } from '../../../types/doc-editor';
 
 interface DocPreviewSimulatorProps {
@@ -203,7 +206,7 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
                   type="checkbox" 
                   checked={!!block.checked} 
                   disabled 
-                  className="w-3.5 h-3.5 mt-0.5 rounded border-slate-350 accent-primary pointer-events-none"
+                  className="w-3.5 h-3.5 mt-0.5 rounded border-slate-300 accent-primary pointer-events-none"
                 />
                 <span className={`flex-1 text-text-secondary font-bold leading-relaxed ${block.checked ? 'line-through text-slate-400 font-medium' : ''}`} dangerouslySetInnerHTML={{ __html: block.text }} />
               </div>
@@ -355,6 +358,24 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
           if (block.type === 'matching' && block.matchingContent) {
             return (
               <MatchingPreview key={block.id} content={block.matchingContent} />
+            );
+          }
+
+          if (block.type === 'fillblank' && block.fillblankContent) {
+            return (
+              <FillBlankPreview key={block.id} block={block} />
+            );
+          }
+
+          if (block.type === 'dragdrop' && block.dragdropContent) {
+            return (
+              <DragDropPreview key={block.id} block={block} />
+            );
+          }
+
+          if (block.type === 'sortorder' && block.sortorderContent) {
+            return (
+              <SortOrderPreview key={block.id} block={block} />
             );
           }
 

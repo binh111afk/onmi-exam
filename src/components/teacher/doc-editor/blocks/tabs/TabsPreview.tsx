@@ -49,7 +49,7 @@ export const TabsPreview: React.FC<TabsPreviewProps> = ({
 
   // Render headers list
   const renderHeaders = () => (
-    <div className={`flex border-slate-150 bg-slate-50/40 select-none ${scrollClass} ${
+    <div className={`flex border-slate-200 bg-slate-50/40 select-none ${scrollClass} ${
       isLeft ? 'flex-col border-r w-32 shrink-0' : (isBottom ? 'border-t' : 'border-b')
     }`}>
       {tabs.map((tab) => {
@@ -66,7 +66,7 @@ export const TabsPreview: React.FC<TabsPreviewProps> = ({
             color: isActive ? '#fff' : undefined,
           };
         } else if (settings.tabStyle === 'blocks') {
-          styleClasses += ' border-r border-slate-150 last:border-0';
+          styleClasses += ' border-r border-slate-200 last:border-0';
           styleObj = {
             backgroundColor: isActive ? '#fff' : 'transparent',
             borderTop: isActive && !isBottom && !isLeft ? `2px solid ${themeColor}` : undefined,
@@ -98,7 +98,7 @@ export const TabsPreview: React.FC<TabsPreviewProps> = ({
   );
 
   return (
-    <div className={`my-4 flex border border-slate-150 overflow-hidden bg-white shadow-3xs hover:shadow-2xs transition ${
+    <div className={`my-4 flex border border-slate-200 overflow-hidden bg-white shadow-3xs hover:shadow-2xs transition ${
       isLeft ? 'flex-row' : (isBottom ? 'flex-col-reverse' : 'flex-col')
     } ${containerRoundedClass} ${indentClassName}`}>
       {renderHeaders()}

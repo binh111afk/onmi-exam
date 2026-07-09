@@ -72,7 +72,7 @@ export const TabsBlockComponent: React.FC<TabsBlockProps> = ({
         onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
-      <div className="flex flex-col gap-3 mt-1 w-full bg-white rounded-2xl border border-slate-150 overflow-hidden shadow-2xs">
+      <div className="flex flex-col gap-3 mt-1 w-full bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
         {tabs.length === 0 ? (
           <div className="p-3">
             <BlockEmptyState
@@ -85,7 +85,7 @@ export const TabsBlockComponent: React.FC<TabsBlockProps> = ({
         ) : (
           <div className="flex flex-col w-full animate-fadeIn">
             {/* Headers row with tab switcher */}
-            <div className="flex border-b border-slate-150 bg-slate-50/40 overflow-x-auto scrollbar-none select-none">
+            <div className="flex border-b border-slate-200 bg-slate-50/40 overflow-x-auto scrollbar-none select-none">
               {tabs.map((tab) => {
                 const isSelected = tab.id === activeTabId;
                 return (
@@ -162,7 +162,7 @@ export const TabsBlockComponent: React.FC<TabsBlockProps> = ({
                     value={activeTab.title}
                     onChange={(val) => updateTab(activeTab.id, { ...activeTab, title: val })}
                     placeholder="Nhập tiêu đề tab..."
-                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-150 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-black text-slate-800 outline-none transition"
+                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-200 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-black text-slate-800 outline-none transition"
                   />
                 </div>
 
@@ -174,7 +174,7 @@ export const TabsBlockComponent: React.FC<TabsBlockProps> = ({
                     value={activeTab.content}
                     onChange={(val) => updateTab(activeTab.id, { ...activeTab, content: val })}
                     placeholder="Nhập nội dung hiển thị trong tab này..."
-                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-150 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-semibold text-slate-655 outline-none transition resize-none leading-relaxed"
+                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-200 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-semibold text-slate-655 outline-none transition resize-none leading-relaxed"
                   />
                 </div>
               </div>

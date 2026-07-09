@@ -40,10 +40,10 @@ export const FlowPreview: React.FC<FlowPreviewProps> = ({
   };
 
   const cardStyleClass = {
-    bordered: 'bg-white border border-slate-150',
+    bordered: 'bg-white border border-slate-200',
     flat: 'bg-slate-50/60 border border-transparent shadow-none',
     shadow: 'bg-white border border-slate-100 shadow-md'
-  }[settings.cardStyle || 'bordered'] || 'bg-white border border-slate-150';
+  }[settings.cardStyle || 'bordered'] || 'bg-white border border-slate-200';
 
   const horizontalSpacingClass = {
     compact: 'gap-x-3 gap-y-4',

@@ -85,7 +85,7 @@ export const TimelineBlockComponent: React.FC<TimelineBlockProps> = ({
             return (
               <div
                 key={event.id}
-                className="bg-white rounded-xl border border-slate-150 p-3.5 shadow-2xs hover:shadow-sm transition flex flex-col gap-3 group relative"
+                className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs hover:shadow-sm transition flex flex-col gap-3 group relative"
               >
                 {/* Header row of milestone card */}
                 <div className="flex items-center justify-between gap-3">
@@ -105,7 +105,7 @@ export const TimelineBlockComponent: React.FC<TimelineBlockProps> = ({
                       </button>
 
                       {activeIconPickerId === event.id && (
-                        <div className="absolute top-8 left-0 z-20 bg-white border border-slate-150 rounded-xl p-2 shadow-lg grid grid-cols-4 gap-1.5 min-w-[130px] animate-fadeIn">
+                        <div className="absolute top-8 left-0 z-20 bg-white border border-slate-200 rounded-xl p-2 shadow-lg grid grid-cols-4 gap-1.5 min-w-[130px] animate-fadeIn">
                           {TIMELINE_ICONS.map((ic) => {
                             const Comp = iconMap[ic];
                             return (
@@ -138,7 +138,7 @@ export const TimelineBlockComponent: React.FC<TimelineBlockProps> = ({
                       />
 
                       {activeColorPickerId === event.id && (
-                        <div className="absolute top-6 left-0 z-20 bg-white border border-slate-150 rounded-xl p-1.5 shadow-lg flex gap-1 animate-fadeIn">
+                        <div className="absolute top-6 left-0 z-20 bg-white border border-slate-200 rounded-xl p-1.5 shadow-lg flex gap-1 animate-fadeIn">
                           {TIMELINE_COLORS.map((c) => (
                             <button
                               key={c}
@@ -196,7 +196,7 @@ export const TimelineBlockComponent: React.FC<TimelineBlockProps> = ({
                       value={event.date}
                       onChange={(val) => updateEvent(event.id, { ...event, date: val })}
                       placeholder="Ngày/Mốc thời gian"
-                      className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-150 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-bold text-slate-700 outline-none transition"
+                      className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-200 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-bold text-slate-700 outline-none transition"
                     />
                   </div>
                   <div className="sm:col-span-3">
@@ -205,7 +205,7 @@ export const TimelineBlockComponent: React.FC<TimelineBlockProps> = ({
                       value={event.title}
                       onChange={(val) => updateEvent(event.id, { ...event, title: val })}
                       placeholder="Nhập tiêu đề mốc..."
-                      className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-150 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-black text-slate-800 outline-none transition"
+                      className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-200 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-black text-slate-800 outline-none transition"
                     />
                   </div>
                 </div>
@@ -217,7 +217,7 @@ export const TimelineBlockComponent: React.FC<TimelineBlockProps> = ({
                     value={event.description}
                     onChange={(val) => updateEvent(event.id, { ...event, description: val })}
                     placeholder="Mô tả mốc thời gian..."
-                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-150 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-semibold text-slate-650 outline-none transition resize-none leading-relaxed"
+                    className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-200 focus:bg-white focus:border-primary rounded-lg px-2.5 py-1.5 text-[10px] font-semibold text-slate-650 outline-none transition resize-none leading-relaxed"
                   />
                 </div>
               </div>
