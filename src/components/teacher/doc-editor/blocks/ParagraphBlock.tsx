@@ -77,7 +77,7 @@ export const ParagraphBlockComponent: React.FC<ParagraphBlockProps> = ({
         className={`flex-1 outline-none py-1 text-slate-800 min-h-[24px] cursor-text select-text relative ${alignClass} ${
           block.type === 'todo-list' && block.checked
             ? 'text-xs text-slate-400 line-through font-medium'
-            : 'text-xs text-text-secondary leading-relaxed font-bold'
+            : 'text-xs text-slate-900 leading-relaxed font-bold'
         } ${
           isActive && block.text.trim() === '' ? 'before:content-[attr(data-placeholder)] before:text-slate-300 before:absolute before:left-0 before:top-1 before:pointer-events-none' : ''
         }`}

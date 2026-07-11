@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { 
-  GraduationCap, 
   BookOpen, 
   FileText, 
   ChevronRight, 
@@ -13,12 +12,13 @@ import {
   ChevronLeft, 
   HelpCircle, 
   Filter, 
-  BarChart2 
+  Upload 
 } from 'lucide-react';
 
 interface TeacherDashboardProps {
   setMode: (mode: 'dashboard' | 'editor' | 'upload' | 'exam-editor') => void;
-  setShowMethodModal: (show: boolean) => void;
+  onStartSelfCompose: () => void;
+  onUploadFile: (file: File) => void;
 }
 
 interface ExamHistoryItem {
@@ -170,7 +170,8 @@ const initialHistory: ExamHistoryItem[] = [
 
 export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   setMode,
-  setShowMethodModal,
+  onStartSelfCompose,
+  onUploadFile,
 }) => {
   const [history, setHistory] = useState<ExamHistoryItem[]>(initialHistory);
   const [searchQuery, setSearchQuery] = useState('');
@@ -179,12 +180,28 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
 
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
   const handleHelpGuideClick = () => {
     alert('Tài liệu hướng dẫn sử dụng đang được tải...');
   };
 
-  const handleStatisticsClick = () => {
-    alert('Tính năng Thống kê & Bảng xếp hạng đang được tải dữ liệu...');
+  const handleUploadClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const validExtensions = ['pdf', 'docx', 'doc', 'pptx'];
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      if (!extension || !validExtensions.includes(extension)) {
+        alert('Định dạng file không hợp lệ. Vui lòng tải lên file PDF, DOCX, DOC hoặc PPTX.');
+        return;
+      }
+      onUploadFile(file);
+    }
   };
 
   const handleCloneItem = (item: ExamHistoryItem) => {
@@ -267,12 +284,12 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
       </div>
 
       {/* Row of Three Action Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         
-        {/* Card 1: Soạn tài liệu */}
+        {/* Card 1: Tự soạn tài liệu */}
         <div 
-          onClick={() => setShowMethodModal(true)}
-          className="bg-white border border-slate-100 hover:border-[#6C5DD3]/25 rounded-3xl p-6 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-205 flex flex-col justify-between group cursor-pointer relative overflow-hidden"
+          onClick={onStartSelfCompose}
+          className="bg-white border border-slate-100 hover:border-indigo-200 rounded-3xl p-6 shadow-sm hover:shadow-md hover:-translate-y-[2px] transition-all duration-205 flex flex-col justify-between cursor-pointer group relative overflow-hidden h-full"
         >
           <div className="space-y-4">
             <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm shrink-0 transition-transform duration-300 group-hover:scale-105">
@@ -280,33 +297,75 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             </div>
             
             <div className="space-y-1.5">
-              <h2 className="text-sm font-black text-slate-800 group-hover:text-[#6C5DD3] transition-colors">
-                Soạn tài liệu
+              <h2 className="text-sm font-black text-slate-800 group-hover:text-primary transition-colors">
+                Tự soạn tài liệu
               </h2>
               <p className="text-[11px] text-slate-400 font-bold leading-relaxed">
-                Tải lên và biên soạn tóm tắt lý thuyết, sổ tay giải nhanh, công thức trọng tâm hoặc sơ đồ tư duy cho các khối lớp học viên ôn tập.
+                Tự soạn thảo tài liệu lý thuyết, công thức trọng tâm hoặc sơ đồ tư duy trực tiếp trên trình soạn thảo thông minh.
               </p>
             </div>
           </div>
-          <div className="pt-6 flex items-center justify-between">
-            <span className="text-[10px] font-black text-[#6C5DD3] group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
-              Bắt đầu soạn thảo <ChevronRight size={12} className="stroke-[2.5]" />
-            </span>
+          <div className="pt-6">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onStartSelfCompose();
+              }}
+              className="w-full py-2.5 bg-primary hover:bg-primary-hover text-white text-xs font-black rounded-xl transition cursor-pointer text-center flex items-center justify-center gap-1.5"
+            >
+              Bắt đầu soạn
+            </button>
           </div>
         </div>
 
-        {/* Card 2: Soạn đề thi */}
+        {/* Card 2: Tải tài liệu */}
+        <div 
+          onClick={handleUploadClick}
+          className="bg-white border border-slate-100 hover:border-indigo-200 rounded-3xl p-6 shadow-sm hover:shadow-md hover:-translate-y-[2px] transition-all duration-205 flex flex-col justify-between cursor-pointer group relative overflow-hidden h-full"
+        >
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileChange} 
+            className="hidden" 
+            accept=".pdf,.docx,.doc,.pptx"
+          />
+          <div className="space-y-4">
+            <div className="w-12 h-12 rounded-xl bg-indigo-50 text-primary flex items-center justify-center shadow-sm shrink-0 transition-transform duration-300 group-hover:scale-105">
+              <Upload size={20} className="stroke-[2.5]" />
+            </div>
+            
+            <div className="space-y-1.5">
+              <h2 className="text-sm font-black text-slate-800 group-hover:text-primary transition-colors">
+                Tải tài liệu
+              </h2>
+              <p className="text-[11px] text-slate-400 font-bold leading-relaxed">
+                Tải lên tài liệu sẵn có (PDF, DOCX, DOC, PPTX...) để chia sẻ nhanh chóng mà không cần soạn thảo lại từ đầu.
+              </p>
+            </div>
+          </div>
+          <div className="pt-6">
+            <button
+              onClick={handleUploadClick}
+              className="w-full py-2.5 bg-primary hover:bg-primary-hover text-white text-xs font-black rounded-xl transition cursor-pointer text-center flex items-center justify-center gap-1.5"
+            >
+              Tải tài liệu
+            </button>
+          </div>
+        </div>
+
+        {/* Card 3: Soạn đề thi */}
         <div 
           onClick={() => setMode('exam-editor')}
-          className="bg-white border border-slate-100 hover:border-[#6C5DD3]/25 rounded-3xl p-6 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-205 flex flex-col justify-between group cursor-pointer relative overflow-hidden"
+          className="bg-white border border-slate-100 hover:border-indigo-200 rounded-3xl p-6 shadow-sm hover:shadow-md hover:-translate-y-[2px] transition-all duration-205 flex flex-col justify-between cursor-pointer group relative overflow-hidden h-full"
         >
           <div className="space-y-4">
-            <div className="w-12 h-12 rounded-xl bg-purple-50 text-[#6C5DD3] flex items-center justify-center shadow-sm shrink-0 transition-transform duration-300 group-hover:scale-105">
+            <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-650 flex items-center justify-center shadow-sm shrink-0 transition-transform duration-300 group-hover:scale-105">
               <FileText size={20} className="stroke-[2.5]" />
             </div>
             
             <div className="space-y-1.5">
-              <h2 className="text-sm font-black text-slate-800 group-hover:text-[#6C5DD3] transition-colors">
+              <h2 className="text-sm font-black text-slate-800 group-hover:text-primary transition-colors">
                 Soạn đề thi
               </h2>
               <p className="text-[11px] text-slate-400 font-bold leading-relaxed">
@@ -314,36 +373,16 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               </p>
             </div>
           </div>
-          <div className="pt-6 flex items-center justify-between">
-            <span className="text-[10px] font-black text-[#6C5DD3] group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
-              Tạo đề thi mới <ChevronRight size={12} className="stroke-[2.5]" />
-            </span>
-          </div>
-        </div>
-
-        {/* Card 3: Thống kê & Bảng xếp hạng */}
-        <div 
-          onClick={handleStatisticsClick}
-          className="bg-white border border-slate-100 hover:border-[#6C5DD3]/25 rounded-3xl p-6 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-205 flex flex-col justify-between group cursor-pointer relative overflow-hidden"
-        >
-          <div className="space-y-4">
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-sm shrink-0 transition-transform duration-300 group-hover:scale-105">
-              <BarChart2 size={20} className="stroke-[2.5]" />
-            </div>
-            
-            <div className="space-y-1.5">
-              <h2 className="text-sm font-black text-slate-800 group-hover:text-[#6C5DD3] transition-colors">
-                Thống kê & Bảng xếp hạng
-              </h2>
-              <p className="text-[11px] text-slate-400 font-bold leading-relaxed">
-                Xem thống kê kết quả làm bài của học sinh, bảng xếp hạng và phân tích chi tiết.
-              </p>
-            </div>
-          </div>
-          <div className="pt-6 flex items-center justify-between">
-            <span className="text-[10px] font-black text-[#6C5DD3] group-hover:translate-x-0.5 transition-transform flex items-center gap-1">
-              Xem ngay <ChevronRight size={12} className="stroke-[2.5]" />
-            </span>
+          <div className="pt-6">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setMode('exam-editor');
+              }}
+              className="w-full py-2.5 bg-primary hover:bg-primary-hover text-white text-xs font-black rounded-xl transition cursor-pointer text-center flex items-center justify-center gap-1.5"
+            >
+              Tạo đề mới
+            </button>
           </div>
         </div>
 

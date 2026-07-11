@@ -1,6 +1,32 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { RefreshCw, Maximize2, Minimize2, ZoomIn, ZoomOut, RotateCcw, X, Video } from 'lucide-react';
 import { Tooltip } from './Tooltip';
+
+
+
+const getCleanChapterTitle = (title: string): string => {
+  const cleaned = title.replace(/^Chương\s+[a-zA-Z0-9\-\u00c0-\u1ef9]+\s*[\.:-]?\s*/i, '');
+  return cleaned.trim();
+};
+
+const getPreviewNodeTitle = (title: string): string =>
+  title.replace(/^\d+(?:\.\d+)*[.\s/-]*/, '').trim();
+
+const chapterIndexToRoman = (index: number): string => {
+  const numerals: Array<[number, string]> = [
+    [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'],
+    [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I'],
+  ];
+  let remaining = index;
+  return numerals.reduce((result, [value, symbol]) => {
+    while (remaining >= value) {
+      result += symbol;
+      remaining -= value;
+    }
+    return result;
+  }, '');
+};
+
 import { SharedTableRenderer } from './blocks/table/SharedTableRenderer';
 import { QuizPreview } from './blocks/quiz/QuizPreview';
 import { FlashcardPreview } from './blocks/flashcard/FlashcardPreview';
@@ -14,11 +40,12 @@ import { MatchingPreview } from './blocks/matching/MatchingPreview';
 import { Preview as FillBlankPreview } from './blocks/fillblank/Preview';
 import { Preview as DragDropPreview } from './blocks/dragdrop/Preview';
 import { Preview as SortOrderPreview } from './blocks/sortorder/Preview';
-import type { DocBlock, LiveTableResizeState } from '../../../types/doc-editor';
+import type { Chapter, DocBlock, Lesson, LiveTableResizeState } from '../../../types/doc-editor';
 
 interface DocPreviewSimulatorProps {
-  lessonTitle: string;
-  blocks: DocBlock[];
+  documentTree: Chapter[];
+  currentDocumentId: string;
+  documentTitle: string;
   liveTableResize?: LiveTableResizeState | null;
 }
 
@@ -49,8 +76,9 @@ const getNumberedIndex = (blocks: DocBlock[], index: number): string => {
 
 
 export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
-  lessonTitle,
-  blocks,
+  documentTree,
+  currentDocumentId,
+  documentTitle,
   liveTableResize,
 }) => {
   const previewZoomLevels = [50, 75, 100, 125, 150, 200] as const;
@@ -63,22 +91,100 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
   const savedScrollTopRef = useRef(0);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const currentDocument = React.useMemo(() => {
+    for (let chapterIndex = 0; chapterIndex < documentTree.length; chapterIndex++) {
+      const chapter = documentTree[chapterIndex];
+      for (let lessonIndex = 0; lessonIndex < chapter.lessons.length; lessonIndex++) {
+        const lesson = chapter.lessons[lessonIndex];
+        if (lesson.id === currentDocumentId) {
+          return { chapter, document: lesson, previewFolder: lesson.isFolder ? lesson : null, chapterIndex };
+        }
+        for (const subLesson of lesson.subLessons ?? []) {
+          if (subLesson.id === currentDocumentId) {
+            return {
+              chapter,
+              document: subLesson,
+              previewFolder: subLesson.isFolder ? subLesson : lesson,
+              chapterIndex,
+            };
+          }
+          const file = subLesson.subLessons?.find(child => child.id === currentDocumentId);
+          if (file) {
+            return { chapter, document: file, previewFolder: subLesson, chapterIndex };
+          }
+        }
+      }
+    }
+    return null;
+  }, [currentDocumentId, documentTree]);
+
+  const chapter = currentDocument?.chapter;
+  const activeDocument = currentDocument?.document;
+  const previewFolder = currentDocument?.previewFolder;
+  const blocks = activeDocument?.blocks ?? [];
+  const previewFolderTitle = previewFolder ? getPreviewNodeTitle(previewFolder.title) : '';
+  const hasFolderHeading = activeDocument?.isFolder && blocks[0]?.type === 'heading' && blocks[0].level === 1;
+
   const [katexLoaded, setKatexLoaded] = useState(!!(window as any).katex);
   useEffect(() => {
+    if (!window.document) return;
     if ((window as any).katex) {
       setKatexLoaded(true);
       return;
     }
-    const link = document.createElement('link');
+    const link = window.document.createElement('link');
     link.rel = 'stylesheet';
     link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css';
-    document.head.appendChild(link);
+    window.document.head.appendChild(link);
 
-    const script = document.createElement('script');
+    const script = window.document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js';
     script.onload = () => setKatexLoaded(true);
-    document.body.appendChild(script);
+    window.document.body.appendChild(script);
   }, []);
+
+  const renderInlineLatex = (html: string): string => {
+    const katex = (window as Window & {
+      katex?: { renderToString: (latex: string, options: { displayMode: boolean; throwOnError: boolean }) => string };
+    }).katex;
+    if (!katexLoaded || !katex || !html.includes('$')) return html;
+
+    const template = window.document.createElement('template');
+    template.innerHTML = html;
+    const walker = window.document.createTreeWalker(template.content, window.NodeFilter.SHOW_TEXT);
+    const textNodes: Text[] = [];
+    let textNode = walker.nextNode();
+
+    while (textNode) {
+      textNodes.push(textNode as Text);
+      textNode = walker.nextNode();
+    }
+
+    textNodes.forEach(node => {
+      if (!node.textContent?.includes('$')) return;
+
+      const fragment = window.document.createDocumentFragment();
+      const parts = node.textContent.split(/(\$[^$\n]+\$)/g);
+      parts.forEach(part => {
+        const latexMatch = part.match(/^\$([^$\n]+)\$$/);
+        if (!latexMatch) {
+          fragment.appendChild(window.document.createTextNode(part));
+          return;
+        }
+
+        const formula = window.document.createElement('span');
+        try {
+          formula.innerHTML = katex.renderToString(latexMatch[1].trim(), { displayMode: false, throwOnError: false });
+        } catch {
+          formula.textContent = part;
+        }
+        fragment.appendChild(formula);
+      });
+      node.parentNode?.replaceChild(fragment, node);
+    });
+
+    return template.innerHTML;
+  };
 
   const openFullscreen = () => {
     savedScrollTopRef.current = previewScrollRef.current?.scrollTop ?? savedScrollTopRef.current;
@@ -141,19 +247,31 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
     style?: React.CSSProperties,
   ) => (
     <div
-      className={`bg-white rounded-2xl shadow-lg border border-slate-200/50 p-5 font-sans h-fit transition-all duration-300 shrink-0 w-full ${className}`}
+      className={`bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 sm:p-7 font-sans h-fit transition-all duration-300 shrink-0 w-full select-text ${className}`}
       style={style}
     >
-      {/* Header Tag inside simulator */}
-      <div className="inline-block px-2.5 py-0.5 bg-primary text-white text-[8px] font-black uppercase rounded mb-4">
-        Chương I
+      {/* Chapter Label (uppercase, bold, indigo, e.g. CHƯƠNG 1) */}
+      <div className="inline-flex rounded-md bg-primary px-2 py-1 text-[8px] font-black uppercase tracking-wider text-white mb-4 select-none">
+        CHƯƠNG {currentDocument ? chapterIndexToRoman(currentDocument.chapterIndex + 1) : ''}
       </div>
-      <h3 className="text-xs font-black text-text-primary uppercase tracking-wide border-b border-slate-100 pb-2 mb-3">
-        Thành phần hóa học của tế bào
+
+      {/* Chapter Title (large, bold, black, textbook style) */}
+      <h3 className="text-sm font-black text-slate-900 tracking-tight leading-snug uppercase mb-3">
+        {chapter ? getCleanChapterTitle(chapter.title) : ''}
       </h3>
 
+      {/* Thin horizontal divider below chapter title */}
+      <div className="border-b border-slate-200 mb-5" />
+
+      {/* Current folder title */}
+      {!hasFolderHeading && previewFolderTitle && (
+        <h4 className="text-sm font-black text-primary tracking-tight mt-5 mb-4">
+          {previewFolderTitle}
+        </h4>
+      )}
+
       {/* Dynamic content blocks rendering */}
-      <div className="space-y-4 text-[10px] leading-relaxed text-[#475569]">
+      <div className="space-y-4 text-[11px] leading-relaxed text-slate-900">
         {blocks.map((block, idx) => {
           const alignClass = block.align === 'center' 
             ? 'text-center' 
@@ -164,20 +282,41 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
                 : 'text-left';
 
           const indentStyle = { paddingLeft: `${(block.indent || 0) * 16}px` };
+          const isFileNameHeading = !activeDocument?.isFolder
+            && idx === 0
+            && block.type === 'heading'
+            && getPreviewNodeTitle(block.text) === getPreviewNodeTitle(activeDocument.title);
+
+          if (isFileNameHeading) return null;
 
           if (block.type === 'heading') {
             if (block.level === 1) {
               return (
-                <h4 key={block.id} style={indentStyle} className={`text-[13px] font-black text-primary leading-tight ${alignClass}`} dangerouslySetInnerHTML={{ __html: block.text }} />
+                <h4 
+                  key={block.id} 
+                  style={indentStyle} 
+                  className={`text-sm font-bold text-slate-900 tracking-tight mt-5 mb-4 leading-tight [&_b]:font-black [&_strong]:font-black ${alignClass}`} 
+                  dangerouslySetInnerHTML={{ __html: idx === 0 && activeDocument?.isFolder ? getPreviewNodeTitle(block.text) : block.text }} 
+                />
               );
             }
             if (block.level === 2) {
               return (
-                <h5 key={block.id} style={indentStyle} className={`text-[11px] font-black text-slate-800 leading-tight ${alignClass}`} dangerouslySetInnerHTML={{ __html: block.text }} />
+                <h5 
+                  key={block.id} 
+                  style={indentStyle} 
+                  className={`text-xs font-medium text-slate-600 tracking-tight mt-4 mb-2 leading-tight ${alignClass}`} 
+                  dangerouslySetInnerHTML={{ __html: renderInlineLatex(block.text) }} 
+                />
               );
             }
             return (
-              <h6 key={block.id} style={indentStyle} className={`text-[10px] font-bold text-slate-700 leading-tight ${alignClass}`} dangerouslySetInnerHTML={{ __html: block.text }} />
+              <h6 
+                key={block.id} 
+                style={indentStyle} 
+                className={`text-[11px] font-medium text-slate-500 tracking-tight mt-3 mb-1.5 leading-tight ${alignClass}`} 
+                  dangerouslySetInnerHTML={{ __html: renderInlineLatex(block.text) }} 
+              />
             );
           }
 
@@ -185,7 +324,7 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
             return (
               <div key={block.id} style={indentStyle} className={`flex items-start gap-2 ${alignClass}`}>
                 <span className="text-slate-400 mt-0.5">•</span>
-                <span className="flex-1 text-text-secondary font-bold leading-relaxed" dangerouslySetInnerHTML={{ __html: block.text }} />
+                <span className="flex-1 text-slate-900 font-bold text-xs leading-relaxed [&_b]:font-black [&_strong]:font-black" dangerouslySetInnerHTML={{ __html: renderInlineLatex(block.text) }} />
               </div>
             );
           }
@@ -193,8 +332,8 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
           if (block.type === 'numbered-list') {
             return (
               <div key={block.id} style={indentStyle} className={`flex items-start gap-2 ${alignClass}`}>
-                <span className="text-primary font-black mt-0.5 shrink-0">{getNumberedIndex(blocks, idx)}</span>
-                <span className="flex-1 text-text-secondary font-bold leading-relaxed" dangerouslySetInnerHTML={{ __html: block.text }} />
+                <span className="text-primary font-black mt-0.5 shrink-0 text-[11px]">{getNumberedIndex(blocks, idx)}</span>
+                <span className="flex-1 text-slate-900 font-bold text-xs leading-relaxed [&_b]:font-black [&_strong]:font-black" dangerouslySetInnerHTML={{ __html: renderInlineLatex(block.text) }} />
               </div>
             );
           }
@@ -206,25 +345,25 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
                   type="checkbox" 
                   checked={!!block.checked} 
                   disabled 
-                  className="w-3.5 h-3.5 mt-0.5 rounded border-slate-300 accent-primary pointer-events-none"
+                  className="w-4 h-4 mt-0.5 rounded border-slate-300 accent-primary pointer-events-none"
                 />
-                <span className={`flex-1 text-text-secondary font-bold leading-relaxed ${block.checked ? 'line-through text-slate-400 font-medium' : ''}`} dangerouslySetInnerHTML={{ __html: block.text }} />
+                <span className={`flex-1 text-slate-900 font-bold text-xs leading-relaxed [&_b]:font-black [&_strong]:font-black ${block.checked ? 'line-through text-slate-400' : ''}`} dangerouslySetInnerHTML={{ __html: renderInlineLatex(block.text) }} />
               </div>
             );
           }
 
           if (block.type === 'callout') {
             return (
-              <div key={block.id} style={indentStyle} className="p-3 border border-indigo-100/50 bg-[#F5F3FF]/70 rounded-xl flex gap-2.5 items-center">
+              <div key={block.id} style={indentStyle} className="p-4 border border-indigo-100/50 bg-[#F5F3FF]/70 rounded-xl flex gap-2.5 items-center">
                 <span className="text-xs shrink-0">💧</span>
-                <div className={`flex-1 leading-normal text-text-secondary font-black ${alignClass}`} dangerouslySetInnerHTML={{ __html: block.text }} />
+                <div className={`flex-1 leading-normal text-slate-900 font-bold text-xs [&_b]:font-black [&_strong]:font-black ${alignClass}`} dangerouslySetInnerHTML={{ __html: renderInlineLatex(block.text) }} />
               </div>
             );
           }
 
           if (block.type === 'quote') {
             return (
-              <blockquote key={block.id} style={indentStyle} className={`border-l-4 border-primary/30 pl-3 italic text-[10px] text-slate-655 my-2 ${alignClass}`} dangerouslySetInnerHTML={{ __html: block.text }} />
+              <blockquote key={block.id} style={indentStyle} className={`border-l-4 border-primary/30 pl-4 italic text-xs font-bold text-slate-600 my-3 [&_b]:font-black [&_strong]:font-black ${alignClass}`} dangerouslySetInnerHTML={{ __html: renderInlineLatex(block.text) }} />
             );
           }
 
@@ -244,7 +383,7 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
             return (
               <div key={block.id} style={indentStyle} className={`w-full flex ${imgJustify} my-2.5`}>
                 <div style={{ width: block.width || '100%' }} className="flex flex-col items-center gap-1.5 max-w-full">
-                  <img src={block.src || defaultSrc} alt={block.caption || 'Preview image'} className="w-full h-auto rounded-lg object-contain shadow-sm border border-slate-100" />
+                  <img src={block.src || defaultSrc} alt={block.caption || 'Hình minh họa'} className="w-full h-auto rounded-lg object-contain shadow-sm border border-slate-100" />
                   {block.caption && <span className="text-[8px] text-slate-400 font-bold">{block.caption}</span>}
                 </div>
               </div>
@@ -388,13 +527,13 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
                 <div className="w-10 h-10 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer mb-2">
                   <span className="translate-x-0.5 text-xs">▶</span>
                 </div>
-                <div className="text-[9px] text-white/80 font-bold truncate max-w-full" dangerouslySetInnerHTML={{ __html: block.text || 'Video bài giảng chưa đặt tên' }} />
+                <div className="text-[9px] text-white/80 font-bold truncate max-w-full" dangerouslySetInnerHTML={{ __html: renderInlineLatex(block.text || 'Video bài giảng chưa đặt tên') }} />
               </div>
             );
           }
 
           return (
-            <p key={block.id} style={indentStyle} className={`text-text-secondary leading-relaxed font-bold ${alignClass}`} dangerouslySetInnerHTML={{ __html: block.text }} />
+            <p key={block.id} style={indentStyle} className={`text-slate-900 leading-relaxed font-bold text-xs [&_b]:font-black [&_strong]:font-black ${alignClass}`} dangerouslySetInnerHTML={{ __html: renderInlineLatex(block.text) }} />
           );
         })}
       </div>
@@ -416,7 +555,7 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
         <section
           role="dialog"
           aria-modal="true"
-          aria-label="Phóng to Preview"
+          aria-label="Phóng to xem trước"
           className={`flex h-[94vh] w-[96vw] flex-col overflow-hidden rounded-[18px] bg-white shadow-2xl transition-all duration-200 ${isFullscreenClosing ? 'scale-[0.98] opacity-0' : 'scale-100 opacity-100'}`}
           onMouseDown={(event) => event.stopPropagation()}
         >
@@ -427,16 +566,16 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
                   type="button"
                   onClick={closeFullscreen}
                   className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer"
-                  aria-label="Đóng Preview"
+                  aria-label="Đóng xem trước"
                 >
                   <X size={18} />
                 </button>
               </Tooltip>
               <div className="min-w-0">
-                <div className="truncate text-xs font-black uppercase tracking-wide text-slate-800">{lessonTitle}</div>
+                <div className="truncate text-xs font-black uppercase tracking-wide text-slate-800">{previewFolder?.title}</div>
                 <div className="mt-0.5 flex items-center gap-2 text-[9px] font-bold text-slate-400">
-                  <span>Tài liệu Sinh học 10</span>
-                  <span className="rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[8px] font-black text-primary">DOC</span>
+                  <span>{documentTitle}</span>
+                  <span className="rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[8px] font-black text-primary">Tài liệu</span>
                 </div>
               </div>
             </div>
@@ -463,8 +602,8 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
                   Fit Width
                 </button>
               </Tooltip>
-              <Tooltip content="Thu nhỏ Preview">
-                <button type="button" onClick={closeFullscreen} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" aria-label="Thu nhỏ Preview">
+              <Tooltip content="Thu nhỏ xem trước">
+                <button type="button" onClick={closeFullscreen} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" aria-label="Thu nhỏ xem trước">
                   <Minimize2 size={16} />
                 </button>
               </Tooltip>
@@ -489,16 +628,16 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
     <aside className="w-[460px] bg-[#F8FAFC] border-r border-slate-100 flex flex-col overflow-hidden shrink-0 transition-all duration-300">
       {/* Preview Simulator Header */}
       <div className="h-11 border-b border-slate-100 px-4 flex items-center justify-between shrink-0 bg-white">
-        <span className="text-[10px] font-black text-[#1E293B] uppercase tracking-wider">Preview (Giao diện học sinh)</span>
+        <span className="text-[10px] font-black text-[#1E293B] uppercase tracking-wider">Xem trước (Giao diện học sinh)</span>
 
         <div className="flex items-center gap-1.5 text-slate-400">
           <button className="p-1.5 hover:bg-slate-100 rounded-lg transition cursor-pointer">
             <RefreshCw size={12} />
           </button>
-          <Tooltip content="Phóng to Preview">
+          <Tooltip content="Phóng to xem trước">
             <button
               type="button"
-              aria-label="Phóng to Preview"
+              aria-label="Phóng to xem trước"
               onClick={openFullscreen}
               className="p-1.5 hover:bg-indigo-50 hover:text-primary rounded-lg transition cursor-pointer"
             >
@@ -512,7 +651,7 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
         {/* Virtual Frame Simulator */}
         {isFullscreenOpen ? (
           <div className="w-full h-fit rounded-2xl border border-dashed border-slate-200 bg-white/70 p-6 text-center text-[10px] font-bold text-slate-400">
-            Preview đang mở ở chế độ phóng to
+            Xem trước đang mở ở chế độ phóng to
           </div>
         ) : renderPreviewFrame()}
       </div>

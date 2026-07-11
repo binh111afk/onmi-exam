@@ -1,20 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { TeacherDashboard } from '../components/teacher/TeacherDashboard';
-import { MethodSelectionModal } from '../components/teacher/MethodSelectionModal';
 import { DocEditorWorkspace } from '../components/teacher/doc-editor/DocEditorWorkspace';
+import type { Chapter } from '../types/doc-editor';
 import { FileUploaderWorkspace } from '../components/teacher/file-uploader/FileUploaderWorkspace';
 import { ExamEditorWorkspace } from '../components/teacher/exam-editor/ExamEditorWorkspace';
+import { DocSetupWorkspace } from '../components/teacher/DocSetupWorkspace';
+import type { DocSetupMetadata } from '../components/teacher/DocSetupWorkspace';
 
-type TeacherMode = 'dashboard' | 'editor' | 'upload' | 'exam-editor';
+type TeacherMode = 'dashboard' | 'editor' | 'upload' | 'exam-editor' | 'document-setup';
 type ExamSubView = 'edit' | 'config' | 'publish';
 type ExamTab = 'code' | 'quick' | 'bank';
 type ViewportMode = 'desktop' | 'tablet' | 'mobile';
 
 const TEACHER_EXAM_WORKSPACE_KEY = 'omni_teacher_exam_workspace';
-
-const isTeacherMode = (mode: string | undefined): mode is TeacherMode =>
-  mode === 'editor' || mode === 'upload' || mode === 'exam-editor' || mode === 'dashboard';
 
 const loadTeacherExamWorkspace = () => {
   try {
@@ -28,20 +27,35 @@ const loadTeacherExamWorkspace = () => {
 
 export const Teacher: React.FC = () => {
   const navigate = useNavigate();
-  const { mode: routeMode } = useParams();
-  const initialMode = isTeacherMode(routeMode) ? routeMode : 'dashboard';
+  const location = useLocation();
+
+  const getModeFromPath = (path: string): TeacherMode => {
+    if (path === '/teacher/document/new') return 'document-setup';
+    if (path === '/teacher/document/editor') return 'editor';
+    if (path === '/teacher/upload') return 'upload';
+    if (path === '/teacher/exam-editor') return 'exam-editor';
+    return 'dashboard';
+  };
 
   // Mode is mirrored to the URL so refresh keeps the current Teacher workspace.
-  const [mode, setModeState] = useState<TeacherMode>(initialMode);
+  const [mode, setModeState] = useState<TeacherMode>(() => getModeFromPath(location.pathname));
 
   const setMode = (nextMode: TeacherMode) => {
     setModeState(nextMode);
-    navigate(nextMode === 'dashboard' ? '/teacher' : `/teacher/${nextMode}`);
+    if (nextMode === 'dashboard') {
+      navigate('/teacher');
+    } else if (nextMode === 'document-setup') {
+      navigate('/teacher/document/new');
+    } else if (nextMode === 'editor') {
+      navigate('/teacher/document/editor');
+    } else {
+      navigate(`/teacher/${nextMode}`);
+    }
   };
 
   useEffect(() => {
-    setModeState(isTeacherMode(routeMode) ? routeMode : 'dashboard');
-  }, [routeMode]);
+    setModeState(getModeFromPath(location.pathname));
+  }, [location.pathname]);
 
   // Sub-view within exam editor: 'edit', 'config', 'publish'
   const [examSubView, setExamSubView] = useState<ExamSubView>('edit');
@@ -193,16 +207,50 @@ export const Teacher: React.FC = () => {
     }));
   }, [workspaceLoaded, examSubView, examTab, examJsonCode, selectedQuestionId, examSearchQuery, viewportMode]);
 
-  // Modal selection state
-  const [showMethodModal, setShowMethodModal] = useState(false);
+  // Custom document states for editor loading
+  const [editorChapters, setEditorChapters] = useState<Chapter[] | undefined>(undefined);
+  const [editorActiveLessonId, setEditorActiveLessonId] = useState<string | undefined>(undefined);
+  const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(null);
+  const [editorMetadata, setEditorMetadata] = useState<DocSetupMetadata | undefined>(undefined);
+
+  const handleStartSelfCompose = () => {
+    setMode('document-setup');
+  };
+
+  const handleUploadFile = (file: File) => {
+    setSelectedUploadFile(file);
+    setMode('upload');
+  };
 
   // Render workspace based on active mode
+  if (mode === 'document-setup') {
+    return (
+      <DocSetupWorkspace 
+        setMode={setMode} 
+        metadata={editorMetadata}
+        onSubmit={(meta) => {
+          setEditorMetadata(meta);
+          setEditorChapters([]);
+          setEditorActiveLessonId(undefined);
+          setMode('editor');
+        }}
+      />
+    );
+  }
+
   if (mode === 'editor') {
-    return <DocEditorWorkspace setMode={setMode} />;
+    return (
+      <DocEditorWorkspace 
+        setMode={setMode} 
+        initialChaptersData={editorChapters}
+        initialActiveLessonId={editorActiveLessonId}
+        metadata={editorMetadata}
+      />
+    );
   }
 
   if (mode === 'upload') {
-    return <FileUploaderWorkspace setMode={setMode} />;
+    return <FileUploaderWorkspace setMode={setMode} initialFile={selectedUploadFile} />;
   }
 
   if (mode === 'exam-editor') {
@@ -225,27 +273,12 @@ export const Teacher: React.FC = () => {
     );
   }
 
-  // Dashboard landing view (2 action cards)
+  // Dashboard landing view (3 action cards)
   return (
-    <>
-      <TeacherDashboard 
-        setMode={setMode} 
-        setShowMethodModal={setShowMethodModal} 
-      />
-
-      {showMethodModal && (
-        <MethodSelectionModal 
-          onClose={() => setShowMethodModal(false)}
-          onSelectEditor={() => {
-            setMode('editor');
-            setShowMethodModal(false);
-          }}
-          onSelectUpload={() => {
-            setMode('upload');
-            setShowMethodModal(false);
-          }}
-        />
-      )}
-    </>
+    <TeacherDashboard 
+      setMode={setMode} 
+      onStartSelfCompose={handleStartSelfCompose}
+      onUploadFile={handleUploadFile}
+    />
   );
 };

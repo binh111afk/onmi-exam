@@ -110,6 +110,9 @@ export interface Lesson {
   id: string;
   title: string;
   blocks: DocBlock[];
+  isFolder?: boolean;
+  isExpanded?: boolean;
+  subLessons?: Lesson[];
 }
 
 export interface Chapter {
@@ -370,4 +373,3 @@ export interface SortOrderContent {
   items: SortOrderItem[];
   settings: SortOrderSettings;
 }
-

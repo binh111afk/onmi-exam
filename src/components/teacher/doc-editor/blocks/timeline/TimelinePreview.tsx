@@ -75,6 +75,18 @@ export const TimelinePreview: React.FC<TimelinePreviewProps> = ({
     );
   };
 
+  const renderDateBadge = (date?: string, color?: string, extraClassName = '') => {
+    const badgeColor = color || '#6366f1';
+    return (
+      <span
+        className={`text-[9px] font-black text-white px-2.5 py-1 rounded-full shadow-sm select-none tracking-wide uppercase ${extraClassName}`}
+        style={{ backgroundColor: badgeColor }}
+      >
+        {date || 'Chưa đặt ngày'}
+      </span>
+    );
+  };
+
   if (settings.layout === 'horizontal') {
     return (
       <div className={`my-4 w-full overflow-x-auto py-6 px-4 select-none ${indentClassName}`}>
@@ -84,8 +96,8 @@ export const TimelinePreview: React.FC<TimelinePreviewProps> = ({
           {events.map((event, idx) => (
             <div key={event.id} className="w-56 flex flex-col items-center relative animate-fadeIn">
               {settings.showDate !== false && (
-                <div className="text-[9px] font-black text-slate-400 bg-slate-100/50 px-2 py-0.5 rounded-full mb-3 select-none">
-                  {event.date || 'Chưa đặt ngày'}
+                <div className="mb-3">
+                  {renderDateBadge(event.date, event.color)}
                 </div>
               )}
 
@@ -138,11 +150,7 @@ export const TimelinePreview: React.FC<TimelinePreviewProps> = ({
                     </span>
                   )}
                 </div>
-                {settings.showDate !== false && (
-                  <span className="text-[9px] font-black text-slate-400 bg-slate-100/50 px-2 py-0.5 rounded-full shrink-0">
-                    {event.date || 'Chưa đặt ngày'}
-                  </span>
-                )}
+                {settings.showDate !== false && renderDateBadge(event.date, event.color, 'shrink-0')}
               </div>
               <p className={`${descTextSize} text-slate-500 font-semibold leading-relaxed whitespace-pre-wrap`}>
                 {event.description || 'Không có mô tả cho mốc này.'}

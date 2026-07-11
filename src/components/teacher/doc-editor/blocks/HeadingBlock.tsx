@@ -54,7 +54,7 @@ export const HeadingBlockComponent: React.FC<HeadingBlockProps> = ({
       onKeyDown={handleKeyDown}
       className={`flex-1 outline-none py-1 text-slate-800 min-h-[24px] cursor-text select-text relative ${alignClass} ${
         level === 1
-          ? 'text-lg font-black text-primary tracking-tight'
+          ? 'text-lg font-black text-slate-900 tracking-tight'
           : level === 2
             ? 'text-md font-bold text-slate-800'
             : 'text-sm font-bold text-slate-700'

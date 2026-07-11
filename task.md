@@ -1,0 +1,7 @@
+- `[x]` Remove redundant metadata cards from Preview header.
+- `[x]` Implement dynamic textbook-style chapter tags (`CHƯƠNG X`) and dividers.
+- `[x]` Render dynamic 3-level document hierarchy (Lesson, Heading 1, Heading 2).
+- `[x]` Calculate dynamic lesson indexes and heading counter maps.
+- `[x]` Adjust typography sizes and weights (`text-2xl`, `text-xl`, `text-lg`, `text-base`).
+- `[x]` Add scan-friendly vertical spacing and textbook margins.
+- `[x]` Clean up unused lints and compiler warnings in modified files.

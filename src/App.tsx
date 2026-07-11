@@ -333,7 +333,7 @@ function AppShell() {
       )}
 
       <div className="flex-1 w-full flex overflow-hidden">
-        {showHeaderFooter && currentView !== 'not-found' && (
+        {showHeaderFooter && currentView !== 'not-found' && location.pathname !== '/teacher/document/new' && location.pathname !== '/teacher/document/editor' && (
           <Sidebar currentView={currentView} onViewChange={navigateToView} user={user} />
         )}
 
@@ -382,6 +382,22 @@ function AppShell() {
               <Route path="/register" element={<Register onRegisterSuccess={buildRegisterSuccessHandler()} onViewChange={navigateToView} />} />
               <Route path="/roadmap" element={<Roadmap user={user} onStartExam={handleStartExam} />} />
               <Route path="/about" element={<Roadmap user={user} onStartExam={handleStartExam} />} />
+              <Route
+                path="/teacher/document/new"
+                element={(
+                  <ProtectedRoute user={user}>
+                    <Teacher />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/teacher/document/editor"
+                element={(
+                  <ProtectedRoute user={user}>
+                    <Teacher />
+                  </ProtectedRoute>
+                )}
+              />
               <Route
                 path="/teacher"
                 element={(

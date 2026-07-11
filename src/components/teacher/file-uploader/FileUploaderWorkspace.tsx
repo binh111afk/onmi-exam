@@ -13,17 +13,35 @@ import {
 
 interface FileUploaderWorkspaceProps {
   setMode: (mode: 'dashboard' | 'editor' | 'upload' | 'exam-editor') => void;
+  initialFile?: File | null;
 }
 
-export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({ setMode }) => {
+export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({ 
+  setMode,
+  initialFile
+}) => {
   // Uploaded file state
-  const [uploadedFile, setUploadedFile] = useState<{ name: string; size: string } | null>({
-    name: 'Đề cương ôn tập Sinh học 10 học kỳ 2.pdf',
-    size: '2.45 MB'
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; size: string } | null>(() => {
+    if (initialFile) {
+      const sizeMB = (initialFile.size / (1024 * 1024)).toFixed(2);
+      return {
+        name: initialFile.name,
+        size: `${sizeMB} MB`
+      };
+    }
+    return {
+      name: 'Đề cương ôn tập Sinh học 10 học kỳ 2.pdf',
+      size: '2.45 MB'
+    };
   });
 
   // Upload form states
-  const [docTitle, setDocTitle] = useState('Đề cương ôn tập Sinh học 10 học kỳ 2');
+  const [docTitle, setDocTitle] = useState(() => {
+    if (initialFile) {
+      return initialFile.name.replace(/\.[^/.]+$/, "");
+    }
+    return 'Đề cương ôn tập Sinh học 10 học kỳ 2';
+  });
   const [docType, setDocType] = useState('Tài liệu đề thi');
   const [docSubject, setDocSubject] = useState('Sinh học');
   const [docSemester, setDocSemester] = useState('Học kỳ 2');
