@@ -30,6 +30,7 @@ import { BLOCK_COMMANDS } from './CommandRegistry';
 import { SlashMenu } from './SlashMenu';
 import { SelectionContextMenu } from './SelectionContextMenu';
 import { TableInsertModal } from './TableInsertModal';
+import { PublishModal } from './PublishModal';
 import { DragIndicator } from './DragIndicator';
 import { BlockDragPreview } from './BlockDragPreview';
 import { matchKeyboardShortcut } from './KeyboardShortcutManager';
@@ -367,6 +368,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
 
   // Table Creation Dialog States
   const [showTableModal, setShowTableModal] = useState(false);
+  const [showPublishModal, setShowPublishModal] = useState(false);
   const [tableInsertIndex, setTableInsertIndex] = useState<number | null>(null);
   const [tableInsertMode, setTableInsertMode] = useState<'replace' | 'insert' | null>(null);
 
@@ -2080,7 +2082,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
                 <Tooltip content="Xuất bản tài liệu">
                   <button
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={handlePublish}
+                    onClick={() => setShowPublishModal(true)}
                     className="px-3 py-1.5 bg-gradient-to-r from-primary to-[#8F85F3] hover:from-primary-hover text-white text-[10px] font-black rounded-xl flex items-center gap-1 transition cursor-pointer shadow-sm shadow-indigo-100"
                   >
                     <Send size={12} /> Publish
@@ -2248,6 +2250,13 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({ setMode 
                     setTableInsertMode(null);
                   }}
                   onConfirm={createTableWithDimensions}
+                />
+
+                <PublishModal
+                  isOpen={showPublishModal}
+                  onClose={() => setShowPublishModal(false)}
+                  activeLesson={activeLesson}
+                  onPublishConfirm={handlePublish}
                 />
 
                 {showOtherBlocksPopup && (

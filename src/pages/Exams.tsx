@@ -39,7 +39,7 @@ const subjectThemes: Record<string, { bg: string; text: string; btn: string; bad
     bg: 'bg-emerald-50/60',
     text: 'text-emerald-600',
     btn: 'bg-emerald-600 hover:bg-emerald-700 text-white',
-    badgeBg: 'bg-emerald-100/70 text-emerald-700',
+    badgeBg: 'bg-[#FFF0F2] text-accent',
     badgeText: 'Sinh học',
   },
   'Tiếng Anh': {
@@ -48,6 +48,48 @@ const subjectThemes: Record<string, { bg: string; text: string; btn: string; bad
     btn: 'bg-purple-600 hover:bg-purple-700 text-white',
     badgeBg: 'bg-purple-100/70 text-purple-700',
     badgeText: 'Tiếng Anh',
+  },
+  'Anh văn': {
+    bg: 'bg-purple-50/60',
+    text: 'text-purple-600',
+    btn: 'bg-purple-600 hover:bg-purple-700 text-white',
+    badgeBg: 'bg-purple-100/70 text-purple-700',
+    badgeText: 'Tiếng Anh',
+  },
+  'Công nghệ': {
+    bg: 'bg-orange-50/60',
+    text: 'text-orange-600',
+    btn: 'bg-orange-600 hover:bg-orange-700 text-white',
+    badgeBg: 'bg-orange-100/70 text-orange-700',
+    badgeText: 'Công nghệ',
+  },
+  'Tin học': {
+    bg: 'bg-cyan-50/60',
+    text: 'text-cyan-600',
+    btn: 'bg-cyan-600 hover:bg-cyan-700 text-white',
+    badgeBg: 'bg-cyan-100/70 text-cyan-700',
+    badgeText: 'Tin học',
+  },
+  'Lịch sử': {
+    bg: 'bg-yellow-50/60',
+    text: 'text-yellow-600',
+    btn: 'bg-yellow-600 hover:bg-yellow-700 text-white',
+    badgeBg: 'bg-yellow-100/70 text-yellow-700',
+    badgeText: 'Lịch sử',
+  },
+  'Địa lý': {
+    bg: 'bg-sky-50/60',
+    text: 'text-sky-600',
+    btn: 'bg-sky-600 hover:bg-sky-700 text-white',
+    badgeBg: 'bg-sky-100/70 text-sky-700',
+    badgeText: 'Địa lý',
+  },
+  'Kinh tế pháp luật': {
+    bg: 'bg-rose-50/60',
+    text: 'text-rose-600',
+    btn: 'bg-rose-600 hover:bg-rose-700 text-white',
+    badgeBg: 'bg-rose-100/70 text-rose-700',
+    badgeText: 'Kinh tế pháp luật',
   },
 };
 
@@ -65,73 +107,38 @@ const difficultyStyle: Record<string, { bg: string; color: string }> = {
   'Khó': { bg: 'bg-rose-50 text-rose-600', color: '#E11D48' },
 };
 
-// Mini SVG illustrations per subject, styled to be modern and pastel/soft
-const IllustrationSVG: React.FC<{ subject: string }> = ({ subject }) => {
-  const containerClass = "w-15 h-15 rounded-2xl flex items-center justify-center overflow-hidden shrink-0";
+const getSubjectCover = (subject: string): string => {
+  const mapping: Record<string, string> = {
+    'Toán học': '/math_illustration.png',
+    'Vật lý': '/physics_illustration.png',
+    'Hóa học': '/chemistry_illustration.png',
+    'Sinh học': '/biology_illustration.png',
+    'Tiếng Anh': '/english_illustration.png',
+    'Anh văn': '/english_illustration.png',
+    'Công nghệ': '/technology_illustration.png',
+    'Tin học': '/it_illustration.png',
+    'Lịch sử': '/history_illustration.png',
+    'Địa lý': '/geography_illustration.png',
+    'Kinh tế pháp luật': '/economics_illustration.png',
+  };
+  return mapping[subject] || '/biology_illustration.png';
+};
 
-  if (subject === 'Toán học') return (
-    <div className={`${containerClass} bg-blue-50/60`}>
-      <svg viewBox="0 0 80 80" className="w-11 h-11" fill="none">
-        <polygon points="40,16 68,64 12,64" fill="#C7D2FE" opacity="0.4" stroke="#6366F1" strokeWidth="1.5" />
-        <circle cx="40" cy="46" r="10" fill="#E0E7FF" opacity="0.6" stroke="#4F46E5" strokeWidth="1.5" />
-        <line x1="40" y1="16" x2="40" y2="64" stroke="#6366F1" strokeWidth="1.2" strokeDasharray="3,2" />
-      </svg>
-    </div>
-  );
-  if (subject === 'Vật lý') return (
-    <div className={`${containerClass} bg-teal-50/60`}>
-      <svg viewBox="0 0 80 80" className="w-11 h-11" fill="none">
-        <rect x="24" y="20" width="32" height="6" rx="2" fill="#A7F3D0" stroke="#059669" strokeWidth="1.5" />
-        <line x1="32" y1="26" x2="32" y2="52" stroke="#059669" strokeWidth="1.2" />
-        <line x1="40" y1="26" x2="40" y2="52" stroke="#059669" strokeWidth="1.2" />
-        <line x1="48" y1="26" x2="48" y2="52" stroke="#059669" strokeWidth="1.2" />
-        <circle cx="32" cy="56" r="4.5" fill="#34D399" opacity="0.5" stroke="#059669" strokeWidth="1.2" />
-        <circle cx="40" cy="56" r="4.5" fill="#34D399" opacity="0.5" stroke="#059669" strokeWidth="1.2" />
-        <circle cx="48" cy="56" r="4.5" fill="#34D399" opacity="0.5" stroke="#059669" strokeWidth="1.2" />
-      </svg>
-    </div>
-  );
-  if (subject === 'Hóa học') return (
-    <div className={`${containerClass} bg-amber-50/60`}>
-      <svg viewBox="0 0 80 80" className="w-11 h-11" fill="none">
-        <path d="M32 16 L32 38 L18 62 L62 62 L48 38 L48 16 Z" fill="#FDE68A" opacity="0.4" stroke="#D97706" strokeWidth="1.5" strokeLinejoin="round" />
-        <rect x="28" y="12" width="24" height="4" rx="2" fill="#D97706" />
-        <circle cx="40" cy="50" r="6" fill="#F59E0B" opacity="0.5" />
-        <circle cx="30" cy="54" r="4" fill="#FCD34D" opacity="0.5" />
-        <circle cx="48" cy="52" r="3" fill="#FCD34D" opacity="0.5" />
-      </svg>
-    </div>
-  );
-  if (subject === 'Sinh học') return (
-    <div className={`${containerClass} bg-emerald-50/60`}>
-      <svg viewBox="0 0 80 80" className="w-11 h-11" fill="none">
-        <circle cx="40" cy="40" r="26" fill="#BBF7D0" opacity="0.3" stroke="#16A34A" strokeWidth="1.5" />
-        <path d="M28 32 C28 32 36 24 40 40 C44 56 52 48 52 48" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round" />
-        <path d="M28 48 C28 48 36 56 40 40 C44 24 52 32 52 32" stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" />
-        <circle cx="34" cy="36" r="2" fill="#047857" />
-        <circle cx="46" cy="44" r="2" fill="#047857" />
-      </svg>
-    </div>
-  );
-  if (subject === 'Tiếng Anh') return (
-    <div className={`${containerClass} bg-purple-50/60`}>
-      <svg viewBox="0 0 80 80" className="w-11 h-11" fill="none">
-        <rect x="16" y="20" width="48" height="40" rx="6" fill="#DDD6FE" opacity="0.4" stroke="#7C3AED" strokeWidth="1.5" />
-        <text x="40" y="47" textAnchor="middle" fontSize="22" fontWeight="bold" fill="#7C3AED" opacity="0.7">ABC</text>
-        <line x1="26" y1="52" x2="54" y2="52" stroke="#7C3AED" strokeWidth="1.2" strokeLinecap="round" />
-      </svg>
-    </div>
-  );
-  return (
-    <div className={`${containerClass} bg-slate-50/60`}>
-      <svg viewBox="0 0 80 80" className="w-11 h-11" fill="none">
-        <rect x="20" y="16" width="40" height="48" rx="4" fill="#E2E8F0" opacity="0.5" stroke="#94A3B8" strokeWidth="1.5" />
-        <line x1="28" y1="30" x2="52" y2="30" stroke="#94A3B8" strokeWidth="1.2" />
-        <line x1="28" y1="40" x2="52" y2="40" stroke="#94A3B8" strokeWidth="1.2" />
-        <line x1="28" y1="50" x2="44" y2="50" stroke="#94A3B8" strokeWidth="1.2" />
-      </svg>
-    </div>
-  );
+const getSubjectDescription = (exam: Exam): string => {
+  const mapping: Record<string, string> = {
+    'Sinh học': 'Bài thi khảo sát cấu trúc tế bào, trao đổi chất và vai trò sinh học của nước trong cơ thể sống.',
+    'Toán học': 'Đề kiểm tra khảo sát kiến thức Giải tích và Hình học không gian chuẩn bị cho kỳ thi THPT Quốc gia.',
+    'Vật lý': 'Bài thi trắc nghiệm kiểm tra lý thuyết và bài tập về Dao động cơ học, Sóng cơ và dòng điện xoay chiều.',
+    'Hóa học': 'Đề thi trắc nghiệm củng cố lý thuyết về cấu tạo nguyên tử, liên kết hóa học và hóa học hữu cơ.',
+    'Tiếng Anh': 'Bài kiểm tra ngữ pháp nâng cao, đọc hiểu và cấu trúc đảo ngữ tiếng Anh chuẩn.',
+    'Anh văn': 'Bài kiểm tra ngữ pháp nâng cao, đọc hiểu và cấu trúc đảo ngữ tiếng Anh chuẩn.',
+    'Công nghệ': 'Bài thi trắc nghiệm đánh giá kiến thức thiết kế kỹ thuật, vẽ kỹ thuật và công nghệ tự động hóa.',
+    'Tin học': 'Đề thi củng cố kiến thức khoa học máy tính, lập trình cơ bản và cơ sở dữ liệu.',
+    'Lịch sử': 'Bài kiểm tra kiến thức lịch sử Việt Nam cận đại, thế giới hiện đại và tiến trình phát triển xã hội.',
+    'Địa lý': 'Bài thi trắc nghiệm về địa lý tự nhiên, địa lý kinh tế xã hội Việt Nam và bản đồ thế giới.',
+    'Kinh tế pháp luật': 'Bài thi trắc nghiệm ôn tập về luật dân sự, luật hình sự và quy luật cung cầu kinh tế.',
+  };
+  return mapping[exam.subject] || 'Đề thi trắc nghiệm ôn tập và củng cố kiến thức theo chương trình giáo dục phổ thông mới.';
 };
 
 // Styled exam card matching the mockup
@@ -142,65 +149,73 @@ const NewExamCard: React.FC<{ exam: Exam; onSelect: (id: string) => void; onStar
   return (
     <div
       onClick={() => onSelect(exam.id)}
-      className="bg-white rounded-3xl border border-[#E2E8F0]/60 p-5 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col justify-between h-full relative overflow-hidden group"
+      className="bg-white rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer flex flex-col overflow-hidden h-full relative group"
     >
-      <div>
-        {/* Badges row */}
-        <div className="flex justify-between items-center gap-2">
-          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${theme.badgeBg}`}>
-            {exam.subject}
-          </span>
-          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-md ${diff.bg}`}>
-            {exam.difficulty}
-          </span>
-        </div>
-
-        {/* Title */}
-        <h3 className="text-xs font-black text-[#1E293B] leading-snug mt-3.5 pr-16 line-clamp-2 h-9 group-hover:text-[#6366F1] transition-colors">
-          {exam.title}
-        </h3>
-
-        {/* Info row (question count, duration) */}
-        <div className="flex gap-4 text-[11px] text-[#64748B] mt-2.5">
-          <span className="flex items-center gap-1">
-            <HelpCircle size={13} className="text-slate-300" />
-            {exam.questionCount} câu
-          </span>
-          <span className="flex items-center gap-1">
-            <Clock size={13} className="text-slate-300" />
-            {exam.durationMinutes} phút
-          </span>
-        </div>
+      <div className="h-36 bg-[#F1EEFC] relative overflow-hidden shrink-0">
+        <img
+          src={getSubjectCover(exam.subject)}
+          alt={`${exam.subject} Cover`}
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-[#8F85F3]/15 mix-blend-multiply" />
       </div>
 
-      {/* Illustration (positioned middle-right) */}
-      <div className="absolute right-4 top-1/2 -translate-y-12">
-        <IllustrationSVG subject={exam.subject} />
-      </div>
+      <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+        <div className="space-y-2.5">
+          <div className="flex justify-between items-center">
+            <span className={`text-[9px] font-black px-2.5 py-0.5 rounded-lg uppercase tracking-wide inline-block ${theme.badgeBg}`}>
+              {exam.subject.toUpperCase()} {exam.grade.replace(/Lớp\s*/i, '')}
+            </span>
+            <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase ${diff.bg}`}>
+              {exam.difficulty}
+            </span>
+          </div>
 
-      {/* Footer row */}
-      <div className="flex items-center justify-between mt-4 pt-3 border-t border-[#E2E8F0]/40">
-        <div className="flex items-center gap-3">
-          <span className="text-[11px] text-[#64748B]">
-            {exam.tries >= 1000 ? `${(exam.tries / 1000).toFixed(1)}K` : exam.tries} lượt làm
-          </span>
-          <span className="flex items-center gap-1 text-[11px] font-bold text-[#1E293B]">
-            <Star size={12} className="fill-[#F59E0B] text-[#F59E0B]" />
-            {exam.rating.toFixed(1)}
-          </span>
+          <h4 className="text-xs font-black text-slate-800 leading-snug line-clamp-2 h-9 group-hover:text-primary transition-colors">
+            {exam.title}
+          </h4>
+
+          <p className="text-[10px] text-slate-500 leading-relaxed font-medium line-clamp-2 h-10">
+            {getSubjectDescription(exam)}
+          </p>
+
+          <div className="flex gap-4 text-[10px] font-bold text-slate-400 border-t border-slate-50 pt-2.5">
+            <span className="flex items-center gap-1">
+              <HelpCircle size={12} className="text-slate-300 stroke-[2.5]" />
+              {exam.questionCount} câu hỏi
+            </span>
+            <span className="flex items-center gap-1">
+              <Clock size={12} className="text-slate-300 stroke-[2.5]" />
+              {exam.durationMinutes} phút
+            </span>
+            <span className="flex items-center gap-1">
+              <Star size={12} className="fill-[#F59E0B] text-[#F59E0B]" />
+              {exam.rating.toFixed(1)}
+            </span>
+          </div>
         </div>
-        <button
-          onClick={e => { e.stopPropagation(); onStart(exam.id); }}
-          className={`w-7.5 h-7.5 rounded-full flex items-center justify-center cursor-pointer transition-all ${theme.btn} shadow-sm`}
-        >
-          <ArrowRight size={13} />
-        </button>
+
+        <div className="flex items-center justify-between border-t border-slate-50 pt-3">
+          <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400">
+            <span className="bg-slate-50 px-2 py-1 rounded-lg">Giáo viên: Nguyễn Văn An</span>
+            <span className="bg-slate-50 px-2 py-1 rounded-lg">Cập nhật: 29/05/2025</span>
+          </div>
+          <button
+            onClick={e => { e.stopPropagation(); onStart(exam.id); }}
+            className={`w-7.5 h-7.5 rounded-full flex items-center justify-center cursor-pointer transition-all ${theme.btn} shadow-sm shadow-indigo-100 hover:scale-105 active:scale-95`}
+          >
+            <ArrowRight size={13} className="stroke-[2.5]" />
+          </button>
+        </div>
       </div>
     </div>
   );
 };
 
-const subjectCategories = ['Tất cả', 'Toán học', 'Vật lý', 'Hóa học', 'Tiếng Anh', 'Sinh học'];
+const subjectCategories = ['Tất cả', 'Toán học', 'Vật lý', 'Hóa học', 'Tiếng Anh', 'Sinh học', 'Công nghệ', 'Tin học', 'Lịch sử', 'Địa lý', 'Kinh tế pháp luật'];
 
 const subjectIcons: Record<string, React.ReactNode> = {
   'Tất cả': <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="currentColor"><path d="M1 2.5A1.5 1.5 0 012.5 1h3A1.5 1.5 0 017 2.5v3A1.5 1.5 0 015.5 7h-3A1.5 1.5 0 011 5.5v-3zm8 0A1.5 1.5 0 0110.5 1h3A1.5 1.5 0 0115 2.5v3A1.5 1.5 0 0113.5 7h-3A1.5 1.5 0 019 5.5v-3zm-8 8A1.5 1.5 0 012.5 9h3A1.5 1.5 0 017 10.5v3A1.5 1.5 0 015.5 15h-3A1.5 1.5 0 011 13.5v-3zm8 0A1.5 1.5 0 0110.5 9h3a1.5 1.5 0 011.5 1.5v3a1.5 1.5 0 01-1.5 1.5h-3A1.5 1.5 0 019 13.5v-3z" /></svg>,
@@ -209,6 +224,11 @@ const subjectIcons: Record<string, React.ReactNode> = {
   'Hóa học': <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M5 2h6v6l3 7H2l3-7V2z" strokeLinejoin="round" /></svg>,
   'Tiếng Anh': <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="2" width="14" height="11" rx="2" /><path d="M4 7h8M4 10h5" strokeLinecap="round" /></svg>,
   'Sinh học': <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M8 1c-4 0-6 3-6 6s2 6 6 6 6-3 6-6-2-6-6-6z" /><path d="M2 8h12M8 1c-2 3-2 9 0 14" strokeLinecap="round" /></svg>,
+  'Công nghệ': <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="1.5" /><path d="M8 1v2.5M8 12.5V15M1 8h2.5M12.5 8H15M3.05 3.05l1.77 1.77M11.18 11.18l1.77 1.77M3.05 12.95l1.77-1.77M11.18 4.82l1.77-1.77" strokeLinecap="round"/></svg>,
+  'Tin học': <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="2" width="14" height="10" rx="1.5" /><path d="M4 14h8M8 12v2" strokeLinecap="round"/></svg>,
+  'Lịch sử': <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 14h12M4 14V6a2 2 0 012-2h4a2 2 0 012 2v8M6 8h4M6 11h4" strokeLinecap="round"/></svg>,
+  'Địa lý': <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="6" /><path d="M2 8h12M8 2a11 11 0 000 12" strokeLinecap="round"/></svg>,
+  'Kinh tế pháp luật': <svg viewBox="0 0 16 16" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 13V3a1 1 0 011-1h5l4 4v7a1 1 0 01-1 1H4a1 1 0 01-1-1z" strokeLinejoin="round"/><path d="M7 6h2M6 9h4" strokeLinecap="round"/></svg>,
 };
 
 const ITEMS_PER_PAGE = 12;
@@ -228,7 +248,7 @@ export const Exams: React.FC<ExamsProps> = ({
   const [sortBy, setSortBy] = useState('newest');
   const [currentPage, setCurrentPage] = useState(1);
 
-  const subjects = ['Toán học', 'Vật lý', 'Hóa học', 'Tiếng Anh', 'Sinh học'];
+  const subjects = ['Toán học', 'Vật lý', 'Hóa học', 'Tiếng Anh', 'Sinh học', 'Công nghệ', 'Tin học', 'Lịch sử', 'Địa lý', 'Kinh tế pháp luật'];
   const grades = ['Lớp 10', 'Lớp 11', 'Lớp 12', 'Đại học'];
   const difficulties = ['Dễ', 'Trung bình', 'Khó'];
 
