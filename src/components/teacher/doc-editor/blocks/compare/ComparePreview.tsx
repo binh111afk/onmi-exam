@@ -1,5 +1,6 @@
 import React from 'react';
 import type { CompareContent } from './CompareTypes';
+import { LatexText } from '../common/LatexText';
 
 interface ComparePreviewProps {
   content: CompareContent;
@@ -78,7 +79,7 @@ export const ComparePreview: React.FC<ComparePreviewProps> = ({ content }) => {
               className={headerClass}
             >
               <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide">
-                {col.title || `Đối tượng ${idx + 1}`}
+                <LatexText value={col.title || `Đối tượng ${idx + 1}`} />
               </h4>
               <span
                 style={{ backgroundColor: `${themeColor}15`, color: themeColor }}
@@ -90,7 +91,7 @@ export const ComparePreview: React.FC<ComparePreviewProps> = ({ content }) => {
 
             <div className="p-4 flex-1 flex flex-col bg-white">
               <div className="text-slate-650 text-[10px] font-semibold leading-relaxed whitespace-pre-wrap flex-1">
-                {col.content || 'Nhập nội dung so sánh...'}
+                <LatexText value={col.content || 'Nhập nội dung so sánh...'} />
               </div>
             </div>
           </div>

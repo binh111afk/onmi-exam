@@ -1,4 +1,4 @@
-import React, { useState, useContext, useRef, createContext } from 'react';
+import React, { useState, useContext, useRef, createContext, useCallback, useMemo } from 'react';
 import { GripVertical } from 'lucide-react';
 import { BlockSelectionContext } from './BlockSelectionProvider';
 import { BlockToolbar } from './BlockToolbar';
@@ -48,9 +48,8 @@ export const BlockWrapper: React.FC<BlockWrapperProps> = ({
   applyBlockAlignment,
   children,
 }) => {
-  const STANDARD_BLOCKS = ['paragraph', 'heading', 'quote', 'callout', 'divider', 'image', 'bullet-list', 'numbered-list', 'todo-list'];
   const selection = useContext(BlockSelectionContext);
-  const shouldShowToolbar = (showUniversalToolbar ?? STANDARD_BLOCKS.includes(block.type)) && selection?.editorMode === 'block';
+  const shouldShowToolbar = (showUniversalToolbar ?? true) && selection?.editorMode === 'block';
   const isSelected = (selection?.isSelected(block.id) ?? false) && selection?.editorMode === 'block';
   const isActive = selection?.activeBlockId === block.id;
   const commandBlockIds = selection?.getCommandBlockIds(block.id) ?? [];
@@ -77,9 +76,21 @@ export const BlockWrapper: React.FC<BlockWrapperProps> = ({
   const handleButtonRef = useRef<HTMLButtonElement>(null);
 
   // Synchronize custom action updates from block children
-  const registerCustomActions = (actions: ToolbarAction[]) => {
-    setCustomActions(actions);
-  };
+  const registerCustomActions = useCallback((actions: ToolbarAction[]) => {
+    setCustomActions((prev) => {
+      const isSame =
+        prev.length === actions.length &&
+        prev.every((action, index) =>
+          action.label === actions[index]?.label &&
+          action.icon === actions[index]?.icon &&
+          action.onTrigger === actions[index]?.onTrigger &&
+          action.ref === actions[index]?.ref
+        );
+      return isSame ? prev : actions;
+    });
+  }, []);
+
+  const wrapperContextValue = useMemo(() => ({ registerCustomActions }), [registerCustomActions]);
 
   const handleAlign = (align: DocBlock['align']) => {
     if (!canExecuteCommand || !applyBlockAlignment) return;
@@ -87,7 +98,7 @@ export const BlockWrapper: React.FC<BlockWrapperProps> = ({
   };
 
   return (
-    <BlockWrapperContext.Provider value={{ registerCustomActions }}>
+    <BlockWrapperContext.Provider value={wrapperContextValue}>
       <div
         className={`group/wrapper relative flex items-start gap-2.5 transition rounded-xl w-full p-1.5 min-h-[36px] ${
           isSelected

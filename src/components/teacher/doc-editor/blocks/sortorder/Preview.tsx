@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { RefreshCw, CheckCircle2, XCircle, GripVertical } from 'lucide-react';
 import type { SortOrderContent, SortOrderItem } from './Types';
 import { shuffleArray } from './Utils';
+import { LatexText } from '../common/LatexText';
 
 interface PreviewProps {
   block: { sortorderContent?: SortOrderContent };
@@ -110,7 +111,7 @@ export const Preview: React.FC<PreviewProps> = ({ block }) => {
                 
                 {item.type === 'text' && (
                   <span className="text-[10px] text-slate-700 font-bold leading-normal">
-                    {item.content}
+                    <LatexText value={item.content} />
                   </span>
                 )}
                 {item.type === 'image' && (
@@ -132,7 +133,7 @@ export const Preview: React.FC<PreviewProps> = ({ block }) => {
       {isSubmitted && settings.showExplanation && settings.explanationText && (
         <div className="mt-4 bg-slate-50 border border-slate-200 rounded-xl p-3 text-[9px] leading-relaxed text-slate-600 font-bold">
           <span className="text-primary font-black uppercase block mb-1">Giải thích:</span>
-          {settings.explanationText}
+          <LatexText value={settings.explanationText} />
         </div>
       )}
 

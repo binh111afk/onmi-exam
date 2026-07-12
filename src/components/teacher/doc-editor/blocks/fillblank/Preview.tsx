@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { HelpCircle, RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
 import type { FillBlankContent } from './Types';
 import { shuffleArray } from './Utils';
+import { LatexText } from '../common/LatexText';
 
 interface PreviewProps {
   block: { fillblankContent?: FillBlankContent };
@@ -123,11 +124,11 @@ export const Preview: React.FC<PreviewProps> = ({ block }) => {
               </span>
             );
           } else {
+            const plainPart = part.replace(/<[^>]*>/g, '');
             return (
-              <span
-                key={index}
-                dangerouslySetInnerHTML={{ __html: part }}
-              />
+              <span key={index}>
+                <LatexText value={plainPart} />
+              </span>
             );
           }
         })}
@@ -154,7 +155,7 @@ export const Preview: React.FC<PreviewProps> = ({ block }) => {
                 style={{ backgroundColor: `${themeColor}10`, color: themeColor }}
                 className="px-2 py-1 rounded-lg text-[9px] font-bold border border-current"
               >
-                {word}
+                <LatexText value={word} />
               </span>
             ))}
           </div>

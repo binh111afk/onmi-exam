@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   Upload, 
   File, 
@@ -16,24 +16,37 @@ interface FileUploaderWorkspaceProps {
   initialFile?: File | null;
 }
 
+interface UploadedFileInfo {
+  file: File;
+  name: string;
+  size: string;
+  kind: string;
+}
+
+const formatFileSize = (file: File) => `${(file.size / (1024 * 1024)).toFixed(2)} MB`;
+
+const getFileKind = (fileName: string) => {
+  const extension = fileName.split('.').pop()?.toUpperCase();
+  return extension || 'FILE';
+};
+
+const OFFICE_FILE_EXTENSIONS = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'];
+
+const createUploadedFileInfo = (file: File): UploadedFileInfo => ({
+  file,
+  name: file.name,
+  size: formatFileSize(file),
+  kind: getFileKind(file.name),
+});
+
 export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({ 
   setMode,
   initialFile
 }) => {
   // Uploaded file state
-  const [uploadedFile, setUploadedFile] = useState<{ name: string; size: string } | null>(() => {
-    if (initialFile) {
-      const sizeMB = (initialFile.size / (1024 * 1024)).toFixed(2);
-      return {
-        name: initialFile.name,
-        size: `${sizeMB} MB`
-      };
-    }
-    return {
-      name: 'Đề cương ôn tập Sinh học 10 học kỳ 2.pdf',
-      size: '2.45 MB'
-    };
-  });
+  const [uploadedFile, setUploadedFile] = useState<UploadedFileInfo | null>(() => (
+    initialFile ? createUploadedFileInfo(initialFile) : null
+  ));
 
   // Upload form states
   const [docTitle, setDocTitle] = useState(() => {
@@ -55,9 +68,41 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
 
   // PDF Preview states
   const [previewPage, setPreviewPage] = useState(1);
-  const [previewZoom, setPreviewZoom] = useState(100);
+  const [previewZoom, setPreviewZoom] = useState<number | 'page-width'>('page-width');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileExtension = uploadedFile?.name.split('.').pop()?.toLowerCase() ?? '';
+  const isPdfFile = uploadedFile ? uploadedFile.file.type === 'application/pdf' || uploadedFile.name.toLowerCase().endsWith('.pdf') : false;
+  const isImageFile = uploadedFile ? uploadedFile.file.type.startsWith('image/') : false;
+  const isOfficeFile = OFFICE_FILE_EXTENSIONS.includes(fileExtension);
+  const publicPreviewUrl = previewUrl?.startsWith('http') ? previewUrl : null;
+  const officePreviewSrc = publicPreviewUrl && isOfficeFile
+    ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(publicPreviewUrl)}`
+    : null;
+  const filePreviewSrc = previewUrl && isPdfFile ? `${previewUrl}#page=${previewPage}&zoom=${previewZoom}` : previewUrl;
+
+  useEffect(() => {
+    if (initialFile) {
+      setUploadedFile(createUploadedFileInfo(initialFile));
+      setPreviewPage(1);
+      setPreviewZoom('page-width');
+    }
+  }, [initialFile]);
+
+  useEffect(() => {
+    if (!uploadedFile) {
+      setPreviewUrl(null);
+      return;
+    }
+
+    const url = URL.createObjectURL(uploadedFile.file);
+    setPreviewUrl(url);
+
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [uploadedFile]);
 
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && tagInput.trim()) {
@@ -72,18 +117,20 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
     setDocTags(docTags.filter(t => t !== tagToRemove));
   };
 
+  const applySelectedFile = (file: File) => {
+    setUploadedFile(createUploadedFileInfo(file));
+    setPreviewPage(1);
+    setPreviewZoom('page-width');
+
+    if (docTitle === '' || docTitle === 'Đề cương ôn tập Sinh học 10 học kỳ 2') {
+      const cleanName = file.name.replace(/\.[^/.]+$/, "");
+      setDocTitle(cleanName);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      setUploadedFile({
-        name: file.name,
-        size: `${sizeMB} MB`
-      });
-      if (docTitle === '' || docTitle === 'Đề cương ôn tập Sinh học 10 học kỳ 2') {
-        const cleanName = file.name.replace(/\.[^/.]+$/, "");
-        setDocTitle(cleanName);
-      }
+      applySelectedFile(e.target.files[0]);
     }
   };
 
@@ -94,16 +141,26 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      setUploadedFile({
-        name: file.name,
-        size: `${sizeMB} MB`
-      });
-      if (docTitle === '' || docTitle === 'Đề cương ôn tập Sinh học 10 học kỳ 2') {
-        const cleanName = file.name.replace(/\.[^/.]+$/, "");
-        setDocTitle(cleanName);
-      }
+      applySelectedFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleDownloadOriginal = () => {
+    if (!previewUrl || !uploadedFile) return;
+
+    const link = document.createElement('a');
+    link.href = previewUrl;
+    link.download = uploadedFile.name;
+    link.click();
+  };
+
+  const handleRemoveFile = () => {
+    setUploadedFile(null);
+    setPreviewPage(1);
+    setPreviewZoom('page-width');
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -162,7 +219,7 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
                 ref={fileInputRef} 
                 onChange={handleFileChange} 
                 className="hidden" 
-                accept=".pdf,.docx,.doc,.pptx,.zip"
+                accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.zip"
               />
               <div className="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3 transition-transform group-hover:scale-110 shadow-sm shadow-indigo-100/50">
                 <Upload size={20} />
@@ -174,7 +231,7 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
                 hoặc
               </p>
               <span className="mt-2.5 px-4 py-1.5 bg-primary hover:bg-primary-hover text-white text-[10px] font-black rounded-xl transition cursor-pointer shadow-sm">
-                Chọn file từ máy tính
+                {uploadedFile ? 'Thay đổi file' : 'Chọn file từ máy tính'}
               </span>
               <p className="text-[9px] text-slate-400 font-bold text-center mt-3">
                 Hỗ trợ: PDF, DOCX, DOC, PPTX, ZIP (tối đa 50MB)
@@ -187,7 +244,7 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-red-100 text-red-650 flex flex-col items-center justify-center text-[9px] font-black font-sans shrink-0">
                     <File size={16} className="stroke-[2.5]" />
-                    <span className="-mt-0.5">PDF</span>
+                    <span className="-mt-0.5">{uploadedFile.kind}</span>
                   </div>
                   <div>
                     <h4 className="text-xs font-black text-text-primary truncate max-w-[200px] sm:max-w-md">
@@ -205,7 +262,7 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      setUploadedFile(null);
+                      handleRemoveFile();
                     }}
                     className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-lg transition cursor-pointer"
                   >
@@ -358,7 +415,7 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
           </div>
 
           {/* 3. THÔNG TIN BỔ SUNG */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4 min-h-[440px]">
             <h2 className="text-sm font-black text-text-primary">
               3. Thông tin bổ sung <span className="text-slate-400 font-bold text-xs">(không bắt buộc)</span>
             </h2>
@@ -370,7 +427,7 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
                   Mô tả tài liệu
                 </label>
                 <textarea 
-                  rows={4}
+                  rows={8}
                   value={docDescription}
                   onChange={(e) => setDocDescription(e.target.value)}
                   className="w-full p-3.5 border border-[#E2E8F0] rounded-xl text-xs font-bold text-text-primary focus:border-primary focus:ring-2 focus:ring-primary/10 transition resize-none outline-none font-sans"
@@ -429,7 +486,7 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="w-8 h-8 rounded-lg bg-red-100 text-red-650 flex flex-col items-center justify-center text-[7px] font-black font-sans shrink-0">
                       <File size={12} className="stroke-[2.5]" />
-                      <span className="-mt-0.5">PDF</span>
+                      <span className="-mt-0.5">{uploadedFile.kind}</span>
                     </div>
                     <div className="min-w-0">
                       <h4 className="text-[11px] font-black text-text-primary truncate max-w-[140px] sm:max-w-xs">
@@ -441,7 +498,7 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
                     </div>
                   </div>
                   <button 
-                    onClick={() => alert('Đang tải file gốc...')}
+                    onClick={handleDownloadOriginal}
                     className="px-3 py-1.5 border border-slate-200 hover:bg-slate-100 text-slate-600 text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer shrink-0 font-sans"
                   >
                     <Download size={12} /> Tải file gốc
@@ -449,131 +506,96 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
                 </div>
 
                 {/* Navigation controls */}
-                <div className="flex items-center justify-between px-2 select-none">
-                  <div className="flex items-center gap-1">
-                    <button 
-                      onClick={() => setPreviewPage(p => Math.max(1, p - 1))}
-                      disabled={previewPage <= 1}
-                      className="p-1 hover:bg-slate-100 disabled:opacity-30 rounded transition cursor-pointer text-slate-600"
-                    >
-                      <ChevronLeft size={16} className="stroke-[2.5]" />
-                    </button>
-                    <span className="text-xs font-bold text-slate-700 px-2 min-w-[64px] text-center font-sans">
-                      {previewPage} / 32
-                    </span>
-                    <button 
-                      onClick={() => setPreviewPage(p => Math.min(32, p + 1))}
-                      disabled={previewPage >= 32}
-                      className="p-1 hover:bg-slate-100 disabled:opacity-30 rounded transition cursor-pointer text-slate-600"
-                    >
-                      <ChevronRight size={16} className="stroke-[2.5]" />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 font-sans">
-                    <button 
-                      onClick={() => setPreviewZoom(z => Math.max(50, z - 10))}
-                      className="w-6 h-6 hover:bg-slate-100 rounded-lg text-xs font-black text-slate-500 flex items-center justify-center transition cursor-pointer"
-                    >
-                      -
-                    </button>
-                    <span className="text-[10px] font-black text-slate-600 min-w-[40px] text-center">
-                      {previewZoom}%
-                    </span>
-                    <button 
-                      onClick={() => setPreviewZoom(z => Math.min(200, z + 10))}
-                      className="w-6 h-6 hover:bg-slate-100 rounded-lg text-xs font-black text-slate-500 flex items-center justify-center transition cursor-pointer"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-
-                {/* Mock Paper View */}
-                <div className="flex-1 bg-slate-100/40 border border-slate-200/50 rounded-2xl p-4 overflow-auto flex justify-center items-start min-h-[450px]">
-                  <div 
-                    style={{ transform: `scale(${previewZoom / 100})`, transformOrigin: 'top center' }}
-                    className="bg-white border border-slate-200/50 p-6 shadow-sm w-full max-w-[500px] text-text-primary text-[10px] leading-relaxed select-text space-y-4 font-serif transition-transform duration-100"
-                  >
-                    {/* Document Header */}
-                    <div className="flex justify-between items-start border-b border-slate-200 pb-3 font-sans">
-                      <div className="space-y-0.5 font-bold uppercase tracking-tight text-[#1F2C3F] text-[8px]">
-                        <div>SỞ GIÁO DỤC VÀ ĐÀO TẠO</div>
-                        <div>TRƯỜNG THPT CHUYÊN LÊ HỒNG PHONG</div>
-                      </div>
-                      <div className="text-right space-y-0.5 font-bold uppercase tracking-tight text-[#1F2C3F] text-[8px]">
-                        <div>ĐỀ KHẢO SÁT CHẤT LƯỢNG LỚP 12</div>
-                        <div>MÔN: TOÁN HỌC - GIẢI TÍCH</div>
-                        <div className="inline-block border border-slate-800 px-1 py-0.2 mt-0.5 font-sans font-black text-[7px]">
-                          MÃ ĐỀ: 101
-                        </div>
-                      </div>
+                {isPdfFile && (
+                  <div className="flex items-center justify-between px-2 select-none">
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setPreviewPage(p => Math.max(1, p - 1))}
+                        disabled={previewPage <= 1}
+                        className="p-1 hover:bg-slate-100 disabled:opacity-30 rounded transition cursor-pointer text-slate-600"
+                      >
+                        <ChevronLeft size={16} className="stroke-[2.5]" />
+                      </button>
+                      <span className="text-xs font-bold text-slate-700 px-2 min-w-[72px] text-center font-sans">
+                        Trang {previewPage}
+                      </span>
+                      <button
+                        onClick={() => setPreviewPage(p => p + 1)}
+                        className="p-1 hover:bg-slate-100 rounded transition cursor-pointer text-slate-600"
+                      >
+                        <ChevronRight size={16} className="stroke-[2.5]" />
+                      </button>
                     </div>
 
-                    <div className="text-center font-bold italic mt-1 text-slate-600 font-sans text-[8px]">
-                      (Đề thi gồm 06 trang)
-                    </div>
-
-                    {/* Part 1 */}
-                    <div className="space-y-3 font-sans text-[9px]">
-                      <div className="font-bold text-[#1E293B] text-[9.5px]">
-                        PHẦN I. CÂU HỎI TRẮC NGHIỆM NHIỀU PHƯƠNG ÁN LỰA CHỌN.
-                      </div>
-
-                      {/* Question 1 */}
-                      <div className="space-y-1.5">
-                        <div>
-                          <span className="font-bold">Câu 1.</span> Cho hàm số f(x) = x³ - 3x². Đạo hàm f'(x) bằng:
-                        </div>
-                        <div className="grid grid-cols-4 gap-2 text-slate-700 font-medium pl-2">
-                          <div>A. 3x² - 6x.</div>
-                          <div>B. x² - 6x.</div>
-                          <div>C. 3x² - 3x.</div>
-                          <div>D. x³ - 6x.</div>
-                        </div>
-                      </div>
-
-                      {/* Question 2 */}
-                      <div className="space-y-3">
-                        <div>
-                          <span className="font-bold">Câu 2.</span> Cho khối chóp S.ABC có đáy ABC là tam giác đều cạnh a. SA vuông góc với đáy và SA = a√2. Thể tích khối chóp bằng:
-                        </div>
-
-                        {/* Geometry SVG diagram */}
-                        <div className="flex justify-center py-2 bg-slate-50/50 rounded-xl border border-slate-100">
-                          <svg width="220" height="150" viewBox="0 0 220 150" className="overflow-visible select-none">
-                            {/* Hidden/Dashed Line AC */}
-                            <line x1="40" y1="120" x2="180" y2="120" stroke="#64748B" strokeWidth="1.2" strokeDasharray="4 3" />
-                            
-                            {/* Dashed Line SA */}
-                            <line x1="40" y1="20" x2="40" y2="120" stroke="#64748B" strokeWidth="1.2" strokeDasharray="4 3" />
-
-                            {/* Solid line AB */}
-                            <line x1="40" y1="120" x2="110" y2="140" stroke="#1E293B" strokeWidth="1.5" />
-                            
-                            {/* Solid line BC */}
-                            <line x1="110" y1="140" x2="180" y2="120" stroke="#1E293B" strokeWidth="1.5" />
-
-                            {/* Solid Line SB */}
-                            <line x1="40" y1="20" x2="110" y2="140" stroke="#1E293B" strokeWidth="1.5" />
-
-                            {/* Solid Line SC */}
-                            <line x1="40" y1="20" x2="180" y2="120" stroke="#1E293B" strokeWidth="1.5" />
-
-                            {/* Right-angle indicator at A for SA perpendicular to base */}
-                            <path d="M 40,110 L 48,110 L 48,120" fill="none" stroke="#64748B" strokeWidth="0.8" />
-                            <path d="M 40,114 L 45,116 L 45,122" fill="none" stroke="#64748B" strokeWidth="0.8" strokeDasharray="1 1" />
-
-                            {/* Vertex Labels */}
-                            <text x="35" y="15" fill="#1E293B" fontSize="10" fontWeight="bold" fontFamily="sans-serif">S</text>
-                            <text x="25" y="125" fill="#1E293B" fontSize="10" fontWeight="bold" fontFamily="sans-serif">A</text>
-                            <text x="108" y="152" fill="#1E293B" fontSize="10" fontWeight="bold" fontFamily="sans-serif">B</text>
-                            <text x="186" y="125" fill="#1E293B" fontSize="10" fontWeight="bold" fontFamily="sans-serif">C</text>
-                          </svg>
-                        </div>
-                      </div>
+                    <div className="flex items-center gap-1.5 font-sans">
+                      <button
+                        onClick={() => setPreviewZoom(z => typeof z === 'number' ? Math.max(50, z - 10) : 90)}
+                        className="w-6 h-6 hover:bg-slate-100 rounded-lg text-xs font-black text-slate-500 flex items-center justify-center transition cursor-pointer"
+                      >
+                        -
+                      </button>
+                      <span className="text-[10px] font-black text-slate-600 min-w-[40px] text-center">
+                        {previewZoom === 'page-width' ? 'Vừa khung' : `${previewZoom}%`}
+                      </span>
+                      <button
+                        onClick={() => setPreviewZoom(z => typeof z === 'number' ? Math.min(200, z + 10) : 110)}
+                        className="w-6 h-6 hover:bg-slate-100 rounded-lg text-xs font-black text-slate-500 flex items-center justify-center transition cursor-pointer"
+                      >
+                        +
+                      </button>
                     </div>
                   </div>
+                )}
+
+                <div className="flex-1 bg-slate-100/40 border border-slate-200/50 rounded-2xl p-3 overflow-auto min-h-[620px]">
+                  {isPdfFile && filePreviewSrc && (
+                    <iframe
+                      key={`${previewPage}-${previewZoom}-${uploadedFile.name}`}
+                      title={`Xem trước ${uploadedFile.name}`}
+                      src={filePreviewSrc}
+                      className="h-[72vh] min-h-[620px] w-full rounded-xl border border-slate-200 bg-white shadow-sm"
+                    />
+                  )}
+
+                  {isImageFile && filePreviewSrc && (
+                    <div className="flex h-[72vh] min-h-[620px] items-center justify-center">
+                      <img
+                        src={filePreviewSrc}
+                        alt={uploadedFile.name}
+                        className="max-h-full max-w-full rounded-xl border border-slate-200 bg-white object-contain shadow-sm"
+                      />
+                    </div>
+                  )}
+
+                  {isOfficeFile && officePreviewSrc && (
+                    <iframe
+                      title={`Xem trước ${uploadedFile.name}`}
+                      src={officePreviewSrc}
+                      className="h-[72vh] min-h-[620px] w-full rounded-xl border border-slate-200 bg-white shadow-sm"
+                    />
+                  )}
+
+                  {isOfficeFile && !officePreviewSrc && (
+                    <div className="flex h-[72vh] min-h-[620px] flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center">
+                      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                        <File size={20} />
+                      </div>
+                      <p className="max-w-[320px] text-xs font-bold text-text-secondary">
+                        Microsoft Office Online Viewer chỉ xem được Word, Excel và PowerPoint khi file đã có URL công khai. File local hiện tại vẫn có thể tải xuống để kiểm tra.
+                      </p>
+                    </div>
+                  )}
+
+                  {!isPdfFile && !isImageFile && !isOfficeFile && (
+                    <div className="flex h-[72vh] min-h-[620px] flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center">
+                      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                        <File size={20} />
+                      </div>
+                      <p className="max-w-[280px] text-xs font-bold text-text-secondary">
+                        Trình duyệt không hỗ trợ xem trước trực tiếp định dạng {uploadedFile.kind}. Bạn vẫn có thể tải file gốc để kiểm tra.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (

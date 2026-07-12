@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { DocBlock } from '../../../../../types/doc-editor';
 import { createNewTabsContent } from './TabsUtils';
+import { LatexText } from '../common/LatexText';
 
 interface TabsPreviewProps {
   block: DocBlock;
@@ -90,7 +91,7 @@ export const TabsPreview: React.FC<TabsPreviewProps> = ({
             style={styleObj}
             className={`${styleClasses} ${tabWidthClass}`}
           >
-            {tab.title || 'Tab mới'}
+            <LatexText value={tab.title || 'Tab mới'} />
           </button>
         );
       })}
@@ -106,7 +107,7 @@ export const TabsPreview: React.FC<TabsPreviewProps> = ({
       {activeTab && (
         <div key={activeTab.id} className="p-4.5 min-h-[80px] animate-fadeIn select-text flex-1">
           <div className="text-[10px] font-semibold text-slate-655 leading-relaxed whitespace-pre-wrap">
-            {activeTab.content || 'Nội dung tab trống.'}
+            <LatexText value={activeTab.content || 'Nội dung tab trống.'} />
           </div>
         </div>
       )}

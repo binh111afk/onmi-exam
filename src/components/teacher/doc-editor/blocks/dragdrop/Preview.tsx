@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
 import type { DragDropContent } from './Types';
 import { shuffleArray } from './Utils';
+import { LatexText } from '../common/LatexText';
 
 interface PreviewProps {
   block: { dragdropContent?: DragDropContent };
@@ -95,7 +96,7 @@ export const Preview: React.FC<PreviewProps> = ({ block }) => {
                   style={{ cursor: isSubmitted ? 'default' : 'grab' }}
                   className="bg-white border border-slate-200 hover:border-slate-300 p-2.5 rounded-xl text-[10px] font-bold text-slate-700 shadow-2xs hover:shadow-sm transition"
                 >
-                  {card.type === 'text' && <span>{card.content}</span>}
+                  {card.type === 'text' && <span><LatexText value={card.content} /></span>}
                   {card.type === 'image' && (
                     <img src={card.content} className="max-h-16 w-auto mx-auto rounded object-contain" alt="card" />
                   )}
@@ -123,7 +124,7 @@ export const Preview: React.FC<PreviewProps> = ({ block }) => {
                 {/* Zone Header */}
                 <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
                   <span className="text-[10px] font-black text-slate-800">
-                    {zone.content || 'Nhóm'}
+                    <LatexText value={zone.content || 'Nhóm'} />
                   </span>
                   <span className="text-[8px] font-black text-slate-400 bg-slate-100 rounded px-1.5 py-0.5">
                     Chứa: {cardsInZone.length} thẻ
@@ -152,7 +153,7 @@ export const Preview: React.FC<PreviewProps> = ({ block }) => {
                           style={{ cursor: isSubmitted ? 'default' : 'grab' }}
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border rounded-xl text-[9px] font-bold text-slate-700 shadow-3xs hover:shadow-2xs transition ${borderClass}`}
                         >
-                          {card.type === 'text' && <span>{card.content}</span>}
+                          {card.type === 'text' && <span><LatexText value={card.content} /></span>}
                           {card.type === 'image' && (
                             <img src={card.content} className="max-h-8 w-auto rounded object-contain" alt="card" />
                           )}
@@ -181,7 +182,7 @@ export const Preview: React.FC<PreviewProps> = ({ block }) => {
                       if (!c) return null;
                       return (
                         <span key={cId} className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-100/50">
-                          {c.content}
+                          <LatexText value={c.content} />
                         </span>
                       );
                     })}

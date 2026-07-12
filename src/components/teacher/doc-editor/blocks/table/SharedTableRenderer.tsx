@@ -12,6 +12,7 @@
 import React from 'react';
 import type { DocBlock, LiveTableResizeState } from '../../../../../types/doc-editor';
 import { TableCaption } from './TableCaption';
+import { containsLatexDelimiter, LatexText } from '../common/LatexText';
 import type { ResizeHandles, SelectionHandles, CellEditHandles } from './TableTypes';
 
 // ─── Shared styling constants ────────────────────────────────────────────────
@@ -386,10 +387,14 @@ const EditableCell: React.FC<EditableCellProps> = ({
 
 const ReadonlyCell: React.FC<{ cell: string; innerStyle: React.CSSProperties }> = ({
   cell, innerStyle,
-}) => (
-  <div
-    className="px-2 py-1 leading-snug"
-    style={innerStyle}
-    dangerouslySetInnerHTML={{ __html: cell }}
-  />
-);
+}) => {
+  const plainCell = cell.replace(/<[^>]*>/g, '');
+  return (
+    <div
+      className="px-2 py-1 leading-snug"
+      style={innerStyle}
+    >
+      {containsLatexDelimiter(plainCell) ? <LatexText value={plainCell} /> : <span dangerouslySetInnerHTML={{ __html: cell }} />}
+    </div>
+  );
+};

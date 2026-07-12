@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CheckCircle2, AlertCircle, RotateCcw, Check, Eye } from 'lucide-react';
 import type { MatchingContent, MatchingPair } from './MatchingTypes';
+import { LatexText } from '../common/LatexText';
 
 interface MatchingPreviewProps {
   content: MatchingContent;
@@ -224,7 +225,7 @@ export const MatchingPreview: React.FC<MatchingPreviewProps> = ({ content }) => 
                 style={borderStyle}
               >
                 <div className="text-[10px] font-bold text-slate-700 pr-2">
-                  {pair.leftText || '(Trống)'}
+                  <LatexText value={pair.leftText || '(Trống)'} />
                 </div>
                 {/* Connecting port dot right center of left card */}
                 <div
@@ -286,7 +287,7 @@ export const MatchingPreview: React.FC<MatchingPreviewProps> = ({ content }) => 
                   }}
                 />
                 <div className="text-[10px] font-bold text-slate-700 pl-2">
-                  {pair.rightText || '(Trống)'}
+                  <LatexText value={pair.rightText || '(Trống)'} />
                 </div>
               </div>
             );

@@ -4,6 +4,7 @@ import type { DocBlock } from '../../../../types/doc-editor';
 import { uploadImageFile } from '../../../../services/imageUploadService';
 import { useAlert } from '../../../common/Alert';
 import { BlockWrapperContext } from '../BlockWrapper';
+import { containsLatexDelimiter, LatexText } from './common/LatexText';
 
 interface ImageBlockProps {
   block: DocBlock;
@@ -349,7 +350,9 @@ export const ImageBlockComponent: React.FC<ImageBlockProps> = ({
               onClick={() => setIsEditingCaption(true)}
               className="cursor-text hover:text-slate-600 transition italic"
             >
-              {block.caption || 'Thêm chú thích hình ảnh...'}
+              {block.caption && containsLatexDelimiter(block.caption)
+                ? <LatexText value={block.caption} />
+                : block.caption || 'Thêm chú thích hình ảnh...'}
             </span>
           )}
         </div>

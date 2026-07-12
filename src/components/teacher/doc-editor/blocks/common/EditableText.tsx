@@ -1,4 +1,5 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
+import { containsLatexDelimiter, LatexText } from './LatexText';
 
 /**
  * EditableText — shared text input for Timeline, Flow, Tabs and future blocks.
@@ -43,8 +44,10 @@ export const EditableText = React.forwardRef<
 }, ref) => {
   // Track whether an IME composition is in progress
   const composingRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   // Local draft held during composition so we don't commit mid-composition
   const [draft, setDraft] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     // Always stop propagation so the editor container never receives these events
@@ -80,9 +83,56 @@ export const EditableText = React.forwardRef<
   // overwrite the browser's IME candidate with the last committed value.
   const displayValue = draft !== null ? draft : value;
 
+  useEffect(() => {
+    if (isEditing) {
+      inputRef.current?.focus();
+    }
+  }, [isEditing]);
+
+  const assignRef = useCallback((node: HTMLInputElement | HTMLTextAreaElement | null) => {
+    inputRef.current = node;
+    if (typeof ref === 'function') {
+      ref(node);
+    } else if (ref) {
+      ref.current = node;
+    }
+  }, [ref]);
+
+  const shouldRenderLatexPreview = !isEditing && containsLatexDelimiter(displayValue);
+
+  if (shouldRenderLatexPreview) {
+    return (
+      <div
+        id={id}
+        role="button"
+        tabIndex={0}
+        onFocus={(e) => {
+          e.stopPropagation();
+          setIsEditing(true);
+          onFocus?.();
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsEditing(true);
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setIsEditing(true);
+          }
+        }}
+        className={className}
+      >
+        <LatexText value={displayValue} />
+      </div>
+    );
+  }
+
   const sharedProps = {
     id,
-    ref: ref as React.Ref<HTMLInputElement & HTMLTextAreaElement>,
+    ref: assignRef as React.Ref<HTMLInputElement & HTMLTextAreaElement>,
     value: displayValue,
     placeholder,
     className,
@@ -91,8 +141,14 @@ export const EditableText = React.forwardRef<
     onChange: handleChange,
     onCompositionStart: handleCompositionStart,
     onCompositionEnd: handleCompositionEnd,
-    onFocus,
-    onBlur,
+    onFocus: () => {
+      setIsEditing(true);
+      onFocus?.();
+    },
+    onBlur: () => {
+      setIsEditing(false);
+      onBlur?.();
+    },
     // Prevent pointer events from bubbling and triggering block selection
     onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
   };

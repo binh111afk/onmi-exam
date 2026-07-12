@@ -24,6 +24,7 @@ import { createDefaultBlock, generateBlockId } from './blocks/BlockFactory';
 import { uploadImageFile } from '../../../services/imageUploadService';
 import type { Chapter, Lesson, DocBlock, LiveTableResizeState, LiveTableActiveCell } from '../../../types/doc-editor';
 import { FormattingStateProvider } from './FormattingStateProvider';
+import { useDocumentTree } from './useDocumentTree';
 
 // Sprint 5 Additions
 import { BLOCK_COMMANDS } from './CommandRegistry';
@@ -51,6 +52,24 @@ interface DocEditorWorkspaceProps {
 }
 
 const initialChapters: Chapter[] = [];
+
+const findFirstLessonId = (list: Chapter[]): string => {
+  const findInLessons = (lessons: Lesson[]): string => {
+    for (const lesson of lessons) {
+      if (lesson.blocks.length > 0) return lesson.id;
+      const childId = lesson.subLessons ? findInLessons(lesson.subLessons) : '';
+      if (childId) return childId;
+    }
+    return '';
+  };
+
+  for (const chapter of list) {
+    const lessonId = findInLessons(chapter.lessons);
+    if (lessonId) return lessonId;
+  }
+
+  return '';
+};
 
 const getNumberedIndex = (blocks: DocBlock[], index: number): string => {
   const currentBlock = blocks[index];
@@ -153,31 +172,30 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
 }) => {
   const { showAlert, showConfirm } = useAlert();
   const [showPreview, setShowPreview] = useState(true);
-  const [chapters, setChapters] = useState<Chapter[]>(() => {
-    return initialChaptersData || initialChapters;
-  });
+  const documentTree = useDocumentTree(initialChaptersData || initialChapters);
+  const {
+    chapters,
+    setChapters,
+    findLessonById,
+    getNodeTitle,
+    getDeletedIds,
+    toggleExpand,
+    createChapter,
+    createLesson,
+    createSubLesson,
+    createDocumentInFolder,
+    deleteNode,
+    renameNode,
+    moveLesson,
+    reorderChapter,
+  } = documentTree;
   const [activeLessonId, setActiveLessonId] = useState<string>(() => {
     return initialActiveLessonId || initialChaptersData?.[0]?.lessons?.[0]?.id || '';
   });
 
-  const findLessonById = useCallback((id: string, list: Chapter[] = chapters): Lesson | null => {
-    const findInLessons = (lessons: Lesson[]): Lesson | null => {
-      for (const lesson of lessons) {
-        if (lesson.id === id) return lesson;
-        const child = lesson.subLessons ? findInLessons(lesson.subLessons) : null;
-        if (child) return child;
-      }
-      return null;
-    };
-    for (const ch of list) {
-      const lesson = findInLessons(ch.lessons);
-      if (lesson) return lesson;
-    }
-    return null;
-  }, [chapters]);
-
   const activeLesson = useMemo(() => findLessonById(activeLessonId), [activeLessonId, findLessonById]);
-  const currentBlocks = useMemo(() => activeLesson ? activeLesson.blocks : [], [activeLesson]);
+  const canEditActiveLesson = Boolean(activeLesson && !activeLesson.isFolder);
+  const currentBlocks = useMemo(() => canEditActiveLesson && activeLesson ? activeLesson.blocks : [], [activeLesson, canEditActiveLesson]);
 
   const patchLessonFn = useCallback(
     (lessonMapper: (lesson: Lesson) => Lesson) => (lesson: Lesson): Lesson => {
@@ -269,6 +287,20 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [tableInsertIndex, setTableInsertIndex] = useState<number | null>(null);
   const [tableInsertMode, setTableInsertMode] = useState<'replace' | 'insert' | null>(null);
+
+  useEffect(() => {
+    if (!canEditActiveLesson) {
+      setActiveBlockId(null);
+      setSelectedBlockIds([]);
+      setEditorMode('block');
+      setShowSlashMenu(false);
+      setShowSelectionMenu(false);
+      setShowOtherBlocksPopup(false);
+      setShowTableModal(false);
+      setTableInsertIndex(null);
+      setTableInsertMode(null);
+    }
+  }, [canEditActiveLesson]);
 
 
 
@@ -374,11 +406,11 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
 
     const nextChapters = chapters.map(ch => ({
       ...ch,
-      lessons: ch.lessons.map(lesson => {
+      lessons: ch.lessons.map(patchLessonFn(lesson => {
         if (lesson.id === activeLessonId) {
           if (tableInsertMode === 'insert') {
             const newBlock: DocBlock = {
-              id: `b-${Math.random().toString(36).substring(2, 9)}`,
+              id: generateBlockId(),
               type: 'table',
               text: '',
               rows: tableRows,
@@ -414,7 +446,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
           }
         }
         return lesson;
-      })
+      }))
     }));
 
     pushHistoryState(nextChapters);
@@ -427,7 +459,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
     setShowTableModal(false);
     setTableInsertIndex(null);
     setTableInsertMode(null);
-  }, [tableInsertIndex, tableInsertMode, activeBlockIndex, chapters, activeLessonId, pushHistoryState]);
+  }, [tableInsertIndex, tableInsertMode, activeBlockIndex, chapters, activeLessonId, patchLessonFn, pushHistoryState]);
 
   const handleUndo = useCallback(() => {
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -570,17 +602,40 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
 
   const applyFontSize = useCallback((size: string) => {
     pendingFontSizeRef.current = size;
-    document.execCommand('fontSize', false, '7');
 
     const activeEl = document.getElementById(`block-editor-${activeBlockIndex}`);
     if (activeEl) {
-      const fonts = activeEl.querySelectorAll('font[size="7"]');
-      fonts.forEach(font => {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0 && !selection.isCollapsed && activeEl.contains(selection.anchorNode) && activeEl.contains(selection.focusNode)) {
+        const range = selection.getRangeAt(0);
+        const fragment = range.extractContents();
+        fragment.querySelectorAll<HTMLElement>('[style]').forEach((element) => {
+          element.style.fontSize = '';
+          if (!element.getAttribute('style')) {
+            element.removeAttribute('style');
+          }
+        });
+        fragment.querySelectorAll('font[size]').forEach((font) => {
+          font.removeAttribute('size');
+        });
         const span = document.createElement('span');
         span.style.fontSize = `${size}px`;
-        span.innerHTML = font.innerHTML;
-        font.parentNode?.replaceChild(span, font);
-      });
+        span.appendChild(fragment);
+        range.insertNode(span);
+        selection.removeAllRanges();
+        const nextRange = document.createRange();
+        nextRange.selectNodeContents(span);
+        selection.addRange(nextRange);
+      } else {
+        document.execCommand('fontSize', false, '7');
+        const fonts = activeEl.querySelectorAll('font[size="7"]');
+        fonts.forEach(font => {
+          const span = document.createElement('span');
+          span.style.fontSize = `${size}px`;
+          span.innerHTML = font.innerHTML;
+          font.parentNode?.replaceChild(span, font);
+        });
+      }
       updateBlockText(activeBlockIndex, activeEl.innerHTML);
     }
     syncFormattingRef.current?.();
@@ -636,23 +691,18 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
     setChapters(prev => {
       const nextChapters = prev.map(ch => ({
         ...ch,
-        lessons: ch.lessons.map(lesson => {
-          if (lesson.id === activeLessonId) {
-            return {
-              ...lesson,
-              blocks: lesson.blocks.map(b =>
-                validIds.includes(b.id) ? { ...b, align } : b
-              )
-            };
-          }
-          return lesson;
-        })
+        lessons: ch.lessons.map(patchLessonFn(lesson => ({
+          ...lesson,
+          blocks: lesson.blocks.map(b =>
+            validIds.includes(b.id) ? { ...b, align } : b
+          )
+        })))
       }));
       pushHistoryState(nextChapters, false, nextActiveIndex === -1 ? activeBlockIndex : nextActiveIndex);
       return nextChapters;
     });
     syncBlockCommandState(nextActiveId, validIds);
-  }, [activeBlockId, activeBlockIndex, activeLessonId, currentBlocks, pushHistoryState, syncBlockCommandState]);
+  }, [activeBlockId, activeBlockIndex, currentBlocks, patchLessonFn, pushHistoryState, syncBlockCommandState]);
 
   const toggleBlockAlign = useCallback((align: 'left' | 'center' | 'right' | 'justify') => {
     // When a table cell is focused, align the cell text — not the block container
@@ -684,64 +734,49 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
     setChapters(prev => {
       const nextChapters = prev.map(ch => ({
         ...ch,
-        lessons: ch.lessons.map(lesson => {
-          if (lesson.id === activeLessonId) {
-            return {
-              ...lesson,
-              blocks: lesson.blocks.map((b, idx) =>
-                idx === index ? { ...b, indent: Math.min(5, (b.indent || 0) + 1) } : b
-              )
-            };
-          }
-          return lesson;
-        })
+        lessons: ch.lessons.map(patchLessonFn(lesson => ({
+          ...lesson,
+          blocks: lesson.blocks.map((b, idx) =>
+            idx === index ? { ...b, indent: Math.min(5, (b.indent || 0) + 1) } : b
+          )
+        })))
       }));
       pushHistoryState(nextChapters);
       return nextChapters;
     });
-  }, [activeLessonId, activeBlockIndex, pushHistoryState]);
+  }, [activeBlockIndex, patchLessonFn, pushHistoryState]);
 
   const outdentBlock = useCallback((index = activeBlockIndex) => {
     setChapters(prev => {
       const nextChapters = prev.map(ch => ({
         ...ch,
-        lessons: ch.lessons.map(lesson => {
-          if (lesson.id === activeLessonId) {
-            return {
-              ...lesson,
-              blocks: lesson.blocks.map((b, idx) =>
-                idx === index ? { ...b, indent: Math.max(0, (b.indent || 0) - 1) } : b
-              )
-            };
-          }
-          return lesson;
-        })
+        lessons: ch.lessons.map(patchLessonFn(lesson => ({
+          ...lesson,
+          blocks: lesson.blocks.map((b, idx) =>
+            idx === index ? { ...b, indent: Math.max(0, (b.indent || 0) - 1) } : b
+          )
+        })))
       }));
       pushHistoryState(nextChapters);
       return nextChapters;
     });
-  }, [activeLessonId, activeBlockIndex, pushHistoryState]);
+  }, [activeBlockIndex, patchLessonFn, pushHistoryState]);
 
   const toggleTodoChecked = useCallback((index: number) => {
     setChapters(prev => {
       const nextChapters = prev.map(ch => ({
         ...ch,
-        lessons: ch.lessons.map(lesson => {
-          if (lesson.id === activeLessonId) {
-            return {
-              ...lesson,
-              blocks: lesson.blocks.map((b, idx) =>
-                idx === index ? { ...b, checked: !b.checked } : b
-              )
-            };
-          }
-          return lesson;
-        })
+        lessons: ch.lessons.map(patchLessonFn(lesson => ({
+          ...lesson,
+          blocks: lesson.blocks.map((b, idx) =>
+            idx === index ? { ...b, checked: !b.checked } : b
+          )
+        })))
       }));
       pushHistoryState(nextChapters);
       return nextChapters;
     });
-  }, [activeLessonId, pushHistoryState]);
+  }, [patchLessonFn, pushHistoryState]);
 
   const focusBlock = (index: number) => {
     setTimeout(() => {
@@ -753,34 +788,22 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
   };
 
   const deleteBlock = useCallback((index: number) => {
+    if (currentBlocks.length <= 1) return;
     setChapters(prev => {
-      let nextPages = prev;
-      for (const ch of prev) {
-        const lesson = ch.lessons.find(l => l.id === activeLessonId);
-        if (lesson) {
-          if (lesson.blocks.length <= 1) return prev;
-          nextPages = prev.map(c => ({
-            ...c,
-            lessons: c.lessons.map(l => {
-              if (l.id === activeLessonId) {
-                return {
-                  ...l,
-                  blocks: l.blocks.filter((_, idx) => idx !== index)
-                };
-              }
-              return l;
-            })
-          }));
-          break;
-        }
-      }
+      const nextPages = prev.map(ch => ({
+        ...ch,
+        lessons: ch.lessons.map(patchLessonFn(lesson => ({
+          ...lesson,
+          blocks: lesson.blocks.filter((_, idx) => idx !== index)
+        })))
+      }));
       pushHistoryState(nextPages);
       const targetIdx = Math.max(0, index - 1);
       setActiveBlockIndex(targetIdx);
       focusBlock(targetIdx);
       return nextPages;
     });
-  }, [activeLessonId, pushHistoryState]);
+  }, [currentBlocks.length, patchLessonFn, pushHistoryState]);
 
   const handleDeleteBlockWithConfirm = useCallback(async (index: number) => {
     const ok = await showConfirm({
@@ -825,18 +848,13 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
     setChapters(prev => {
       const nextChapters = prev.map(ch => ({
         ...ch,
-        lessons: ch.lessons.map(lesson => {
-          if (lesson.id === activeLessonId) {
-            return { ...lesson, blocks: finalBlocks };
-          }
-          return lesson;
-        })
+        lessons: ch.lessons.map(patchLessonFn(lesson => ({ ...lesson, blocks: finalBlocks })))
       }));
       pushHistoryState(nextChapters, false, nextActiveIndex);
       return nextChapters;
     });
     syncBlockCommandState(nextActiveId);
-  }, [activeLessonId, currentBlocks, pushHistoryState, syncBlockCommandState]);
+  }, [currentBlocks, patchLessonFn, pushHistoryState, syncBlockCommandState]);
 
   const duplicateBlocks = useCallback((ids: string[]) => {
     const validIds = currentBlocks
@@ -868,108 +886,84 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
     setChapters(prev => {
       const nextChapters = prev.map(ch => ({
         ...ch,
-        lessons: ch.lessons.map(lesson => {
-          if (lesson.id === activeLessonId) {
-            return { ...lesson, blocks: nextBlocks };
-          }
-          return lesson;
-        })
+        lessons: ch.lessons.map(patchLessonFn(lesson => ({ ...lesson, blocks: nextBlocks })))
       }));
       pushHistoryState(nextChapters, false, nextActiveIndex === -1 ? activeBlockIndex : nextActiveIndex);
       return nextChapters;
     });
     syncBlockCommandState(nextActiveId ?? null, nextSelectedIds);
-  }, [activeBlockId, activeBlockIndex, activeLessonId, currentBlocks, pushHistoryState, syncBlockCommandState]);
+  }, [activeBlockId, activeBlockIndex, currentBlocks, patchLessonFn, pushHistoryState, syncBlockCommandState]);
 
   const pasteBlocks = useCallback((pasted: DocBlock[], targetBlockId: string | null) => {
     if (pasted.length === 0) return;
     setChapters(prev => {
       const nextChapters = prev.map(ch => ({
         ...ch,
-        lessons: ch.lessons.map(lesson => {
-          if (lesson.id === activeLessonId) {
-            const idx = targetBlockId ? lesson.blocks.findIndex(b => b.id === targetBlockId) : -1;
-            const insertIdx = idx !== -1 ? idx + 1 : lesson.blocks.length;
+        lessons: ch.lessons.map(patchLessonFn(lesson => {
+          const idx = targetBlockId ? lesson.blocks.findIndex(b => b.id === targetBlockId) : -1;
+          const insertIdx = idx !== -1 ? idx + 1 : lesson.blocks.length;
 
-            const freshBlocks = pasted.map(b => ({
-              ...b,
-              id: generateBlockId(),
-            }));
+          const freshBlocks = pasted.map(b => ({
+            ...b,
+            id: generateBlockId(),
+          }));
 
-            const updated = [
-              ...lesson.blocks.slice(0, insertIdx),
-              ...freshBlocks,
-              ...lesson.blocks.slice(insertIdx)
-            ];
-            return { ...lesson, blocks: updated };
-          }
-          return lesson;
-        })
+          const updated = [
+            ...lesson.blocks.slice(0, insertIdx),
+            ...freshBlocks,
+            ...lesson.blocks.slice(insertIdx)
+          ];
+          return { ...lesson, blocks: updated };
+        }))
       }));
       pushHistoryState(nextChapters);
       return nextChapters;
     });
-  }, [activeLessonId, pushHistoryState]);
+  }, [patchLessonFn, pushHistoryState]);
 
   const duplicateBlock = useCallback((index: number) => {
+    const currentBlock = currentBlocks[index];
+    if (!currentBlock) return;
+    const newBlock: DocBlock = {
+      ...currentBlock,
+      id: generateBlockId(),
+    };
     setChapters(prev => {
-      let nextPages = prev;
-      for (const ch of prev) {
-        const lesson = ch.lessons.find(l => l.id === activeLessonId);
-        if (lesson) {
-          const currentBlock = lesson.blocks[index];
-          const newBlock: DocBlock = {
-            ...currentBlock,
-            id: generateBlockId(),
-          };
-          nextPages = prev.map(c => ({
-            ...c,
-            lessons: c.lessons.map(l => {
-              if (l.id === activeLessonId) {
-                return {
-                  ...l,
-                  blocks: [
-                    ...l.blocks.slice(0, index + 1),
-                    newBlock,
-                    ...l.blocks.slice(index + 1)
-                  ]
-                };
-              }
-              return l;
-            })
-          }));
-          break;
-        }
-      }
+      const nextPages = prev.map(ch => ({
+        ...ch,
+        lessons: ch.lessons.map(patchLessonFn(lesson => ({
+          ...lesson,
+          blocks: [
+            ...lesson.blocks.slice(0, index + 1),
+            newBlock,
+            ...lesson.blocks.slice(index + 1)
+          ]
+        })))
+      }));
       pushHistoryState(nextPages);
       return nextPages;
     });
-  }, [activeLessonId, pushHistoryState]);
+  }, [currentBlocks, patchLessonFn, pushHistoryState]);
 
   const convertBlockType = useCallback((index: number, type: DocBlock['type'], level?: 1 | 2 | 3) => {
     if (type === 'mindmap') return;
     setChapters(prev => {
       const nextChapters = prev.map(ch => ({
         ...ch,
-        lessons: ch.lessons.map(lesson => {
-          if (lesson.id === activeLessonId) {
-            return {
-              ...lesson,
-              blocks: lesson.blocks.map((b, idx) => {
-                if (idx === index) {
-                  return createDefaultBlock(type, b.id, b.align, b.indent, level, b.text);
-                }
-                return b;
-              })
-            };
-          }
-          return lesson;
-        })
+        lessons: ch.lessons.map(patchLessonFn(lesson => ({
+          ...lesson,
+          blocks: lesson.blocks.map((b, idx) => {
+            if (idx === index) {
+              return createDefaultBlock(type, b.id, b.align, b.indent, level, b.text);
+            }
+            return b;
+          })
+        })))
       }));
       pushHistoryState(nextChapters);
       return nextChapters;
     });
-  }, [activeLessonId, pushHistoryState]);
+  }, [patchLessonFn, pushHistoryState]);
 
   const handleUpdateBlock = useCallback((index: number, updatedBlock: DocBlock, isDebounced = false) => {
     const nextChapters = chapters.map(ch => ({
@@ -1021,19 +1015,14 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
     setChapters(prev => {
       const nextChapters = prev.map(ch => ({
         ...ch,
-        lessons: ch.lessons.map(lesson => {
-          if (lesson.id === activeLessonId) {
-            return { ...lesson, blocks: nextBlocks };
-          }
-          return lesson;
-        })
+        lessons: ch.lessons.map(patchLessonFn(lesson => ({ ...lesson, blocks: nextBlocks })))
       }));
       pushHistoryState(nextChapters, false, nextActiveIndex === -1 ? activeBlockIndex : nextActiveIndex);
       return nextChapters;
     });
     syncBlockCommandState(nextActiveId, validIds);
     focusBlock(nextActiveIndex);
-  }, [activeBlockId, activeBlockIndex, activeLessonId, currentBlocks, pushHistoryState, syncBlockCommandState]);
+  }, [activeBlockId, activeBlockIndex, currentBlocks, patchLessonFn, pushHistoryState, syncBlockCommandState]);
   const handleBackspaceAtStart = useCallback((index: number) => {
     setChapters(prev => {
       let nextPages = prev;
@@ -1164,24 +1153,19 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
 
     const nextChapters = chapters.map(ch => ({
       ...ch,
-      lessons: ch.lessons.map(lesson => {
-        if (lesson.id === activeLessonId) {
-          return {
-            ...lesson,
-            blocks: lesson.blocks.map((b, idx) => {
-              if (idx === activeBlockIndex) {
-                if (cmdType.startsWith('heading-')) {
-                  const level = parseInt(cmdType.split('-')[1], 10) as 1 | 2 | 3;
-                  return createDefaultBlock('heading', b.id, b.align, b.indent, level);
-                }
-                return createDefaultBlock(cmdType as DocBlock['type'], b.id, b.align, b.indent);
-              }
-              return b;
-            })
-          };
-        }
-        return lesson;
-      })
+      lessons: ch.lessons.map(patchLessonFn(lesson => ({
+        ...lesson,
+        blocks: lesson.blocks.map((b, idx) => {
+          if (idx === activeBlockIndex) {
+            if (cmdType.startsWith('heading-')) {
+              const level = parseInt(cmdType.split('-')[1], 10) as 1 | 2 | 3;
+              return createDefaultBlock('heading', b.id, b.align, b.indent, level);
+            }
+            return createDefaultBlock(cmdType as DocBlock['type'], b.id, b.align, b.indent);
+          }
+          return b;
+        })
+      })))
     }));
 
     pendingCaretRestoreRef.current = {
@@ -1189,7 +1173,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
       offset: 0
     };
     pushHistoryState(nextChapters);
-  }, [chapters, activeLessonId, activeBlockIndex, pushHistoryState]);
+  }, [chapters, activeBlockIndex, patchLessonFn, pushHistoryState]);
 
   const insertBlockAbove = useCallback((index: number) => {
     setChapters(prev => {
@@ -1295,16 +1279,13 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
         setChapters(prev => {
           const nextChapters = prev.map(ch => ({
             ...ch,
-            lessons: ch.lessons.map(lesson => {
-              if (lesson.id === activeLessonId) {
-                const updatedBlocks = [...lesson.blocks];
-                const [movedBlock] = updatedBlocks.splice(index, 1);
-                const insertIdx = finalTargetIdx > index ? finalTargetIdx - 1 : finalTargetIdx;
-                updatedBlocks.splice(insertIdx, 0, movedBlock);
-                return { ...lesson, blocks: updatedBlocks };
-              }
-              return lesson;
-            })
+            lessons: ch.lessons.map(patchLessonFn(lesson => {
+              const updatedBlocks = [...lesson.blocks];
+              const [movedBlock] = updatedBlocks.splice(index, 1);
+              const insertIdx = finalTargetIdx > index ? finalTargetIdx - 1 : finalTargetIdx;
+              updatedBlocks.splice(insertIdx, 0, movedBlock);
+              return { ...lesson, blocks: updatedBlocks };
+            }))
           }));
           pushHistoryState(nextChapters);
 
@@ -1518,56 +1499,39 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
 
   // Explorer handlers
   const handleToggleChapterExpand = useCallback((chapterId: string) => {
-    setChapters(prev => prev.map(ch =>
-      ch.id === chapterId ? { ...ch, isExpanded: !ch.isExpanded } : ch
-    ));
-  }, []);
+    toggleExpand(chapterId);
+  }, [toggleExpand]);
 
   const handleToggleLessonExpand = useCallback((lessonId: string) => {
-    const toggleExpand = (lesson: Lesson): Lesson => {
-      if (lesson.id === lessonId) return { ...lesson, isExpanded: !lesson.isExpanded };
-      return lesson.subLessons?.length
-        ? { ...lesson, subLessons: lesson.subLessons.map(toggleExpand) }
-        : lesson;
-    };
-    setChapters(prev => prev.map(ch => ({
-      ...ch,
-      lessons: ch.lessons.map(toggleExpand),
-    })));
-  }, []);
+    toggleExpand(lessonId);
+  }, [toggleExpand]);
 
   const handleCreateChapter = useCallback(() => {
-    const newId = crypto.randomUUID();
+    const newId = createChapter();
     setNewItems(prev => [...prev, newId]);
-    setChapters(prev => {
-      const newCh: Chapter = {
-        id: newId,
-        title: 'Chương chưa đặt tên',
-        isExpanded: true,
-        lessons: []
-      };
-      return [...prev, newCh];
-    });
     setSelectedChapterId(newId);
     setEditingItemId(newId);
-  }, []);
+  }, [createChapter]);
 
   const handleDeleteChapter = useCallback(async (chapterId: string) => {
-    const ch = chapters.find(c => c.id === chapterId);
-    if (!ch) return;
+    const title = getNodeTitle(chapterId);
+    if (!title) return;
     const ok = await showConfirm({
       type: 'danger',
       title: 'Xóa chương',
-      description: `Bạn có chắc chắn muốn xóa chương "${ch.title}" cùng toàn bộ bài học bên trong không?`,
+      description: `Bạn có chắc chắn muốn xóa chương "${title}" cùng toàn bộ bài học bên trong không?`,
     });
     if (!ok) return;
 
-    setChapters(prev => {
-      const nextChapters = prev.filter(c => c.id !== chapterId);
-      pushHistoryState(nextChapters);
-      return nextChapters;
-    });
-  }, [chapters, showConfirm, pushHistoryState]);
+    const deletedIds = getDeletedIds(chapterId);
+    const nextChapters = deleteNode(chapterId);
+    pushHistoryState(nextChapters);
+
+    if (deletedIds.includes(activeLessonId)) {
+      setActiveLessonId(findFirstLessonId(nextChapters));
+      setActiveBlockIndex(0);
+    }
+  }, [activeLessonId, deleteNode, getDeletedIds, getNodeTitle, pushHistoryState, showConfirm]);
 
   const handleCreateLesson = useCallback(async (chapterId: string, title = 'Bài học chưa đặt tên', isFolder = false) => {
     if (!chapterId) {
@@ -1579,86 +1543,31 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
       return;
     }
 
-    const newId = crypto.randomUUID();
+    const newId = createLesson(chapterId, title, isFolder);
+    if (!newId) return;
     setNewItems(prev => [...prev, newId]);
-    setChapters(prev => {
-      const newLesson: Lesson = {
-        id: newId,
-        title,
-        isFolder,
-        blocks: [
-          createDefaultBlock('paragraph')
-        ]
-      };
-      return prev.map(ch => {
-        if (ch.id === chapterId) {
-          return {
-            ...ch,
-            isExpanded: true,
-            lessons: [...ch.lessons, newLesson]
-          };
-        }
-        return ch;
-      });
-    });
     setEditingItemId(newId);
     setActiveLessonId(newId);
     setActiveBlockIndex(0);
-  }, [showAlert]);
+  }, [createLesson, showAlert]);
 
   const handleCreateSubLesson = useCallback(async (chapterId: string, lessonId: string) => {
-    const newId = crypto.randomUUID();
+    const newId = createSubLesson(lessonId);
+    if (!newId) return;
     setNewItems(prev => [...prev, newId]);
-    setChapters(prev => {
-      const newSub: Lesson = {
-        id: newId,
-        title: 'Thư mục mới',
-        isFolder: true,
-        blocks: [createDefaultBlock('paragraph')],
-      };
-      return prev.map(ch => {
-        if (ch.id !== chapterId) return ch;
-        return {
-          ...ch,
-          isExpanded: true,
-          lessons: ch.lessons.map(l => {
-            if (l.id !== lessonId) return l;
-            return { ...l, isFolder: true, isExpanded: true, subLessons: [...(l.subLessons ?? []), newSub] };
-          }),
-        };
-      });
-    });
     setEditingItemId(newId);
     setActiveLessonId(newId);
     setActiveBlockIndex(0);
-  }, []);
+  }, [createSubLesson]);
 
   const handleCreateDocumentInFolder = useCallback((folderId: string) => {
-    const newId = crypto.randomUUID();
-    const newDocument: Lesson = {
-      id: newId,
-      title: 'Bài học chưa đặt tên',
-      blocks: [createDefaultBlock('paragraph')],
-    };
+    const newId = createDocumentInFolder(folderId);
+    if (!newId) return;
     setNewItems(prev => [...prev, newId]);
-    const appendDocument = (lesson: Lesson): Lesson => {
-      if (lesson.id === folderId) {
-        return {
-          ...lesson,
-          isFolder: true,
-          isExpanded: true,
-          subLessons: [...(lesson.subLessons ?? []), newDocument],
-        };
-      }
-      return lesson.subLessons?.length
-        ? { ...lesson, subLessons: lesson.subLessons.map(appendDocument) }
-        : lesson;
-    };
-    setChapters(prev => prev.map(ch => ({ ...ch, lessons: ch.lessons.map(appendDocument) })));
     setEditingItemId(newId);
     setActiveLessonId(newId);
     setActiveBlockIndex(0);
-  }, []);
+  }, [createDocumentInFolder]);
 
   const handleDeleteSubLesson = useCallback(async (lessonId: string, subLessonId: string) => {
     const ok = await showConfirm({
@@ -1667,30 +1576,14 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
       description: 'Bạn có chắc chắn muốn xóa mục này không?',
     });
     if (!ok) return;
-    setChapters(prev => {
-      const nextChapters = prev.map(ch => ({
-        ...ch,
-        lessons: ch.lessons.map(l => {
-          if (l.id !== lessonId) return l;
-          return { ...l, subLessons: (l.subLessons ?? []).filter(sl => sl.id !== subLessonId) };
-        }),
-      }));
-      pushHistoryState(nextChapters);
-      if (activeLessonId === subLessonId) {
-        let fallback = 'water';
-        for (const ch of nextChapters) {
-          for (const l of ch.lessons) {
-            if (l.blocks.length > 0) { fallback = l.id; break; }
-            if (l.subLessons && l.subLessons.length > 0) { fallback = l.subLessons[0].id; break; }
-          }
-          if (fallback !== 'water') break;
-        }
-        setActiveLessonId(fallback);
-        setActiveBlockIndex(0);
-      }
-      return nextChapters;
-    });
-  }, [activeLessonId, showConfirm, pushHistoryState]);
+    const deletedIds = getDeletedIds(subLessonId);
+    const nextChapters = deleteNode(subLessonId);
+    pushHistoryState(nextChapters);
+    if (deletedIds.includes(activeLessonId)) {
+      setActiveLessonId(findFirstLessonId(nextChapters));
+      setActiveBlockIndex(0);
+    }
+  }, [activeLessonId, deleteNode, getDeletedIds, pushHistoryState, showConfirm]);
 
   const handleDepthExceeded = useCallback(async () => {
     await showAlert({
@@ -1701,45 +1594,25 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
   }, [showAlert]);
 
   const handleDeleteLesson = useCallback(async (lessonId: string) => {
-    let currentLesson: Lesson | null = null;
-    for (const ch of chapters) {
-      const l = ch.lessons.find(less => less.id === lessonId);
-      if (l) {
-        currentLesson = l;
-        break;
-      }
-    }
-    if (!currentLesson) return;
+    const title = getNodeTitle(lessonId);
+    if (!title) return;
 
     const ok = await showConfirm({
       type: 'danger',
       title: 'Xóa bài học',
-      description: `Bạn có chắc chắn muốn xóa bài học "${currentLesson.title}" không?`,
+      description: `Bạn có chắc chắn muốn xóa bài học "${title}" không?`,
     });
     if (!ok) return;
 
-    setChapters(prev => {
-      const nextChapters = prev.map(ch => ({
-        ...ch,
-        lessons: ch.lessons.filter(l => l.id !== lessonId)
-      }));
-      pushHistoryState(nextChapters);
+    const deletedIds = getDeletedIds(lessonId);
+    const nextChapters = deleteNode(lessonId);
+    pushHistoryState(nextChapters);
 
-      if (activeLessonId === lessonId) {
-        let firstAvailableLessonId = 'water';
-        for (const ch of nextChapters) {
-          if (ch.lessons.length > 0) {
-            firstAvailableLessonId = ch.lessons[0].id;
-            break;
-          }
-        }
-        setActiveLessonId(firstAvailableLessonId);
-        setActiveBlockIndex(0);
-      }
-
-      return nextChapters;
-    });
-  }, [activeLessonId, chapters, showConfirm, pushHistoryState]);
+    if (deletedIds.includes(activeLessonId)) {
+      setActiveLessonId(findFirstLessonId(nextChapters));
+      setActiveBlockIndex(0);
+    }
+  }, [activeLessonId, deleteNode, getDeletedIds, getNodeTitle, pushHistoryState, showConfirm]);
 
   const handleSaveEdit = useCallback((id: string, newTitle: string) => {
     const trimmedTitle = newTitle.trim();
@@ -1749,154 +1622,38 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
       return;
     }
 
-    setChapters(prev => {
-      const nextChapters = prev.map(ch => {
-        if (ch.id === id) {
-          return { ...ch, title: trimmedTitle };
-        }
-        return {
-          ...ch,
-          lessons: ch.lessons.map(l => {
-            if (l.id === id) {
-              return {
-                ...l,
-                title: trimmedTitle,
-                blocks: l.blocks.map((block, index) =>
-                  index === 0 && block.type === 'heading' && block.level === 1
-                    ? { ...block, text: trimmedTitle }
-                    : block
-                ),
-              };
-            }
-            return {
-              ...l,
-              subLessons: (l.subLessons ?? []).map(sl =>
-                sl.id === id
-                  ? {
-                    ...sl,
-                    title: trimmedTitle,
-                    blocks: sl.blocks.map((block, index) =>
-                      index === 0 && block.type === 'heading' && block.level === 1
-                        ? { ...block, text: trimmedTitle }
-                        : block
-                    ),
-                  }
-                  : sl
-              ),
-            };
-          }),
-        };
-      });
-      pushHistoryState(nextChapters);
-      return nextChapters;
-    });
+    const nextChapters = renameNode(id, trimmedTitle);
+    pushHistoryState(nextChapters);
 
     setEditingItemId(null);
     setNewItems(prev => prev.filter(x => x !== id));
-  }, [pushHistoryState]);
+  }, [pushHistoryState, renameNode]);
 
   const handleCancelEdit = useCallback((id: string) => {
     const isNew = newItems.includes(id);
 
     if (isNew) {
-      setChapters(prev => {
-        const filteredChapters = prev.filter(ch => ch.id !== id);
-        const finalChapters = filteredChapters.map(ch => ({
-          ...ch,
-          lessons: ch.lessons
-            .filter(l => l.id !== id)
-            .map(l => ({
-              ...l,
-              subLessons: (l.subLessons ?? []).filter(sl => sl.id !== id),
-            })),
-        }));
-
-        if (activeLessonId === id) {
-          let firstAvailableLessonId = 'water';
-          for (const ch of finalChapters) {
-            if (ch.lessons.length > 0) {
-              firstAvailableLessonId = ch.lessons[0].id;
-              break;
-            }
-          }
-          setActiveLessonId(firstAvailableLessonId);
-          setActiveBlockIndex(0);
-        }
-
-        return finalChapters;
-      });
+      const deletedIds = getDeletedIds(id);
+      const nextChapters = deleteNode(id);
+      if (deletedIds.includes(activeLessonId)) {
+        setActiveLessonId(findFirstLessonId(nextChapters));
+        setActiveBlockIndex(0);
+      }
     }
 
     setEditingItemId(null);
     setNewItems(prev => prev.filter(x => x !== id));
-  }, [newItems, activeLessonId]);
+  }, [activeLessonId, deleteNode, getDeletedIds, newItems]);
 
   const handleMoveLesson = useCallback((sourceLessonId: string, targetParentId: string, targetBeforeId?: string) => {
-    setChapters(prev => {
-      let sourceLesson: Lesson | null = null;
-      const withoutSource = prev.map(ch => ({
-        ...ch,
-        lessons: ch.lessons
-          .filter(lesson => {
-            if (lesson.id === sourceLessonId) sourceLesson = lesson;
-            return lesson.id !== sourceLessonId;
-          })
-          .map(lesson => ({
-            ...lesson,
-            subLessons: (lesson.subLessons ?? []).filter(subLesson => {
-              if (subLesson.id === sourceLessonId) sourceLesson = subLesson;
-              return subLesson.id !== sourceLessonId;
-            }),
-          })),
-      }));
-      if (!sourceLesson) return prev;
-
-      const targetIsLesson = withoutSource.some(ch => ch.lessons.some(lesson => lesson.id === targetParentId));
-      if (targetIsLesson && sourceLesson.subLessons?.length) return prev;
-
-      const finalChapters = withoutSource.map(ch => {
-        if (ch.id === targetParentId) {
-          const targetIndex = ch.lessons.findIndex(lesson => lesson.id === targetBeforeId);
-          const updatedLessons = [...ch.lessons];
-          if (targetIndex !== -1) {
-            updatedLessons.splice(targetIndex, 0, sourceLesson!);
-          } else {
-            updatedLessons.push(sourceLesson!);
-          }
-          return { ...ch, isExpanded: true, lessons: updatedLessons };
-        }
-        return {
-          ...ch,
-          lessons: ch.lessons.map(lesson => {
-            if (lesson.id !== targetParentId) return lesson;
-            const targetIndex = lesson.subLessons?.findIndex(subLesson => subLesson.id === targetBeforeId) ?? -1;
-            const subLessons = [...(lesson.subLessons ?? [])];
-            if (targetIndex === -1) subLessons.push(sourceLesson!);
-            else subLessons.splice(targetIndex, 0, sourceLesson!);
-            return { ...lesson, isExpanded: true, subLessons };
-          }),
-        };
-      });
-
-      pushHistoryState(finalChapters);
-      return finalChapters;
-    });
-  }, [pushHistoryState]);
+    const nextChapters = moveLesson(sourceLessonId, targetParentId, targetBeforeId);
+    pushHistoryState(nextChapters);
+  }, [moveLesson, pushHistoryState]);
 
   const handleChapterReorder = useCallback((sourceChapterId: string, targetChapterId: string) => {
-    setChapters(prev => {
-      const sourceIndex = prev.findIndex(c => c.id === sourceChapterId);
-      const targetIndex = prev.findIndex(c => c.id === targetChapterId);
-      if (sourceIndex === -1 || targetIndex === -1) return prev;
-
-      const nextChapters = [...prev];
-      const [movedChapter] = nextChapters.splice(sourceIndex, 1);
-      nextChapters.splice(targetIndex, 0, movedChapter);
-
-      pushHistoryState(nextChapters);
-      return nextChapters;
-    });
-  }, [pushHistoryState]);
+    const nextChapters = reorderChapter(sourceChapterId, targetChapterId);
+    pushHistoryState(nextChapters);
+  }, [pushHistoryState, reorderChapter]);
 
   const handleLessonSelect = useCallback((lessonId: string) => {
     setActiveLessonId(lessonId);
@@ -1932,10 +1689,10 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
           const uploadedUrl = await uploadImageFile(file);
           const nextChapters = chapters.map(ch => ({
             ...ch,
-            lessons: ch.lessons.map(lesson => {
+            lessons: ch.lessons.map(patchLessonFn(lesson => {
               if (lesson.id === activeLessonId) {
                 const newBlock: DocBlock = {
-                  id: `b-${Math.random().toString(36).substring(2, 9)}`,
+                  id: generateBlockId(),
                   type: 'image',
                   text: '',
                   src: uploadedUrl,
@@ -1953,7 +1710,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
                 return { ...lesson, blocks: updatedBlocks };
               }
               return lesson;
-            })
+            }))
           }));
 
           pushHistoryState(nextChapters);
@@ -1964,7 +1721,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
         }
       }
     }
-  }, [chapters, activeLessonId, activeBlockIndex, pushHistoryState]);
+  }, [chapters, activeLessonId, activeBlockIndex, patchLessonFn, pushHistoryState]);
 
   const handleSelectOtherBlock = useCallback((type: 'timeline' | 'flow' | 'tabs' | 'compare' | 'diagram' | 'matching' | 'fillblank' | 'dragdrop' | 'sortorder') => {
     setShowOtherBlocksPopup(false);
@@ -2161,49 +1918,53 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
             <main className="flex-1 bg-white border-r border-slate-100 flex flex-col overflow-hidden">
 
               {/* Rich Editor Toolbar */}
-              <DocToolbar
-                onAiSuggest={handleAiSuggest}
-                onBold={() => executeFormat('bold')}
-                onItalic={() => executeFormat('italic')}
-                onUnderline={() => executeFormat('underline')}
-                onStrikethrough={() => executeFormat('strikeThrough')}
-                onColorChange={handleColorChange}
-                onHighlightChange={handleHighlightChange}
-                onBlockTypeChange={toggleBlockType}
-                onAlignChange={toggleBlockAlign}
-                onIndent={() => indentBlock()}
-                onOutdent={() => outdentBlock()}
-                onUndo={handleUndo}
-                onRedo={handleRedo}
-                canUndo={historyIndex > 0}
-                canRedo={historyIndex < history.length - 1}
-                onFontSizeChange={applyFontSize}
-              />
+              {canEditActiveLesson && (
+                <DocToolbar
+                  onAiSuggest={handleAiSuggest}
+                  onBold={() => executeFormat('bold')}
+                  onItalic={() => executeFormat('italic')}
+                  onUnderline={() => executeFormat('underline')}
+                  onStrikethrough={() => executeFormat('strikeThrough')}
+                  onColorChange={handleColorChange}
+                  onHighlightChange={handleHighlightChange}
+                  onBlockTypeChange={toggleBlockType}
+                  onAlignChange={toggleBlockAlign}
+                  onIndent={() => indentBlock()}
+                  onOutdent={() => outdentBlock()}
+                  onUndo={handleUndo}
+                  onRedo={handleRedo}
+                  canUndo={historyIndex > 0}
+                  canRedo={historyIndex < history.length - 1}
+                  onFontSizeChange={applyFontSize}
+                />
+              )}
 
-              {/* Editable Block Content List */}
-              <div
-                id="editor-blocks-container"
-                onKeyDown={(e) => handleKeyDown(e, activeBlockIndex)}
-                onClick={handleScrollWrapperClick}
-                onContextMenu={(e) => {
-                  const sel = window.getSelection();
-                  if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
-                    const container = e.currentTarget;
-                    if (container.contains(sel.anchorNode)) {
+              {canEditActiveLesson ? (
+                <>
+                  {/* Editable Block Content List */}
+                  <div
+                    id="editor-blocks-container"
+                    onKeyDown={(e) => handleKeyDown(e, activeBlockIndex)}
+                    onClick={handleScrollWrapperClick}
+                    onContextMenu={(e) => {
+                      const sel = window.getSelection();
+                      if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
+                        const container = e.currentTarget;
+                        if (container.contains(sel.anchorNode)) {
+                          e.preventDefault();
+                          setSelectionMenuCoords({ x: e.clientX, y: e.clientY });
+                          setShowSelectionMenu(true);
+                        }
+                      }
+                    }}
+                    onDragOver={(e) => {
                       e.preventDefault();
-                      setSelectionMenuCoords({ x: e.clientX, y: e.clientY });
-                      setShowSelectionMenu(true);
-                    }
-                  }
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                onDrop={handleBodyDrop}
-                className="flex-1 p-8 overflow-auto space-y-4 select-text relative"
-              >
-                {currentBlocks.map((block, idx) => {
+                      e.stopPropagation();
+                    }}
+                    onDrop={handleBodyDrop}
+                    className="flex-1 p-8 overflow-auto space-y-4 select-text relative"
+                  >
+                    {currentBlocks.map((block, idx) => {
                   const alignClass = block.align === 'center'
                     ? 'text-center'
                     : block.align === 'right'
@@ -2246,70 +2007,76 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
                       applyBlockAlignment={applyBlockAlignment}
                     />
                   );
-                })}
+                    })}
 
-                {/* Visual insertion indicator for block dragging */}
-                <DragIndicator top={dragIndicatorTop} visible={dragIndicatorVisible} />
+                    {/* Visual insertion indicator for block dragging */}
+                    <DragIndicator top={dragIndicatorTop} visible={dragIndicatorVisible} />
 
-                {/* Floating visual preview of the block being dragged */}
-                <BlockDragPreview
-                  text={draggingIndex !== null ? (currentBlocks[draggingIndex]?.text || '') : ''}
-                  type={draggingIndex !== null ? (currentBlocks[draggingIndex]?.type || '') : ''}
-                  coords={dragPointerCoords}
-                  visible={draggingIndex !== null}
-                />
+                    {/* Floating visual preview of the block being dragged */}
+                    <BlockDragPreview
+                      text={draggingIndex !== null ? (currentBlocks[draggingIndex]?.text || '') : ''}
+                      type={draggingIndex !== null ? (currentBlocks[draggingIndex]?.type || '') : ''}
+                      coords={dragPointerCoords}
+                      visible={draggingIndex !== null}
+                    />
 
-                {/* Presentation-only floating Slash Command Menu */}
-                <SlashMenu
-                  isOpen={showSlashMenu}
-                  commands={filteredCommands}
-                  selectedIndex={slashMenuIndex}
-                  coords={slashMenuCoords}
-                  onSelect={handleSelectSlashCommand}
-                  onClose={() => setShowSlashMenu(false)}
-                />
+                    {/* Presentation-only floating Slash Command Menu */}
+                    <SlashMenu
+                      isOpen={showSlashMenu}
+                      commands={filteredCommands}
+                      selectedIndex={slashMenuIndex}
+                      coords={slashMenuCoords}
+                      onSelect={handleSelectSlashCommand}
+                      onClose={() => setShowSlashMenu(false)}
+                    />
 
-                {/* Custom selection right click context menu */}
-                <SelectionContextMenu
-                  isOpen={showSelectionMenu}
-                  onClose={() => setShowSelectionMenu(false)}
-                  coords={selectionMenuCoords}
-                  onCopy={() => document.execCommand('copy')}
-                  onCut={() => document.execCommand('cut')}
-                  onPaste={handlePasteSelection}
-                  onFormat={executeFormat}
-                  onConvertBlock={(type, lvl) => convertBlockType(activeBlockIndex, type, lvl)}
-                />
+                    {/* Custom selection right click context menu */}
+                    <SelectionContextMenu
+                      isOpen={showSelectionMenu}
+                      onClose={() => setShowSelectionMenu(false)}
+                      coords={selectionMenuCoords}
+                      onCopy={() => document.execCommand('copy')}
+                      onCut={() => document.execCommand('cut')}
+                      onPaste={handlePasteSelection}
+                      onFormat={executeFormat}
+                      onConvertBlock={(type, lvl) => convertBlockType(activeBlockIndex, type, lvl)}
+                    />
 
-                {/* Custom table dimension creation modal */}
-                <TableInsertModal
-                  isOpen={showTableModal}
-                  onClose={() => {
-                    setShowTableModal(false);
-                    setTableInsertIndex(null);
-                    setTableInsertMode(null);
-                  }}
-                  onConfirm={createTableWithDimensions}
-                />
+                    {/* Custom table dimension creation modal */}
+                    <TableInsertModal
+                      isOpen={showTableModal}
+                      onClose={() => {
+                        setShowTableModal(false);
+                        setTableInsertIndex(null);
+                        setTableInsertMode(null);
+                      }}
+                      onConfirm={createTableWithDimensions}
+                    />
 
-                <PublishModal
-                  isOpen={showPublishModal}
-                  onClose={() => setShowPublishModal(false)}
-                  activeLesson={activeLesson}
-                  onPublishConfirm={handlePublish}
-                />
+                    {showOtherBlocksPopup && (
+                      <OtherBlocksPopup
+                        onClose={() => setShowOtherBlocksPopup(false)}
+                        onSelectBlock={handleSelectOtherBlock}
+                      />
+                    )}
+                  </div>
 
-                {showOtherBlocksPopup && (
-                  <OtherBlocksPopup
-                    onClose={() => setShowOtherBlocksPopup(false)}
-                    onSelectBlock={handleSelectOtherBlock}
-                  />
-                )}
-              </div>
+                  <div className="h-8 border-t border-slate-50 px-6 flex items-center text-[10px] text-slate-400 font-bold select-none bg-white">
+                    Nhấn Enter để thêm dòng mới, Tab để thụt lề, Backspace để xóa/gộp dòng, "/" để mở menu block
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center bg-white text-[11px] font-bold text-text-muted select-none">
+                  Chọn một file để soạn thảo nội dung
+                </div>
+              )}
 
-              <div className="h-8 border-t border-slate-50 px-6 flex items-center text-[10px] text-slate-400 font-bold select-none bg-white">
-                Nhấn Enter để thêm dòng mới, Tab để thụt lề, Backspace để xóa/gộp dòng, "/" để mở menu block
-              </div>
+              <PublishModal
+                isOpen={showPublishModal}
+                onClose={() => setShowPublishModal(false)}
+                activeLesson={activeLesson}
+                onPublishConfirm={handlePublish}
+              />
             </main>
 
             {/* 3. RIGHT SIDEBAR: Live Student Preview Simulator */}
@@ -2323,31 +2090,33 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
             )}
 
             {/* 4. FAR-RIGHT NARROW TOOLBAR */}
-            <aside className="w-16 bg-white border-l border-slate-100 flex flex-col items-center py-4 justify-between shrink-0 select-none overflow-y-auto">
-              <div className="w-full space-y-4 flex flex-col items-center">
-                {[
-                  { icon: <FileCheck2 size={16} />, label: 'Block' },
-                  { icon: <Brain size={16} />, label: 'AI' },
-                  { icon: <ImageIcon size={16} />, label: 'Ảnh' },
-                  { icon: <TableIcon size={16} />, label: 'Bảng' },
-                  { icon: <Activity size={16} />, label: 'Công thức' },
-                  { icon: <HelpCircle size={16} />, label: 'Quiz' },
-                  { icon: <Award size={16} />, label: 'Flashcard' },
-                  { icon: <Video size={16} />, label: 'Media' },
-                  { icon: <HelpCircle size={16} />, label: 'Khác' },
-                ].map((tool, i) => (
-                  <Tooltip key={i} content={tool.label}>
-                    <button
-                      onClick={() => handleSideToolClick(tool.label)}
-                      className="w-12 h-12 flex flex-col items-center justify-center text-slate-400 hover:text-primary hover:bg-primary-light rounded-xl transition cursor-pointer select-none"
-                    >
-                      {tool.icon}
-                      <span className="text-[7px] font-bold mt-1 text-slate-500">{tool.label}</span>
-                    </button>
-                  </Tooltip>
-                ))}
-              </div>
-            </aside>
+            {canEditActiveLesson && (
+              <aside className="w-16 bg-white border-l border-slate-100 flex flex-col items-center py-4 justify-between shrink-0 select-none overflow-y-auto">
+                <div className="w-full space-y-4 flex flex-col items-center">
+                  {[
+                    { icon: <FileCheck2 size={16} />, label: 'Block' },
+                    { icon: <Brain size={16} />, label: 'AI' },
+                    { icon: <ImageIcon size={16} />, label: 'Ảnh' },
+                    { icon: <TableIcon size={16} />, label: 'Bảng' },
+                    { icon: <Activity size={16} />, label: 'Công thức' },
+                    { icon: <HelpCircle size={16} />, label: 'Quiz' },
+                    { icon: <Award size={16} />, label: 'Flashcard' },
+                    { icon: <Video size={16} />, label: 'Media' },
+                    { icon: <HelpCircle size={16} />, label: 'Khác' },
+                  ].map((tool, i) => (
+                    <Tooltip key={i} content={tool.label}>
+                      <button
+                        onClick={() => handleSideToolClick(tool.label)}
+                        className="w-12 h-12 flex flex-col items-center justify-center text-slate-400 hover:text-primary hover:bg-primary-light rounded-xl transition cursor-pointer select-none"
+                      >
+                        {tool.icon}
+                        <span className="text-[7px] font-bold mt-1 text-slate-500">{tool.label}</span>
+                      </button>
+                    </Tooltip>
+                  ))}
+                </div>
+              </aside>
+            )}
 
           </div>
 

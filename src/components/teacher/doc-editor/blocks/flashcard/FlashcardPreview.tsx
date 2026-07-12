@@ -2,6 +2,7 @@ import React from 'react';
 import { ArrowLeft, ArrowRight, Award, RotateCcw } from 'lucide-react';
 import type { DocBlock } from '../../../../../types/doc-editor';
 import { createNewFlashcardContent, getPreviewCards } from './FlashcardUtils';
+import { LatexText } from '../common/LatexText';
 
 interface FlashcardPreviewProps {
   block: DocBlock;
@@ -78,14 +79,14 @@ export const FlashcardPreview: React.FC<FlashcardPreviewProps> = ({
             className={`absolute inset-0 rounded-2xl border border-indigo-100 bg-white px-4 py-5 shadow-sm flex items-center justify-center text-center transition-all duration-[480ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] ${frontFaceClass}`}
           >
             <div className="text-[11px] text-indigo-900 font-black leading-relaxed">
-              {currentCard.front || 'Mặt trước chưa có nội dung'}
+              <LatexText value={currentCard.front || 'Mặt trước chưa có nội dung'} />
             </div>
           </div>
           <div
             className={`absolute inset-0 rounded-2xl border border-indigo-100 bg-white px-4 py-5 shadow-sm flex items-center justify-center text-center transition-all duration-[480ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] ${backFaceClass}`}
           >
             <div className="text-[11px] text-slate-700 font-bold leading-relaxed">
-              {currentCard.back || 'Mặt sau chưa có nội dung'}
+              <LatexText value={currentCard.back || 'Mặt sau chưa có nội dung'} />
             </div>
           </div>
         </div>

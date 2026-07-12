@@ -2,6 +2,7 @@ import React from 'react';
 import { HelpCircle } from 'lucide-react';
 import type { DocBlock, QuizQuestion, QuizOption } from '../../../../../types/doc-editor';
 import { getDeterministicShuffledItems } from './QuizUtils';
+import { LatexText } from '../common/LatexText';
 
 interface QuizPreviewProps {
   block: DocBlock;
@@ -48,11 +49,11 @@ export const QuizPreview: React.FC<QuizPreviewProps> = ({
             <HelpCircle size={10} /> Câu hỏi {qIdx + 1}
           </div>
           <div className="text-[10px] text-slate-800 font-bold leading-normal">
-            {question.text || 'Nội dung câu hỏi chưa thiết lập...'}
+            <LatexText value={question.text || 'Nội dung câu hỏi chưa thiết lập...'} />
           </div>
           {question.description && (
             <div className="text-[9px] text-slate-500 italic mt-0.5">
-              {question.description}
+              <LatexText value={question.description} />
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-1 text-[9px] font-semibold text-slate-600 w-full">
@@ -78,7 +79,7 @@ export const QuizPreview: React.FC<QuizPreviewProps> = ({
                   }`}>
                     {shouldShowCorrect && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
                   </div>
-                  <span>{letter}. {option.text || 'Phương án chưa nhập...'}</span>
+                  <span>{letter}. <LatexText value={option.text || 'Phương án chưa nhập...'} /></span>
                 </div>
               );
             })}

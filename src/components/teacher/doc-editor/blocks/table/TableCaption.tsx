@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react';
+import { containsLatexDelimiter, LatexText } from '../common/LatexText';
 
 interface TableCaptionProps {
   caption: string;
@@ -30,7 +31,7 @@ export const TableCaption: React.FC<TableCaptionProps> = ({
     return (
       <div className="w-full text-center mt-2">
         <span className="text-[8px] font-bold text-slate-455 tracking-wide leading-relaxed select-none italic">
-          {caption}
+          {containsLatexDelimiter(caption) ? <LatexText value={caption} /> : caption}
         </span>
       </div>
     );

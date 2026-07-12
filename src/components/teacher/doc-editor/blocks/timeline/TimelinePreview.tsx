@@ -2,6 +2,7 @@ import React from 'react';
 import { Calendar, Clock, Star, Award, Flag, BookOpen, Briefcase, GraduationCap, Heart, Activity, MapPin, User } from 'lucide-react';
 import type { DocBlock } from '../../../../../types/doc-editor';
 import { createNewTimelineContent } from './TimelineUtils';
+import { LatexText } from '../common/LatexText';
 
 const iconMap: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   Clock, Calendar, Star, Award, Flag, BookOpen, Briefcase, GraduationCap, Heart, Activity, MapPin, User
@@ -108,7 +109,7 @@ export const TimelinePreview: React.FC<TimelinePreviewProps> = ({
               <div className={`mt-3 w-full bg-white border border-slate-200 rounded-2xl shadow-3xs flex flex-col gap-1 hover:shadow-xs transition duration-200 ${cardPadding}`}>
                 <div className="flex items-center justify-between gap-2">
                   <h4 className={`${headingTextSize} font-bold`} style={{ color: event.color }}>
-                    {event.title || 'Mốc thời gian mới'}
+                    <LatexText value={event.title || 'Mốc thời gian mới'} />
                   </h4>
                   {settings.showNumber !== false && (
                     <span className="text-[8px] font-black text-slate-350 select-none">
@@ -117,7 +118,7 @@ export const TimelinePreview: React.FC<TimelinePreviewProps> = ({
                   )}
                 </div>
                 <p className={`${descTextSize} text-slate-500 font-medium leading-relaxed whitespace-pre-wrap`}>
-                  {event.description || 'Không có mô tả cho mốc này.'}
+                  <LatexText value={event.description || 'Không có mô tả cho mốc này.'} />
                 </p>
               </div>
             </div>
@@ -142,7 +143,7 @@ export const TimelinePreview: React.FC<TimelinePreviewProps> = ({
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <h4 className={`${headingTextSize} font-black text-slate-800`} style={{ color: event.color }}>
-                    {event.title || 'Mốc thời gian mới'}
+                    <LatexText value={event.title || 'Mốc thời gian mới'} />
                   </h4>
                   {settings.showNumber !== false && (
                     <span className="text-[8px] font-black text-slate-350 select-none">
@@ -153,7 +154,7 @@ export const TimelinePreview: React.FC<TimelinePreviewProps> = ({
                 {settings.showDate !== false && renderDateBadge(event.date, event.color, 'shrink-0')}
               </div>
               <p className={`${descTextSize} text-slate-500 font-semibold leading-relaxed whitespace-pre-wrap`}>
-                {event.description || 'Không có mô tả cho mốc này.'}
+                <LatexText value={event.description || 'Không có mô tả cho mốc này.'} />
               </p>
             </div>
           </div>

@@ -71,6 +71,18 @@ const InlineInput: React.FC<InlineInputProps> = ({ initialValue, onSave, onCance
   );
 };
 
+const TreeTitle: React.FC<{ title: string }> = ({ title }) => (
+  <Tooltip content={title} triggerClassName="flex min-w-0 flex-1 items-center justify-start h-full animate-fadeIn">
+    <span className="block w-full truncate">{title}</span>
+  </Tooltip>
+);
+
+type LessonLocation = {
+  node: Lesson;
+  parentType: 'chapter' | 'lesson';
+  parentId: string;
+};
+
 export const DocSidebar: React.FC<DocSidebarProps> = ({
   chapters, activeLessonId, onLessonSelect, onToggleChapterExpand, onToggleLessonExpand,
   selectedChapterId, onSelectChapter, selectedLessonId, onSelectLesson,
@@ -101,6 +113,54 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
     e.preventDefault();
     const src = e.dataTransfer.getData('draggedChapterId');
     if (src && src !== targetChapterId) onChapterReorder(src, targetChapterId);
+  };
+
+  const findLessonLocation = (lessonId: string): LessonLocation | null => {
+    const findInLessons = (lessons: Lesson[], parentType: 'chapter' | 'lesson', parentId: string): LessonLocation | null => {
+      for (const lesson of lessons) {
+        if (lesson.id === lessonId) {
+          return { node: lesson, parentType, parentId };
+        }
+
+        const found = findInLessons(lesson.subLessons ?? [], 'lesson', lesson.id);
+        if (found) return found;
+      }
+
+      return null;
+    };
+
+    for (const chapter of chapters) {
+      const found = findInLessons(chapter.lessons, 'chapter', chapter.id);
+      if (found) return found;
+    }
+
+    return null;
+  };
+
+  const handleAddFile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    if (selectedLessonId) {
+      const location = findLessonLocation(selectedLessonId);
+      if (location) {
+        const selectedIsFolder = location.node.isFolder || (location.node.subLessons?.length ?? 0) > 0;
+
+        if (selectedIsFolder) {
+          onCreateDocumentInFolder(location.node.id);
+          return;
+        }
+
+        if (location.parentType === 'chapter') {
+          onCreateLesson(location.parentId);
+          return;
+        }
+
+        onCreateDocumentInFolder(location.parentId);
+        return;
+      }
+    }
+
+    onCreateLesson(selectedChapterId || '');
   };
 
   const handleAddFolder = (e: React.MouseEvent) => {
@@ -144,7 +204,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
               </button>
             </Tooltip>
             <Tooltip content="Thêm bài học mới">
-              <button onMouseDown={(e) => e.preventDefault()} onClick={(e) => { e.stopPropagation(); if (selectedLessonId) onCreateDocumentInFolder(selectedLessonId); else onCreateLesson(selectedChapterId || ''); }} className="p-1 hover:bg-slate-50 text-slate-400 hover:text-slate-700 rounded transition cursor-pointer">
+              <button onMouseDown={(e) => e.preventDefault()} onClick={handleAddFile} className="p-1 hover:bg-slate-50 text-slate-400 hover:text-slate-700 rounded transition cursor-pointer">
                 <FilePlus size={12} />
               </button>
             </Tooltip>
@@ -178,7 +238,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                       {isChEditing ? (
                         <InlineInput initialValue={ch.title} onSave={(v) => onSaveEdit(ch.id, v)} onCancel={() => onCancelEdit(ch.id)} />
                       ) : (
-                        <span className="truncate">{ch.title}</span>
+                        <TreeTitle title={ch.title} />
                       )}
                       <button type="button" onClick={(e) => { e.stopPropagation(); onToggleChapterExpand(ch.id); }} className="p-0.5 -mr-0.5 rounded transition cursor-pointer">
                         <ChevronDown size={11} className={`transition shrink-0 ${ch.isExpanded ? '' : '-rotate-90'}`} />
@@ -224,7 +284,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                                 {isLessonEditing ? (
                                   <InlineInput initialValue={lesson.title} onSave={(v) => onSaveEdit(lesson.id, v)} onCancel={() => onCancelEdit(lesson.id)} />
                                 ) : (
-                                  <span className="truncate">{lesson.title}</span>
+                                  <TreeTitle title={lesson.title} />
                                 )}
                               </div>
                               {!isLessonEditing && (
@@ -242,7 +302,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                             {/* SubLessons — Depth 3 */}
                             {hasSubLessons && lesson.isExpanded && (
                               <div className="pl-3.5 border-l border-slate-100 space-y-0.5 pt-0.5">
-                                {lesson.subLessons!.map(sub => {
+                                {(lesson.subLessons ?? []).map(sub => {
                                   const isSubActive = sub.id === activeLessonId;
                                   const isSubEditing = sub.id === editingItemId;
                                   const isSubSelected = sub.id === selectedLessonId;
@@ -268,7 +328,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                                           {isSubEditing ? (
                                             <InlineInput initialValue={sub.title} onSave={(v) => onSaveEdit(sub.id, v)} onCancel={() => onCancelEdit(sub.id)} />
                                           ) : (
-                                            <span className="truncate">{sub.title}</span>
+                                            <TreeTitle title={sub.title} />
                                           )}
                                         </div>
                                         {!isSubEditing && (
@@ -282,19 +342,43 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                                           </div>
                                         )}
                                       </div>
-                                      {hasSubChildren && sub.isExpanded && sub.subLessons && (
+                                      {hasSubChildren && sub.isExpanded && (
                                         <div className="pl-3.5 border-l border-slate-100 space-y-0.5 pt-0.5">
-                                          {sub.subLessons.map(file => (
-                                            <button
-                                              key={file.id}
-                                              type="button"
-                                              onClick={(e) => { e.stopPropagation(); onSelectLesson(file.id); onSelectChapter(null); onLessonSelect(file.id); }}
-                                              className={`w-full flex items-center gap-1.5 py-1 px-2 rounded-lg text-[10px] font-bold text-left transition cursor-pointer ${file.id === activeLessonId ? 'bg-primary-light text-primary font-black' : 'text-text-secondary hover:text-text-primary hover:bg-slate-50/50'}`}
-                                            >
-                                              <File size={10} className={file.id === activeLessonId ? 'text-primary' : 'text-slate-400'} />
-                                              <span className="truncate">{file.title}</span>
-                                            </button>
-                                          ))}
+                                          {(sub.subLessons ?? []).map(file => {
+                                            const isFileActive = file.id === activeLessonId;
+                                            const isFileEditing = file.id === editingItemId;
+                                            const isFileSelected = file.id === selectedLessonId;
+                                            return (
+                                              <div
+                                                key={file.id}
+                                                className={`group/file w-full flex items-center justify-between gap-1.5 py-1 px-2 rounded-lg text-[10px] font-bold text-left transition cursor-pointer ${isFileSelected || isFileActive ? 'bg-primary-light text-primary font-black' : 'text-text-secondary hover:text-text-primary hover:bg-slate-50/50'}`}
+                                                draggable={!isFileEditing}
+                                                onDragStart={(e) => handleLessonDragStart(e, file.id)}
+                                                onDragOver={handleDragOver}
+                                                onClick={(e) => { e.stopPropagation(); onSelectLesson(file.id); onSelectChapter(null); onLessonSelect(file.id); }}
+                                                onDoubleClick={(e) => { e.stopPropagation(); onStartEditing(file.id); }}
+                                              >
+                                                <div className="flex items-center gap-1.5 truncate flex-1 min-w-0">
+                                                  <File size={10} className={isFileActive ? 'text-primary' : 'text-slate-400'} />
+                                                  {isFileEditing ? (
+                                                    <InlineInput initialValue={file.title} onSave={(v) => onSaveEdit(file.id, v)} onCancel={() => onCancelEdit(file.id)} />
+                                                  ) : (
+                                                    <TreeTitle title={file.title} />
+                                                  )}
+                                                </div>
+                                                {!isFileEditing && (
+                                                  <div className="flex items-center gap-1 opacity-0 group-hover/file:opacity-100 transition shrink-0 pl-1">
+                                                    <Tooltip content="\u0110\u1ed5i t\u00ean">
+                                                      <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onStartEditing(file.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-slate-700 rounded transition"><Edit size={10} /></button>
+                                                    </Tooltip>
+                                                    <Tooltip content="X\u00f3a m\u1ee5c">
+                                                      <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onDeleteSubLesson(sub.id, file.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-red-500 rounded transition"><Trash2 size={10} /></button>
+                                                    </Tooltip>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
                                         </div>
                                       )}
                                     </div>

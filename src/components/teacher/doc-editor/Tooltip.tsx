@@ -4,9 +4,10 @@ import { createPortal } from 'react-dom';
 interface TooltipProps {
   content: string;
   children: React.ReactNode;
+  triggerClassName?: string;
 }
 
-export const Tooltip: React.FC<TooltipProps> = ({ content, children }) => {
+export const Tooltip: React.FC<TooltipProps> = ({ content, children, triggerClassName }) => {
   const [visible, setVisible] = useState(false);
   const [active, setActive] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
@@ -92,7 +93,7 @@ export const Tooltip: React.FC<TooltipProps> = ({ content, children }) => {
       ref={triggerRef}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="inline-flex items-center justify-center h-full animate-fadeIn"
+      className={triggerClassName ?? "inline-flex items-center justify-center h-full animate-fadeIn"}
     >
       {children}
       {visible && createPortal(

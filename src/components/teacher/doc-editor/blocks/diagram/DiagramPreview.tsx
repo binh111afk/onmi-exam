@@ -1,5 +1,6 @@
 import React from 'react';
 import type { DiagramContent, DiagramNode } from './DiagramTypes';
+import { LatexText } from '../common/LatexText';
 
 interface DiagramPreviewProps {
   content: DiagramContent;
@@ -137,11 +138,11 @@ export const DiagramPreview: React.FC<DiagramPreviewProps> = ({ content }) => {
         style={{ borderLeft: `3px solid ${cardColor}` }}
       >
         <h4 className="text-[11px] font-black text-slate-800 leading-tight">
-          {node.title || `Nút ${idx + 1}`}
+          <LatexText value={node.title || `Nút ${idx + 1}`} />
         </h4>
         {settings.showDescriptions !== false && node.description && (
           <p className="text-[10px] font-medium text-slate-500 mt-1.5 whitespace-pre-wrap leading-normal">
-            {node.description}
+            <LatexText value={node.description} />
           </p>
         )}
       </div>

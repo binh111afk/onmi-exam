@@ -1,6 +1,7 @@
 import React from 'react';
 import type { DocBlock } from '../../../../../types/doc-editor';
 import { createNewFlowContent } from './FlowUtils';
+import { LatexText } from '../common/LatexText';
 
 interface FlowPreviewProps {
   block: DocBlock;
@@ -99,8 +100,8 @@ export const FlowPreview: React.FC<FlowPreviewProps> = ({
                   {getStepLabel(index)}
                 </span>
               )}
-              <h4 className="text-[10px] font-bold text-[#1E293B] mt-1.5">{step.title || 'Bước mới'}</h4>
-              <p className="text-[9px] text-slate-500 font-medium leading-relaxed mt-0.5">{step.description || 'Không có mô tả cho bước này.'}</p>
+              <h4 className="text-[10px] font-bold text-[#1E293B] mt-1.5"><LatexText value={step.title || 'Bước mới'} /></h4>
+              <p className="text-[9px] text-slate-500 font-medium leading-relaxed mt-0.5"><LatexText value={step.description || 'Không có mô tả cho bước này.'} /></p>
             </div>
             {index < steps.length - 1 && (
               <div className="flex items-center justify-center select-none">
@@ -124,8 +125,8 @@ export const FlowPreview: React.FC<FlowPreviewProps> = ({
                   {getStepLabel(index)}
                 </span>
               )}
-              <h4 className="text-[10px] font-bold text-[#1E293B] mt-1.5">{step.title || 'Bước mới'}</h4>
-              <p className="text-[9px] text-slate-500 font-medium leading-relaxed mt-0.5">{step.description || 'Không có mô tả cho bước này.'}</p>
+              <h4 className="text-[10px] font-bold text-[#1E293B] mt-1.5"><LatexText value={step.title || 'Bước mới'} /></h4>
+              <p className="text-[9px] text-slate-500 font-medium leading-relaxed mt-0.5"><LatexText value={step.description || 'Không có mô tả cho bước này.'} /></p>
             </div>
             {index < steps.length - 1 && (
               <div className="select-none my-1">
@@ -149,8 +150,8 @@ export const FlowPreview: React.FC<FlowPreviewProps> = ({
                 {getStepLabel(index)}
               </span>
             )}
-            <h4 className="text-[10px] font-bold text-[#1E293B] mt-1.5">{step.title || 'Bước mới'}</h4>
-            <p className="text-[9px] text-slate-500 font-medium leading-relaxed mt-0.5">{step.description || 'Không có mô tả cho bước này.'}</p>
+            <h4 className="text-[10px] font-bold text-[#1E293B] mt-1.5"><LatexText value={step.title || 'Bước mới'} /></h4>
+            <p className="text-[9px] text-slate-500 font-medium leading-relaxed mt-0.5"><LatexText value={step.description || 'Không có mô tả cho bước này.'} /></p>
           </div>
           {index < steps.length - 1 && (
             <div>

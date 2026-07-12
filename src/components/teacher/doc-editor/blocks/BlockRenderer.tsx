@@ -22,6 +22,7 @@ import { FillBlankBlock } from './fillblank/Block';
 import { DragDropBlock } from './dragdrop/Block';
 import { SortOrderBlock } from './sortorder/Block';
 import { Video } from 'lucide-react';
+import { containsLatexDelimiter, LatexText } from './common/LatexText';
 
 const MediaBlockComponent: React.FC<{
   block: DocBlock;
@@ -44,13 +45,19 @@ const MediaBlockComponent: React.FC<{
           </div>
         )}
       </div>
-      <input
-        type="text"
-        value={block.text || ''}
-        onChange={(e) => onUpdateBlock(idx, { ...block, text: e.target.value })}
-        placeholder="Nhập tiêu đề hoặc đường dẫn video..."
-        className="w-full bg-transparent border-none outline-none text-center font-bold text-[10px] text-white placeholder-white/30 focus:ring-0"
-      />
+      {!isActive && containsLatexDelimiter(block.text || '') ? (
+        <div className="w-full text-center font-bold text-[10px] text-white">
+          <LatexText value={block.text || ''} />
+        </div>
+      ) : (
+        <input
+          type="text"
+          value={block.text || ''}
+          onChange={(e) => onUpdateBlock(idx, { ...block, text: e.target.value })}
+          placeholder="Nhập tiêu đề hoặc đường dẫn video..."
+          className="w-full bg-transparent border-none outline-none text-center font-bold text-[10px] text-white placeholder-white/30 focus:ring-0"
+        />
+      )}
     </div>
   );
 };
