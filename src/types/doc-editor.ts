@@ -10,12 +10,48 @@ export interface TableCellStyle {
 export interface DocBlock {
   id: string;
   type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code' | 'quiz' | 'flashcard' | 'mindmap' | 'media' | 'timeline' | 'flow' | 'tabs' | 'compare' | 'diagram' | 'matching' | 'fillblank' | 'dragdrop' | 'sortorder';
+  order?: number;
+  content?: {
+    text?: string;
+    align?: 'left' | 'center' | 'right' | 'justify';
+    indent?: number;
+    checked?: boolean;
+    src?: string;
+    caption?: string;
+    latex?: string;
+    display?: 'inline' | 'block';
+    language?: string;
+    rows?: string[][];
+    width?: string;
+    alt?: string;
+    hasHeaderRow?: boolean;
+    hasHeaderColumn?: boolean;
+    columnWidths?: number[];
+    rowHeights?: number[];
+    cellStyles?: TableCellStyle[][];
+    quizContent?: QuizContent;
+    flashcardContent?: FlashcardContent;
+    mindmapContent?: MindmapData;
+    timelineContent?: TimelineContent;
+    flowContent?: FlowContent;
+    tabsContent?: TabsContent;
+    compareContent?: CompareContent;
+    diagramContent?: DiagramContent;
+    matchingContent?: MatchingContent;
+    fillblankContent?: FillBlankContent;
+    dragdropContent?: DragDropContent;
+    sortorderContent?: SortOrderContent;
+    level?: 1 | 2 | 3;
+    url?: string;
+    sourceType?: 'upload' | 'embed';
+  };
+  
+  // Tương thích ngược:
   level?: 1 | 2 | 3;
   indent?: number;
   text: string;
   align?: 'left' | 'center' | 'right' | 'justify';
   checked?: boolean;
-  
   src?: string;
   caption?: string;
   latex?: string;
@@ -41,6 +77,8 @@ export interface DocBlock {
   fillblankContent?: FillBlankContent;
   dragdropContent?: DragDropContent;
   sortorderContent?: SortOrderContent;
+  url?: string;
+  sourceType?: 'upload' | 'embed';
 }
 
 export const QuestionType = {
@@ -111,15 +149,37 @@ export interface Lesson {
   title: string;
   blocks: DocBlock[];
   isFolder?: boolean;
-  isExpanded?: boolean;
   subLessons?: Lesson[];
 }
 
 export interface Chapter {
   id: string;
   title: string;
-  isExpanded?: boolean;
   lessons: Lesson[];
+}
+
+export interface DbChapter {
+  id: string;
+  title: string;
+  document_id: string;
+  order: number;
+}
+
+export interface DbLesson {
+  id: string;
+  title: string;
+  chapter_id: string | null;
+  parent_lesson_id: string | null;
+  is_folder: boolean;
+  order: number;
+}
+
+export interface DbBlock {
+  id: string;
+  lesson_id: string;
+  type: string;
+  order: number;
+  content: Record<string, any>;
 }
 
 export interface LiveTableResizeState {

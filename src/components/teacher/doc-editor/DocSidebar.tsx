@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FolderOpen, ChevronDown, Folder, File, Edit, Trash2, FolderPlus, FilePlus } from 'lucide-react';
 import type { Chapter, Lesson } from '../../../types/doc-editor';
 import { Tooltip } from './Tooltip';
@@ -7,8 +7,8 @@ interface DocSidebarProps {
   chapters: Chapter[];
   activeLessonId: string;
   onLessonSelect: (lessonId: string) => void;
-  onToggleChapterExpand: (chapterId: string) => void;
-  onToggleLessonExpand: (lessonId: string) => void;
+  expandedNodeIds: Record<string, boolean>;
+  onToggleNodeExpand: (nodeId: string) => void;
   selectedChapterId: string | null;
   onSelectChapter: (chapterId: string | null) => void;
   selectedLessonId: string | null;
@@ -84,7 +84,7 @@ type LessonLocation = {
 };
 
 export const DocSidebar: React.FC<DocSidebarProps> = ({
-  chapters, activeLessonId, onLessonSelect, onToggleChapterExpand, onToggleLessonExpand,
+  chapters, activeLessonId, onLessonSelect, expandedNodeIds, onToggleNodeExpand,
   selectedChapterId, onSelectChapter, selectedLessonId, onSelectLesson,
   editingItemId, onStartEditing, onSaveEdit, onCancelEdit,
   onCreateChapter, onCreateLesson, onCreateSubLesson, onCreateDocumentInFolder,
@@ -234,14 +234,14 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                     className={`group w-full flex items-center justify-between text-[11px] font-bold py-1 px-1.5 rounded-lg transition cursor-pointer ${isChSelected ? 'bg-slate-100/60 text-text-primary ring-1 ring-slate-200/50' : 'text-text-secondary hover:text-text-primary hover:bg-slate-50/30'}`}
                   >
                     <div className="flex-1 flex items-center gap-1.5 min-w-0">
-                      {ch.isExpanded ? <FolderOpen size={12} className="text-primary shrink-0" /> : <Folder size={12} className="text-slate-400 shrink-0" />}
+                      {expandedNodeIds[ch.id] ? <FolderOpen size={12} className="text-primary shrink-0" /> : <Folder size={12} className="text-slate-400 shrink-0" />}
                       {isChEditing ? (
                         <InlineInput initialValue={ch.title} onSave={(v) => onSaveEdit(ch.id, v)} onCancel={() => onCancelEdit(ch.id)} />
                       ) : (
                         <TreeTitle title={ch.title} />
                       )}
-                      <button type="button" onClick={(e) => { e.stopPropagation(); onToggleChapterExpand(ch.id); }} className="p-0.5 -mr-0.5 rounded transition cursor-pointer">
-                        <ChevronDown size={11} className={`transition shrink-0 ${ch.isExpanded ? '' : '-rotate-90'}`} />
+                      <button type="button" onClick={(e) => { e.stopPropagation(); onToggleNodeExpand(ch.id); }} className="p-0.5 -mr-0.5 rounded transition cursor-pointer">
+                        <ChevronDown size={11} className={`transition shrink-0 ${expandedNodeIds[ch.id] ? '' : '-rotate-90'}`} />
                       </button>
                     </div>
                     {!isChEditing && (
@@ -257,7 +257,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                   </div>
 
                   {/* Lessons inside Chapter — Depth 2 */}
-                  {ch.isExpanded && (
+                  {expandedNodeIds[ch.id] && (
                     <div onDragOver={handleDragOver} onDrop={(e) => handleChapterLessonDrop(e, ch.id)} className="pl-3.5 border-l border-slate-100 space-y-1 pt-0.5 min-h-[8px]">
                       {ch.lessons.length === 0 && <div className="text-[9px] text-slate-400 font-medium pl-2 italic">Tr\u1ed1ng</div>}
                       {ch.lessons.map(lesson => {
@@ -276,8 +276,8 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                             >
                               <div className="flex items-center gap-1.5 truncate flex-1 min-w-0">
                                 {hasSubLessons ? (
-                                  <button type="button" onClick={(e) => { e.stopPropagation(); onToggleLessonExpand(lesson.id); }} className="p-0.5 -ml-1 rounded transition cursor-pointer">
-                                    <ChevronDown size={11} className={`transition ${lesson.isExpanded ? '' : '-rotate-90'}`} />
+                                  <button type="button" onClick={(e) => { e.stopPropagation(); onToggleNodeExpand(lesson.id); }} className="p-0.5 -ml-1 rounded transition cursor-pointer">
+                                    <ChevronDown size={11} className={`transition ${expandedNodeIds[lesson.id] ? '' : '-rotate-90'}`} />
                                   </button>
                                 ) : <File size={11} className={isActive ? 'text-primary' : 'text-slate-400'} />}
                                 {hasSubLessons && <Folder size={11} className={isLessonSelected ? 'text-primary' : 'text-slate-400'} />}
@@ -300,7 +300,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                             </div>
 
                             {/* SubLessons — Depth 3 */}
-                            {hasSubLessons && lesson.isExpanded && (
+                            {hasSubLessons && expandedNodeIds[lesson.id] && (
                               <div className="pl-3.5 border-l border-slate-100 space-y-0.5 pt-0.5">
                                 {(lesson.subLessons ?? []).map(sub => {
                                   const isSubActive = sub.id === activeLessonId;
@@ -320,8 +320,8 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                                       >
                                         <div className="flex items-center gap-1.5 truncate flex-1 min-w-0">
                                           {hasSubChildren ? (
-                                            <button type="button" onClick={(e) => { e.stopPropagation(); onToggleLessonExpand(sub.id); }} className="p-0.5 -ml-1 rounded transition cursor-pointer">
-                                              <ChevronDown size={10} className={`transition ${sub.isExpanded ? '' : '-rotate-90'}`} />
+                                            <button type="button" onClick={(e) => { e.stopPropagation(); onToggleNodeExpand(sub.id); }} className="p-0.5 -ml-1 rounded transition cursor-pointer">
+                                              <ChevronDown size={10} className={`transition ${expandedNodeIds[sub.id] ? '' : '-rotate-90'}`} />
                                             </button>
                                           ) : <File size={10} className={isSubActive ? 'text-primary' : 'text-slate-400'} />}
                                           {hasSubChildren && <Folder size={10} className={isSubSelected ? 'text-primary' : 'text-slate-400'} />}
@@ -342,7 +342,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                                           </div>
                                         )}
                                       </div>
-                                      {hasSubChildren && sub.isExpanded && (
+                                      {hasSubChildren && expandedNodeIds[sub.id] && (
                                         <div className="pl-3.5 border-l border-slate-100 space-y-0.5 pt-0.5">
                                           {(sub.subLessons ?? []).map(file => {
                                             const isFileActive = file.id === activeLessonId;

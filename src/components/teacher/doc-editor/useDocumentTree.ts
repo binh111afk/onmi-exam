@@ -7,7 +7,6 @@ export interface FlatNode {
   text: string;
   nodeType: 'chapter' | 'lesson';
   order: number;
-  isExpanded?: boolean;
   isFolder?: boolean;
   blocks?: DocBlock[];
 }
@@ -87,7 +86,6 @@ const toNodesMap = (chapters: Chapter[]): NodesMap => {
       text: lesson.title,
       nodeType: 'lesson',
       order,
-      isExpanded: lesson.isExpanded,
       isFolder: lesson.isFolder,
       blocks: lesson.blocks,
     };
@@ -104,7 +102,6 @@ const toNodesMap = (chapters: Chapter[]): NodesMap => {
       text: chapter.title,
       nodeType: 'chapter',
       order: chapterIndex,
-      isExpanded: chapter.isExpanded,
     };
 
     chapter.lessons.forEach((lesson, lessonIndex) => {
@@ -137,7 +134,6 @@ export const buildNestedChapters = (nodesMap: NodesMap): Chapter[] => {
       title: node.text,
       blocks: node.blocks ?? [],
       isFolder: node.isFolder,
-      isExpanded: node.isExpanded,
       ...((node.isFolder || childLessons.length > 0) ? { subLessons: childLessons } : {}),
     };
   };
@@ -147,7 +143,6 @@ export const buildNestedChapters = (nodesMap: NodesMap): Chapter[] => {
     .map((chapter) => ({
       id: chapter.id,
       title: chapter.text,
-      isExpanded: chapter.isExpanded,
       lessons: (childrenByParent.get(chapter.id) ?? [])
         .filter((node) => node.nodeType === 'lesson')
         .map(buildLesson),
@@ -156,6 +151,7 @@ export const buildNestedChapters = (nodesMap: NodesMap): Chapter[] => {
 
 export const useDocumentTree = (initialChapters: Chapter[]) => {
   const [nodesMap, setNodesMap] = useState<NodesMap>(() => toNodesMap(initialChapters));
+  const [expandedNodeIds, setExpandedNodeIds] = useState<Record<string, boolean>>({});
   const chapters = useMemo(() => buildNestedChapters(nodesMap), [nodesMap]);
 
   const setChapters = useCallback((updater: ChaptersUpdater) => {
@@ -193,10 +189,10 @@ export const useDocumentTree = (initialChapters: Chapter[]) => {
   }, [nodesMap]);
 
   const toggleExpand = useCallback((id: string) => {
-    setNodesMap((prev) => prev[id]
-      ? { ...prev, [id]: { ...prev[id], isExpanded: !prev[id].isExpanded } }
-      : prev
-    );
+    setExpandedNodeIds((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
   }, []);
 
   const createChapter = useCallback(() => {
@@ -209,9 +205,9 @@ export const useDocumentTree = (initialChapters: Chapter[]) => {
         text: 'Chương chưa đặt tên',
         nodeType: 'chapter',
         order: Object.values(prev).filter((node) => node.parent === rootParent).length,
-        isExpanded: true,
       },
     }));
+    setExpandedNodeIds((prev) => ({ ...prev, [id]: true }));
     return id;
   }, []);
 
@@ -220,7 +216,6 @@ export const useDocumentTree = (initialChapters: Chapter[]) => {
     const id = crypto.randomUUID();
     setNodesMap((prev) => ({
       ...prev,
-      [chapterId]: { ...prev[chapterId], isExpanded: true },
       [id]: createLessonNode(
         id,
         chapterId,
@@ -229,6 +224,7 @@ export const useDocumentTree = (initialChapters: Chapter[]) => {
         isFolder,
       ),
     }));
+    setExpandedNodeIds((prev) => ({ ...prev, [chapterId]: true, [id]: true }));
     return id;
   }, [nodesMap]);
 
@@ -237,7 +233,7 @@ export const useDocumentTree = (initialChapters: Chapter[]) => {
     const id = crypto.randomUUID();
     setNodesMap((prev) => ({
       ...prev,
-      [lessonId]: { ...prev[lessonId], isExpanded: true, isFolder: true },
+      [lessonId]: { ...prev[lessonId], isFolder: true },
       [id]: createLessonNode(
         id,
         lessonId,
@@ -246,6 +242,7 @@ export const useDocumentTree = (initialChapters: Chapter[]) => {
         isFolder,
       ),
     }));
+    setExpandedNodeIds((prev) => ({ ...prev, [lessonId]: true, [id]: true }));
     return id;
   }, [nodesMap]);
 
@@ -261,6 +258,15 @@ export const useDocumentTree = (initialChapters: Chapter[]) => {
     });
     const normalizedMap = normalizeSiblingOrder(nextMap);
     setNodesMap(normalizedMap);
+
+    setExpandedNodeIds((prev) => {
+      const next = { ...prev };
+      deletedIds.forEach((deletedId) => {
+        delete next[deletedId];
+      });
+      return next;
+    });
+
     return buildNestedChapters(normalizedMap);
   }, [nodesMap]);
 
@@ -307,8 +313,8 @@ export const useDocumentTree = (initialChapters: Chapter[]) => {
     reorderedSiblings.forEach((node, index) => {
       next[node.id] = { ...next[node.id], parent: targetParentId, order: index };
     });
-    next[targetParentId] = { ...next[targetParentId], isExpanded: true };
     setNodesMap(next);
+    setExpandedNodeIds((prev) => ({ ...prev, [targetParentId]: true }));
     return buildNestedChapters(next);
   }, [chapters, nodesMap]);
 
@@ -338,6 +344,8 @@ export const useDocumentTree = (initialChapters: Chapter[]) => {
     getNodeTitle,
     getDeletedIds,
     toggleExpand,
+    expandedNodeIds,
+    setExpandedNodeIds,
     createChapter,
     createLesson,
     createSubLesson,

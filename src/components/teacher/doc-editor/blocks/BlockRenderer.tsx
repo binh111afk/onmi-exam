@@ -21,47 +21,8 @@ import { MatchingBlock } from './matching/MatchingBlock';
 import { FillBlankBlock } from './fillblank/Block';
 import { DragDropBlock } from './dragdrop/Block';
 import { SortOrderBlock } from './sortorder/Block';
-import { Video } from 'lucide-react';
+import { MediaBlock } from './MediaBlock';
 import { containsLatexDelimiter, LatexText } from './common/LatexText';
-
-const MediaBlockComponent: React.FC<{
-  block: DocBlock;
-  idx: number;
-  isActive: boolean;
-  setActiveBlockIndex: (i: number) => void;
-  onUpdateBlock: (i: number, updated: DocBlock) => void;
-  showUniversalToolbar?: boolean;
-}> = ({ block, idx, isActive, setActiveBlockIndex, onUpdateBlock }) => {
-  return (
-    <div
-      onClick={() => setActiveBlockIndex(idx)}
-      className="aspect-video w-full max-w-sm mx-auto bg-slate-900 rounded-xl overflow-hidden my-1 flex flex-col items-center justify-center text-center p-4 relative border border-slate-800 select-text"
-    >
-      <div className="absolute top-3 left-3 right-3 flex items-center justify-between text-white/60 font-black text-[8px] uppercase tracking-wider select-none">
-        <span className="flex items-center gap-1"><Video size={10} /> Video Bài học</span>
-        {isActive && (
-          <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded-lg shadow-sm text-[8px] text-white/80 font-bold">
-            Media Toolbar
-          </div>
-        )}
-      </div>
-      {!isActive && containsLatexDelimiter(block.text || '') ? (
-        <div className="w-full text-center font-bold text-[10px] text-white">
-          <LatexText value={block.text || ''} />
-        </div>
-      ) : (
-        <input
-          type="text"
-          value={block.text || ''}
-          onChange={(e) => onUpdateBlock(idx, { ...block, text: e.target.value })}
-          placeholder="Nhập tiêu đề hoặc đường dẫn video..."
-          className="w-full bg-transparent border-none outline-none text-center font-bold text-[10px] text-white placeholder-white/30 focus:ring-0"
-        />
-      )}
-    </div>
-  );
-};
-const MediaBlock = React.memo(MediaBlockComponent);
 
 interface BlockRendererProps {
   block: DocBlock;
@@ -324,7 +285,6 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
           isActive={isActive}
           setActiveBlockIndex={setActiveBlockIndex}
           onUpdateBlock={onUpdateBlock}
-          showUniversalToolbar={false}
         />
       );
     case 'code':

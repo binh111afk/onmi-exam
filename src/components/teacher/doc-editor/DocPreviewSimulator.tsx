@@ -519,15 +519,50 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
           }
 
           if (block.type === 'media') {
+            const mediaContent = block.content || {};
+            const videoUrl = mediaContent.url || block.url;
+            const sourceType = mediaContent.sourceType || block.sourceType || 'upload';
+            const caption = mediaContent.caption || block.caption;
+
             return (
-              <div key={block.id} style={indentStyle} className="aspect-video w-full max-w-sm mx-auto bg-slate-900 rounded-xl overflow-hidden my-2.5 flex flex-col items-center justify-center text-center p-4 relative group border border-slate-800">
-                <div className="absolute top-3 left-3 text-white/60 font-black text-[8px] uppercase tracking-wider flex items-center gap-1">
-                  <Video size={10} /> Video Bài học
-                </div>
-                <div className="w-10 h-10 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer mb-2">
-                  <span className="translate-x-0.5 text-xs">▶</span>
-                </div>
-                <div className="text-[9px] text-white/80 font-bold truncate max-w-full" dangerouslySetInnerHTML={{ __html: renderInlineLatex(block.text || 'Video bài giảng chưa đặt tên') }} />
+              <div key={block.id} style={indentStyle} className="w-full max-w-lg mx-auto my-2.5 flex flex-col gap-1.5 font-sans">
+                {videoUrl ? (
+                  <div className="relative w-full rounded-2xl overflow-hidden bg-slate-950 aspect-video flex items-center justify-center shadow-sm">
+                    {sourceType === 'upload' ? (
+                      <video
+                        src={videoUrl}
+                        controls
+                        className="w-full h-full object-contain rounded-lg shadow-sm"
+                      />
+                    ) : (
+                      <iframe
+                        src={videoUrl}
+                        className="w-full h-full aspect-video rounded-lg shadow-sm border-0"
+                        allowFullScreen
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        title="Embedded Video Preview"
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <div className="aspect-video w-full max-w-sm mx-auto bg-slate-900 rounded-xl overflow-hidden flex flex-col items-center justify-center text-center p-4 relative group border border-slate-800">
+                    <div className="absolute top-3 left-3 text-white/60 font-black text-[8px] uppercase tracking-wider flex items-center gap-1">
+                      <Video size={10} /> Video Bài học
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer mb-2">
+                      <span className="translate-x-0.5 text-xs">▶</span>
+                    </div>
+                    <div className="text-[9px] text-white/80 font-bold truncate max-w-full">
+                      Video bài giảng chưa thiết lập
+                    </div>
+                  </div>
+                )}
+                {caption && (
+                  <p 
+                    className="text-center text-[11px] font-bold text-slate-500 italic mt-1"
+                    dangerouslySetInnerHTML={{ __html: renderInlineLatex(caption) }}
+                  />
+                )}
               </div>
             );
           }

@@ -26,14 +26,25 @@ export const createDefaultBlock = (
     text: text || '',
     align: blockAlign,
     indent: blockIndent,
+    content: {
+      text: text || '',
+      align: blockAlign,
+      indent: blockIndent,
+    },
   };
 
   switch (type) {
-    case 'heading':
+    case 'heading': {
+      const headingLevel = level ?? 1;
       return {
         ...base,
-        level: level ?? 1,
+        level: headingLevel,
+        content: {
+          ...base.content,
+          level: headingLevel,
+        },
       };
+    }
 
     case 'image':
       return {
@@ -42,139 +53,247 @@ export const createDefaultBlock = (
         caption: '',
         align: 'center',
         width: '100%',
+        content: {
+          ...base.content,
+          src: '',
+          caption: '',
+          align: 'center',
+          width: '100%',
+        },
       };
 
-    case 'table':
+    case 'table': {
+      const rows = [
+        ['Cột 1', 'Cột 2', 'Cột 3'],
+        ['Dữ liệu 1', 'Dữ liệu 2', 'Dữ liệu 3'],
+        ['Dữ liệu 4', 'Dữ liệu 5', 'Dữ liệu 6'],
+      ];
       return {
         ...base,
-        rows: [
-          ['Cột 1', 'Cột 2', 'Cột 3'],
-          ['Dữ liệu 1', 'Dữ liệu 2', 'Dữ liệu 3'],
-          ['Dữ liệu 4', 'Dữ liệu 5', 'Dữ liệu 6'],
-        ],
+        rows,
+        content: {
+          ...base.content,
+          rows,
+        },
       };
+    }
 
     case 'formula':
       return {
         ...base,
         latex: 'f(x) = x^2',
         display: 'block',
-      };
-
-    case 'quiz':
-      return {
-        ...base,
-        quizContent: createNewQuizContent(),
-      };
-
-    case 'flashcard':
-      return {
-        ...base,
-        flashcardContent: createNewFlashcardContent(),
-      };
-
-    case 'mindmap':
-      return {
-        ...base,
-        mindmapContent: createDefaultMindmapData(),
-      };
-
-    case 'timeline':
-      return {
-        ...base,
-        timelineContent: {
-          version: 1,
-          events: [],
-          settings: {
-            layout: 'vertical',
-            direction: 'normal',
-          },
+        content: {
+          ...base.content,
+          latex: 'f(x) = x^2',
+          display: 'block',
         },
       };
 
-    case 'flow':
+    case 'quiz': {
+      const quizContent = createNewQuizContent();
       return {
         ...base,
-        flowContent: {
-          version: 1,
-          steps: [],
-          settings: {
-            layout: 'horizontal',
-            arrowStyle: 'straight',
-          },
+        quizContent,
+        content: {
+          ...base.content,
+          quizContent,
         },
       };
+    }
 
-    case 'tabs':
+    case 'flashcard': {
+      const flashcardContent = createNewFlashcardContent();
       return {
         ...base,
-        tabsContent: {
-          version: 1,
-          tabs: [],
-          settings: {},
+        flashcardContent,
+        content: {
+          ...base.content,
+          flashcardContent,
         },
       };
+    }
 
-    case 'compare':
+    case 'mindmap': {
+      const mindmapContent = createDefaultMindmapData();
       return {
         ...base,
-        compareContent: {
-          version: 1,
-          columns: [],
-          settings: {
-            themeColor: '#6366f1'
-          }
-        }
+        mindmapContent,
+        content: {
+          ...base.content,
+          mindmapContent,
+        },
       };
+    }
 
-    case 'diagram':
+    case 'timeline': {
+      const timelineContent = {
+        version: 1,
+        events: [],
+        settings: {
+          layout: 'vertical' as const,
+          direction: 'normal' as const,
+        },
+      };
       return {
         ...base,
-        diagramContent: {
-          version: 1,
-          nodes: [],
-          settings: {
-            layout: 'horizontal',
-            arrowStyle: 'straight',
-            themeColor: '#6366f1'
-          }
-        }
+        timelineContent,
+        content: {
+          ...base.content,
+          timelineContent,
+        },
       };
+    }
 
-    case 'matching':
+    case 'flow': {
+      const flowContent = {
+        version: 1,
+        steps: [],
+        settings: {
+          layout: 'horizontal' as const,
+          arrowStyle: 'straight' as const,
+        },
+      };
       return {
         ...base,
-        matchingContent: {
-          version: 1,
-          pairs: [],
-          settings: {
-            themeColor: '#6366f1'
-          }
-        }
+        flowContent,
+        content: {
+          ...base.content,
+          flowContent,
+        },
       };
+    }
 
-    case 'fillblank':
+    case 'tabs': {
+      const tabsContent = {
+        version: 1,
+        tabs: [],
+        settings: {},
+      };
       return {
         ...base,
-        fillblankContent: createDefaultFillBlankContent()
+        tabsContent,
+        content: {
+          ...base.content,
+          tabsContent,
+        },
       };
+    }
 
-    case 'dragdrop':
+    case 'compare': {
+      const compareContent = {
+        version: 1,
+        columns: [],
+        settings: {
+          themeColor: '#6366f1',
+        },
+      };
       return {
         ...base,
-        dragdropContent: createDefaultDragDropContent()
+        compareContent,
+        content: {
+          ...base.content,
+          compareContent,
+        },
       };
+    }
 
-    case 'sortorder':
+    case 'diagram': {
+      const diagramContent = {
+        version: 1,
+        nodes: [],
+        settings: {
+          layout: 'horizontal' as const,
+          arrowStyle: 'straight' as const,
+          themeColor: '#6366f1',
+        },
+      };
       return {
         ...base,
-        sortorderContent: createDefaultSortOrderContent()
+        diagramContent,
+        content: {
+          ...base.content,
+          diagramContent,
+        },
       };
+    }
+
+    case 'matching': {
+      const matchingContent = {
+        version: 1,
+        pairs: [],
+        settings: {
+          themeColor: '#6366f1',
+        },
+      };
+      return {
+        ...base,
+        matchingContent,
+        content: {
+          ...base.content,
+          matchingContent,
+        },
+      };
+    }
+
+    case 'fillblank': {
+      const fillblankContent = createDefaultFillBlankContent();
+      return {
+        ...base,
+        fillblankContent,
+        content: {
+          ...base.content,
+          fillblankContent,
+        },
+      };
+    }
+
+    case 'dragdrop': {
+      const dragdropContent = createDefaultDragDropContent();
+      return {
+        ...base,
+        dragdropContent,
+        content: {
+          ...base.content,
+          dragdropContent,
+        },
+      };
+    }
+
+    case 'sortorder': {
+      const sortorderContent = createDefaultSortOrderContent();
+      return {
+        ...base,
+        sortorderContent,
+        content: {
+          ...base.content,
+          sortorderContent,
+        },
+      };
+    }
 
     case 'code':
       return {
         ...base,
         language: 'typescript',
+        content: {
+          ...base.content,
+          language: 'typescript',
+        },
+      };
+
+    case 'media':
+      return {
+        ...base,
+        url: '',
+        sourceType: 'upload',
+        caption: '',
+        content: {
+          ...base.content,
+          url: '',
+          sourceType: 'upload',
+          caption: '',
+        },
       };
 
     case 'paragraph':
@@ -184,7 +303,6 @@ export const createDefaultBlock = (
     case 'callout':
     case 'quote':
     case 'divider':
-    case 'media':
     default:
       return base;
   }

@@ -57,7 +57,7 @@ export const BlockToolbar: React.FC<BlockToolbarProps> = ({
           key={action.label}
           ref={action.ref}
           type="button"
-          onMouseDown={(e) => {
+          onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             action.onTrigger();
