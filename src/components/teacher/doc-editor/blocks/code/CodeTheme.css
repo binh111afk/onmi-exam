@@ -1,0 +1,61 @@
+.theme-code-dark .token.comment,
+.theme-code-dark .token.prolog,
+.theme-code-dark .token.doctype,
+.theme-code-dark .token.cdata { color: #6272a4; font-style: italic; }
+.theme-code-dark .token.string,
+.theme-code-dark .token.attr-value { color: #f1fa8c; }
+.theme-code-dark .token.number,
+.theme-code-dark .token.boolean { color: #bd93f9; }
+.theme-code-dark .token.keyword,
+.theme-code-dark .token.property,
+.theme-code-dark .token.tag,
+.theme-code-dark .token.selector { color: #ff79c6; }
+.theme-code-dark .token.function,
+.theme-code-dark .token.class-name { color: #50fa7b; }
+.theme-code-dark .token.operator { color: #8be9fd; }
+.theme-code-dark .token.macro,
+.theme-code-dark .token.directive { color: #ff79c6; }
+.theme-code-dark .token.regex,
+.theme-code-dark .token.variable,
+.theme-code-dark .token.constant { color: #ffb86c; }
+
+.theme-code-monokai .token.comment { color: #75715e; font-style: italic; }
+.theme-code-monokai .token.string { color: #e6db74; }
+.theme-code-monokai .token.number,
+.theme-code-monokai .token.boolean { color: #ae81ff; }
+.theme-code-monokai .token.keyword,
+.theme-code-monokai .token.property,
+.theme-code-monokai .token.tag { color: #f92672; }
+.theme-code-monokai .token.function,
+.theme-code-monokai .token.class-name { color: #a6e22e; }
+.theme-code-monokai .token.operator { color: #f8f8f2; }
+.theme-code-monokai .token.macro,
+.theme-code-monokai .token.directive { color: #f92672; }
+.theme-code-monokai .token.regex,
+.theme-code-monokai .token.variable { color: #fd971f; }
+
+.theme-code-light .token.comment { color: #6b7280; font-style: italic; }
+.theme-code-light .token.string { color: #15803d; }
+.theme-code-light .token.number,
+.theme-code-light .token.boolean { color: #a16207; }
+.theme-code-light .token.keyword,
+.theme-code-light .token.property,
+.theme-code-light .token.tag { color: #a21caf; }
+.theme-code-light .token.function,
+.theme-code-light .token.class-name { color: #2563eb; }
+.theme-code-light .token.operator { color: #0f766e; }
+.theme-code-light .token.macro,
+.theme-code-light .token.directive { color: #a21caf; }
+
+.theme-code-github .token.comment { color: #6a737d; font-style: italic; }
+.theme-code-github .token.string { color: #032f62; }
+.theme-code-github .token.number,
+.theme-code-github .token.boolean { color: #005cc5; }
+.theme-code-github .token.keyword,
+.theme-code-github .token.property,
+.theme-code-github .token.tag { color: #d73a49; }
+.theme-code-github .token.function,
+.theme-code-github .token.class-name { color: #6f42c1; }
+.theme-code-github .token.operator { color: #005cc5; }
+.theme-code-github .token.macro,
+.theme-code-github .token.directive { color: #d73a49; }

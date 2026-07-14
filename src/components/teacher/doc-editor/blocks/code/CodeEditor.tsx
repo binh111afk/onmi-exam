@@ -1,30 +1,38 @@
-import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
-import type { CodeTheme } from './CodeTypes';
-import { THEME_STYLES, highlightCode, CODE_THEME_CSS } from './CodeUtils';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { CodeLanguage, CodeTheme } from './CodeTypes';
+import { CODE_THEME_CLASSES, PRISM_LANG_MAP, renderHighlightedCode } from './CodeUtils';
+
+const AUTO_CLOSE_PAIRS: Record<string, string> = {
+  '(': ')',
+  '[': ']',
+  '{': '}',
+  '"': '"',
+  "'": "'",
+  '`': '`',
+};
+
+const CLOSING_CHARACTERS = new Set(Object.values(AUTO_CLOSE_PAIRS));
 
 interface CodeEditorProps {
   code: string;
   theme: CodeTheme;
   showLineNumbers: boolean;
   wrapLine: boolean;
-  language?: string;
+  language: CodeLanguage;
   onChange: (code: string, isDebounced?: boolean) => void;
 }
 
-export const CodeEditorComponent: React.FC<CodeEditorProps> = ({
-  code,
-  theme,
-  showLineNumbers,
-  wrapLine,
-  language = 'typescript',
-  onChange,
-}) => {
+export const CodeEditorComponent: React.FC<CodeEditorProps> = ({ code, theme, showLineNumbers, wrapLine, language, onChange }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const preRef = useRef<HTMLPreElement>(null);
-  const [localCode, setLocalCode] = useState(code);
+  const highlightRef = useRef<HTMLPreElement>(null);
+  const lineNumbersRef = useRef<HTMLDivElement>(null);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastPropCodeRef = useRef(code);
   const isComposingRef = useRef(false);
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [localCode, setLocalCode] = useState(code);
+  const classes = CODE_THEME_CLASSES[theme];
+  const lines = localCode.split('\n');
+  const highlighted = useMemo(() => renderHighlightedCode(localCode, language), [localCode, language]);
 
   useEffect(() => {
     if (code !== lastPropCodeRef.current) {
@@ -33,156 +41,137 @@ export const CodeEditorComponent: React.FC<CodeEditorProps> = ({
     }
   }, [code]);
 
-  useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
+  useEffect(() => () => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
   }, []);
 
-  const triggerChange = useCallback((value: string, isDebounced: boolean) => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = null;
-    }
-    onChange(value, isDebounced);
+  const publishChange = useCallback((value: string, isDebounced: boolean) => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = null;
     lastPropCodeRef.current = value;
+    onChange(value, isDebounced);
   }, [onChange]);
 
   const scheduleChange = useCallback((value: string) => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     if (!isComposingRef.current) {
-      debounceTimerRef.current = setTimeout(() => {
-        triggerChange(value, true);
-      }, 400);
+      debounceTimerRef.current = setTimeout(() => publishChange(value, true), 400);
     }
-  }, [triggerChange]);
+  }, [publishChange]);
 
-  const handleChange = useCallback((val: string) => {
-    setLocalCode(val);
-    scheduleChange(val);
+  const handleChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = event.target.value;
+    setLocalCode(value);
+    scheduleChange(value);
   }, [scheduleChange]);
 
-  const handleCompositionStart = useCallback(() => {
-    isComposingRef.current = true;
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
+  const handleScroll = useCallback((event: React.UIEvent<HTMLTextAreaElement>) => {
+    const { scrollTop, scrollLeft } = event.currentTarget;
+    if (highlightRef.current) {
+      highlightRef.current.scrollTop = scrollTop;
+      highlightRef.current.scrollLeft = scrollLeft;
     }
+    if (lineNumbersRef.current) lineNumbersRef.current.scrollTop = scrollTop;
   }, []);
-
-  const handleCompositionEnd = useCallback((e: React.CompositionEvent<HTMLTextAreaElement>) => {
-    isComposingRef.current = false;
-    const val = e.currentTarget.value;
-    setLocalCode(val);
-    triggerChange(val, true);
-  }, [triggerChange]);
 
   const handleBlur = useCallback(() => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = null;
+    if (!isComposingRef.current && localCode !== lastPropCodeRef.current) publishChange(localCode, false);
+  }, [localCode, publishChange]);
+
+  const applyEditorEdit = useCallback((nextCode: string, selectionStart: number, selectionEnd = selectionStart) => {
+    setLocalCode(nextCode);
+    publishChange(nextCode, false);
+    requestAnimationFrame(() => textareaRef.current?.setSelectionRange(selectionStart, selectionEnd));
+  }, [publishChange]);
+
+  const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const { selectionStart, selectionEnd, value } = event.currentTarget;
+    const selectedText = value.slice(selectionStart, selectionEnd);
+
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
+      const lineEnd = value.indexOf('\n', selectionEnd);
+      const selectedLinesEnd = lineEnd === -1 ? value.length : lineEnd;
+      const lines = value.slice(lineStart, selectedLinesEnd).split('\n');
+      const editedLines = event.shiftKey
+        ? lines.map(line => line.startsWith('  ') ? line.slice(2) : line.startsWith('\t') ? line.slice(1) : line)
+        : lines.map(line => `  ${line}`);
+      const nextLines = editedLines.join('\n');
+      const nextCode = `${value.slice(0, lineStart)}${nextLines}${value.slice(selectedLinesEnd)}`;
+      const indentationChange = nextLines.length - value.slice(lineStart, selectedLinesEnd).length;
+      const nextStart = selectionStart + (selectionStart === lineStart ? 0 : event.shiftKey ? -Math.min(2, value.slice(lineStart, selectionStart).match(/^\s*/)?.[0].length ?? 0) : 2);
+      applyEditorEdit(nextCode, Math.max(lineStart, nextStart), selectionEnd + indentationChange);
+      return;
     }
-    if (!isComposingRef.current && localCode !== lastPropCodeRef.current) {
-      triggerChange(localCode, false);
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const currentLineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
+      const currentLine = value.slice(currentLineStart, selectionStart);
+      const baseIndent = currentLine.match(/^\s*/)?.[0] ?? '';
+      const previousCharacter = value[selectionStart - 1];
+      const nextCharacter = value[selectionEnd];
+      const closesPair = AUTO_CLOSE_PAIRS[previousCharacter] === nextCharacter;
+      const insertion = closesPair
+        ? `\n${baseIndent}  \n${baseIndent}`
+        : `\n${baseIndent}${previousCharacter === '{' ? '  ' : ''}`;
+      const caretPosition = selectionStart + 1 + baseIndent.length + (closesPair || previousCharacter === '{' ? 2 : 0);
+      applyEditorEdit(`${value.slice(0, selectionStart)}${insertion}${value.slice(selectionEnd)}`, caretPosition);
+      return;
     }
-  }, [triggerChange, localCode]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const ta = e.currentTarget;
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      const indent = '  ';
-      const newVal = ta.value.substring(0, start) + indent + ta.value.substring(end);
-      
-      setLocalCode(newVal);
-      triggerChange(newVal, false);
-
-      requestAnimationFrame(() => {
-        if (textareaRef.current) {
-          textareaRef.current.selectionStart = start + indent.length;
-          textareaRef.current.selectionEnd = start + indent.length;
-        }
-      });
+    const closingCharacter = AUTO_CLOSE_PAIRS[event.key];
+    if (closingCharacter) {
+      event.preventDefault();
+      applyEditorEdit(
+        `${value.slice(0, selectionStart)}${event.key}${selectedText}${closingCharacter}${value.slice(selectionEnd)}`,
+        selectionStart + 1,
+        selectionStart + 1 + selectedText.length,
+      );
+      return;
     }
-  }, [triggerChange]);
 
-  const handleScroll = useCallback((e: React.UIEvent<HTMLTextAreaElement>) => {
-    const pre = preRef.current;
-    if (pre) {
-      pre.scrollTop = e.currentTarget.scrollTop;
-      pre.scrollLeft = e.currentTarget.scrollLeft;
+    if (CLOSING_CHARACTERS.has(event.key) && !selectedText && value[selectionStart] === event.key) {
+      event.preventDefault();
+      applyEditorEdit(value, selectionStart + 1);
+      return;
     }
-  }, []);
 
-  const fontStyles: React.CSSProperties = {
-    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-    fontSize: '11px',
-    lineHeight: '1.65',
-    padding: '12px',
-    margin: 0,
-    border: 0,
-    boxSizing: 'border-box',
-    width: '100%',
-    height: '100%',
-  };
-
-  const styles = THEME_STYLES[theme];
-  const highlighted = useMemo(() => highlightCode(localCode, language), [localCode, language]);
+    if (event.key === 'Backspace' && !selectedText && AUTO_CLOSE_PAIRS[value[selectionStart - 1]] === value[selectionStart]) {
+      event.preventDefault();
+      applyEditorEdit(`${value.slice(0, selectionStart - 1)}${value.slice(selectionStart + 1)}`, selectionStart - 1);
+    }
+  }, [applyEditorEdit]);
 
   return (
-    <div
-      className={`theme-code-${theme} relative rounded-lg overflow-hidden`}
-      style={{ background: styles.bg, border: `1px solid ${styles.border}` }}
-    >
-      <style>{CODE_THEME_CSS}</style>
-      <div className="flex overflow-hidden">
+    <div className={`theme-code-${theme} overflow-hidden rounded-lg border font-mono text-[11px] leading-[1.65] ${classes.container}`}>
+      <div className="flex h-[300px] overflow-hidden">
         {showLineNumbers && (
-          <div
-            className="select-none text-right shrink-0"
-            style={{
-              ...fontStyles,
-              background: styles.lineNumBg,
-              color: styles.lineNumText,
-              borderRight: `1px solid ${styles.border}`,
-              minWidth: '2.8rem',
-            }}
-          >
-            {localCode.split('\n').map((_, i) => <div key={i}>{i + 1}</div>)}
-            {localCode === '' && <div>1</div>}
+          <div ref={lineNumbersRef} aria-hidden="true" className={`min-w-11 shrink-0 overflow-hidden border-r px-3 py-3 text-right select-none ${classes.gutter}`}>
+            {lines.map((_, index) => <div key={index}>{index + 1}</div>)}
           </div>
         )}
-
-        <div className="relative flex-1 overflow-hidden">
-          <pre
-            ref={preRef}
-            aria-hidden="true"
-            className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden"
-            style={{ ...fontStyles, whiteSpace: wrapLine ? 'pre-wrap' : 'pre', wordBreak: 'break-all' }}
-            dangerouslySetInnerHTML={{ __html: highlighted + '\n' }}
-          />
+        <div className="relative min-w-0 flex-1">
+          <pre ref={highlightRef} aria-hidden="true" className={`pointer-events-none absolute inset-0 m-0 overflow-hidden p-3 font-mono ${classes.code} ${wrapLine ? 'whitespace-pre-wrap break-all' : 'whitespace-pre'}`}>
+            <code className={`language-${PRISM_LANG_MAP[language]}`} dangerouslySetInnerHTML={{ __html: highlighted }} />
+          </pre>
           <textarea
             ref={textareaRef}
             value={localCode}
-            onChange={(e) => handleChange(e.target.value)}
+            onChange={handleChange}
             onKeyDown={handleKeyDown}
             onBlur={handleBlur}
             onScroll={handleScroll}
-            onCompositionStart={handleCompositionStart}
-            onCompositionEnd={handleCompositionEnd}
-            spellCheck={false}
-            className="relative w-full h-[300px] bg-transparent resize-y outline-none"
-            style={{
-              ...fontStyles,
-              color: 'transparent',
-              caretColor: styles.text,
-              whiteSpace: wrapLine ? 'pre-wrap' : 'pre',
-              wordBreak: 'break-all',
+            onCompositionStart={() => { isComposingRef.current = true; }}
+            onCompositionEnd={(event) => {
+              isComposingRef.current = false;
+              setLocalCode(event.currentTarget.value);
+              publishChange(event.currentTarget.value, true);
             }}
+            placeholder="// Nhập mã nguồn tại đây..."
+            spellCheck={false}
+            className={`relative z-10 h-full w-full resize-none overflow-auto bg-transparent p-3 font-mono text-transparent outline-none selection:bg-primary/30 placeholder:text-slate-500 ${wrapLine ? 'whitespace-pre-wrap break-all' : 'whitespace-pre'} ${classes.caret}`}
           />
         </div>
       </div>
