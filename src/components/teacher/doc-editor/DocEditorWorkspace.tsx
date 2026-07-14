@@ -11,6 +11,8 @@ import {
   HelpCircle,
   Award,
   Video,
+  RefreshCw,
+  Code2,
 } from 'lucide-react';
 import { DocSidebar } from './DocSidebar';
 import { DocToolbar } from './DocToolbar';
@@ -22,7 +24,7 @@ import { BlockSelectionProvider } from './BlockSelectionProvider';
 import { BlockWrapper } from './BlockWrapper';
 import { createDefaultBlock, generateBlockId } from './blocks/BlockFactory';
 import { uploadImageFile } from '../../../services/imageUploadService';
-import type { Chapter, Lesson, DocBlock, LiveTableResizeState, LiveTableActiveCell, DbChapter, DbLesson, DbBlock } from '../../../types/doc-editor';
+import type { Chapter, Lesson, DocBlock, LiveTableResizeState, LiveTableActiveCell, DbChapter, DbLesson, DbBlock, DocSetupMetadata } from '../../../types/doc-editor';
 import { FormattingStateProvider } from './FormattingStateProvider';
 import { useDocumentTree } from './useDocumentTree';
 
@@ -32,23 +34,18 @@ import { SlashMenu } from './SlashMenu';
 import { SelectionContextMenu } from './SelectionContextMenu';
 import { TableInsertModal } from './TableInsertModal';
 import { PublishModal } from './PublishModal';
+import { DocGuideModal } from './DocGuideModal';
 import { DragIndicator } from './DragIndicator';
 import { BlockDragPreview } from './BlockDragPreview';
 import { matchKeyboardShortcut } from './KeyboardShortcutManager';
 import { OtherBlocksPopup } from './other-blocks/OtherBlocksPopup';
 
 interface DocEditorWorkspaceProps {
-  setMode: (mode: 'dashboard' | 'editor' | 'upload' | 'exam-editor' | 'document-setup') => void;
+  setMode: (mode: 'dashboard' | 'editor' | 'upload' | 'exam-editor') => void;
   initialChaptersData?: Chapter[];
   initialActiveLessonId?: string;
-  metadata?: {
-    name: string;
-    subject: string;
-    grade: string;
-    docType: string;
-    description?: string;
-    coverImage?: string;
-  };
+  metadata?: DocSetupMetadata;
+  onChangeMetadata?: (metadata: DocSetupMetadata) => void;
 }
 
 const initialChapters: Chapter[] = [];
@@ -168,11 +165,34 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
   setMode,
   initialChaptersData,
   initialActiveLessonId,
-  metadata
+  metadata,
+  onChangeMetadata
 }) => {
   const { showAlert, showConfirm } = useAlert();
   const [showPreview, setShowPreview] = useState(true);
   const documentTree = useDocumentTree(initialChaptersData || initialChapters);
+  
+  // Derive a unique and stable documentId from metadata
+  const documentId = useMemo(() => {
+    if (!metadata?.name) return 'temp_doc';
+    const slugify = (text: string) =>
+      text
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[đĐ]/g, 'd')
+        .replace(/[^a-z0-9_-]/g, '_')
+        .replace(/_+/g, '_')
+        .trim();
+    return `${slugify(metadata.name)}_${slugify(metadata.subject)}_${slugify(metadata.grade)}`;
+  }, [metadata]);
+
+  const lastSavedChaptersRef = useRef<Chapter[]>(initialChaptersData || initialChapters);
+  const [isDirty, setIsDirty] = useState(false);
+  const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [pendingDraft, setPendingDraft] = useState<any | null>(null);
+
   const {
     chapters,
     setChapters,
@@ -190,6 +210,159 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
     moveLesson,
     reorderChapter,
   } = documentTree;
+
+  // Sync isDirty state by comparing current chapters with the last saved state
+  useEffect(() => {
+    const isDiff = JSON.stringify(chapters) !== JSON.stringify(lastSavedChaptersRef.current);
+    setIsDirty(isDiff);
+  }, [chapters]);
+
+  // Prompt user before leaving if there are unsaved changes (beforeunload)
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = 'Bạn có chắc chắn muốn rời khỏi trang? Những thay đổi chưa lưu sẽ bị mất.';
+        return e.returnValue;
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
+  // Debounced auto-save effect to localStorage
+  useEffect(() => {
+    if (!isDirty) return;
+
+    const handler = setTimeout(() => {
+      const { dbChapters, dbLessons, dbBlocks } = transformChaptersToDb(chapters, documentId);
+
+      const draftPayload = {
+        documentId,
+        metadata,
+        chapters: dbChapters,
+        lessons: dbLessons,
+        blocks: dbBlocks,
+        lastSaved: new Date().toISOString(),
+      };
+
+      try {
+        localStorage.setItem(`omni_doc_draft_${documentId}`, JSON.stringify(draftPayload));
+        // Save active draft info so dashboard / parent component can restore or bypass setup
+        localStorage.setItem('omni_doc_active_draft', JSON.stringify({
+          documentId,
+          metadata,
+          lastSaved: draftPayload.lastSaved,
+        }));
+      } catch (err) {
+        console.error('Failed to autosave draft:', err);
+      }
+    }, 1500); // 1.5s debounce
+
+    return () => clearTimeout(handler);
+  }, [chapters, isDirty, documentId, metadata]);
+
+  // Load draft from localStorage on mount/load
+  useEffect(() => {
+    const draftKey = `omni_doc_draft_${documentId}`;
+    const saved = localStorage.getItem(draftKey);
+    if (saved) {
+      try {
+        const draft = JSON.parse(saved);
+        if (draft && draft.chapters) {
+          const restored = transformDbToClientState(draft.chapters, draft.lessons, draft.blocks);
+          const original = initialChaptersData || initialChapters;
+          // Only prompt if the draft differs from the original initial data
+          if (JSON.stringify(restored) !== JSON.stringify(original)) {
+            setPendingDraft({
+              ...draft,
+              restoredChapters: restored
+            });
+            setShowRestoreDialog(true);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load document draft:', err);
+      }
+    }
+  }, [documentId, initialChaptersData]);
+
+  const formatFullSavedTime = (isoString: string | null) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${hours}:${minutes} ${day}/${month}/${year}`;
+  };
+
+  const handleRestoreDraft = () => {
+    if (pendingDraft && pendingDraft.restoredChapters) {
+      setChapters(pendingDraft.restoredChapters);
+
+      // Re-initialize history with restored draft chapters
+      const restoredHistory = [{
+        chapters: pendingDraft.restoredChapters,
+        activeIndex: 0,
+        caretOffset: 0
+      }];
+      historyRef.current = restoredHistory;
+      historyIndexRef.current = 0;
+      setHistory(restoredHistory);
+      setHistoryIndex(0);
+
+      // Set active lesson to first valid lesson
+      const firstLessonId = findFirstLessonId(pendingDraft.restoredChapters);
+      if (firstLessonId) {
+        setActiveLessonId(firstLessonId);
+      }
+
+      // Mark as dirty and update lastSavedTime if available
+      setIsDirty(true);
+      lastSavedChaptersRef.current = initialChaptersData || initialChapters;
+      if (pendingDraft.lastSaved) {
+        const date = new Date(pendingDraft.lastSaved);
+        const formattedTime = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+        setLastSavedTime(formattedTime);
+      }
+    }
+    setShowRestoreDialog(false);
+    setPendingDraft(null);
+  };
+
+  const handleDiscardRestore = () => {
+    const draftKey = `omni_doc_draft_${documentId}`;
+    localStorage.removeItem(draftKey);
+    localStorage.removeItem('omni_doc_active_draft');
+    setShowRestoreDialog(false);
+    setPendingDraft(null);
+  };
+
+  const handleNext = () => {
+    const { dbChapters, dbLessons, dbBlocks } = transformChaptersToDb(chapters, documentId);
+    const draftPayload = {
+      documentId,
+      metadata,
+      chapters: dbChapters,
+      lessons: dbLessons,
+      blocks: dbBlocks,
+      lastSaved: new Date().toISOString(),
+    };
+    try {
+      localStorage.setItem(`omni_doc_draft_${documentId}`, JSON.stringify(draftPayload));
+      localStorage.setItem('omni_doc_active_draft', JSON.stringify({
+        documentId,
+        metadata,
+        lastSaved: draftPayload.lastSaved,
+      }));
+    } catch (err) {
+      console.error('Failed to save draft on Next click:', err);
+    }
+
+    setShowPublishModal(true);
+  };
   const [activeLessonId, setActiveLessonId] = useState<string>(() => {
     return initialActiveLessonId || initialChaptersData?.[0]?.lessons?.[0]?.id || '';
   });
@@ -286,6 +459,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
   // Table Creation Dialog States
   const [showTableModal, setShowTableModal] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [tableInsertIndex, setTableInsertIndex] = useState<number | null>(null);
   const [tableInsertMode, setTableInsertMode] = useState<'replace' | 'insert' | null>(null);
 
@@ -319,6 +493,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
     historyIndexRef.current = 0;
     setHistory(initialHistory);
     setHistoryIndex(0);
+    lastSavedChaptersRef.current = initialChaptersData || initialChapters;
   }, [initialChaptersData]);
 
 
@@ -1453,6 +1628,30 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
   ]);
 
   const handlePublish = async () => {
+    // Clear drafts from localStorage
+    const slugify = (text: string) =>
+      text
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[đĐ]/g, 'd')
+        .replace(/[^a-z0-9_-]/g, '_')
+        .replace(/_+/g, '_')
+        .trim();
+
+    const initialDocId = `${slugify('Tài liệu chưa đặt tên')}_${slugify('')}_${slugify('')}`;
+    localStorage.removeItem(`omni_doc_draft_${initialDocId}`);
+
+    if (metadata) {
+      const finalDocId = `${slugify(metadata.name)}_${slugify(metadata.subject)}_${slugify(metadata.grade)}`;
+      localStorage.removeItem(`omni_doc_draft_${finalDocId}`);
+    }
+
+    localStorage.removeItem(`omni_doc_draft_${documentId}`);
+    localStorage.removeItem('omni_doc_active_draft');
+    
+    setIsDirty(false);
+
     await showAlert({
       type: 'success',
       title: 'Thành công',
@@ -1748,6 +1947,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
     else if (label === 'Flashcard') targetType = 'flashcard';
     else if (label === 'Mindmap') return;
     else if (label === 'Media') targetType = 'media';
+    else if (label === 'Code') targetType = 'code';
 
     const nextChapters = chapters.map(ch => ({
       ...ch,
@@ -1783,37 +1983,26 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
           {/* ========================================== */}
           <header className="h-14 bg-white border-b border-slate-100 px-4 flex items-center justify-between shrink-0 select-none">
             <div className="flex items-center gap-3.5">
-              <Tooltip content="Quay lại">
+              <Tooltip content="Quay lại Dashboard">
                 <button
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
-                    if (metadata) {
-                      setMode('document-setup');
-                    } else {
-                      setMode('dashboard');
-                    }
+                    setMode('dashboard');
                   }}
                   className="p-1.5 hover:bg-slate-50 text-slate-500 hover:text-slate-800 rounded-xl transition cursor-pointer"
                 >
                   <ChevronLeft size={18} className="stroke-[2.5]" />
                 </button>
               </Tooltip>
-              <div>
-                <h1 className="text-xs font-black text-[#1E293B] truncate max-w-sm sm:max-w-md">
-                  {metadata?.name || ''}
-                </h1>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="px-1.5 py-0.5 rounded bg-purple-50 text-primary text-[8px] font-extrabold uppercase">
-                    {metadata?.subject || ''}
-                  </span>
-                  <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 text-[8px] font-extrabold uppercase">
-                    {metadata?.grade || ''}
-                  </span>
-                  <span className="px-1.5 py-0.5 rounded bg-slate-50 text-slate-500 text-[8px] font-extrabold uppercase">
-                    {metadata?.docType || ''}
-                  </span>
-                </div>
-              </div>
+
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setIsGuideOpen(true)}
+                className="px-2.5 py-1.5 text-slate-500 hover:text-primary hover:bg-slate-50 rounded-xl transition cursor-pointer flex items-center gap-1.5 text-[10px] font-bold"
+              >
+                <HelpCircle size={13} />
+                <span>Hướng dẫn sử dụng</span>
+              </button>
             </div>
 
             {/* Mode Tab List (Soạn thảo | Xem trước) */}
@@ -1841,16 +2030,34 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="hidden lg:flex items-center gap-1 text-[10px] text-emerald-500 font-bold">
-                <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-ping" />
-                Đã lưu 10:30:45
-              </div>
+              {isDirty ? (
+                <div className="hidden lg:flex items-center gap-1 text-[10px] text-amber-500 font-bold">
+                  <span className="h-1.5 w-1.5 bg-amber-500 rounded-full animate-pulse" />
+                  Có thay đổi chưa lưu
+                </div>
+              ) : (
+                <div className="hidden lg:flex items-center gap-1 text-[10px] text-emerald-500 font-bold">
+                  <span className="h-1.5 w-1.5 bg-emerald-500 rounded-full animate-ping" />
+                  {lastSavedTime ? `Đã lưu ${lastSavedTime}` : 'Đã đồng bộ'}
+                </div>
+              )}
 
               <div className="flex items-center gap-2">
                 <Tooltip content="Lưu nháp">
                   <button
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={async () => {
+                      lastSavedChaptersRef.current = chapters;
+                      setIsDirty(false);
+
+                      const draftKey = `omni_doc_draft_${documentId}`;
+                      localStorage.removeItem(draftKey);
+                      localStorage.removeItem('omni_doc_active_draft');
+
+                      const now = new Date();
+                      const formattedTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+                      setLastSavedTime(formattedTime);
+
                       await showAlert({
                         type: 'success',
                         title: 'Thành công',
@@ -1862,13 +2069,13 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
                     <Save size={12} /> Lưu
                   </button>
                 </Tooltip>
-                <Tooltip content="Xuất bản tài liệu">
+                <Tooltip content="Tiếp theo">
                   <button
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => setShowPublishModal(true)}
+                    onClick={handleNext}
                     className="px-3 py-1.5 bg-gradient-to-r from-primary to-[#8F85F3] hover:from-primary-hover text-white text-[10px] font-black rounded-xl flex items-center gap-1 transition cursor-pointer shadow-sm shadow-indigo-100"
                   >
-                    <Send size={12} /> Xuất bản
+                    <Send size={12} /> Tiếp theo
                   </button>
                 </Tooltip>
               </div>
@@ -2070,6 +2277,13 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
                 onClose={() => setShowPublishModal(false)}
                 activeLesson={activeLesson}
                 onPublishConfirm={handlePublish}
+                metadata={metadata}
+                onChangeMetadata={onChangeMetadata}
+              />
+
+              <DocGuideModal
+                isOpen={isGuideOpen}
+                onClose={() => setIsGuideOpen(false)}
               />
             </main>
 
@@ -2096,6 +2310,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
                     { icon: <HelpCircle size={16} />, label: 'Quiz' },
                     { icon: <Award size={16} />, label: 'Flashcard' },
                     { icon: <Video size={16} />, label: 'Media' },
+                    { icon: <Code2 size={16} />, label: 'Code' },
                     { icon: <HelpCircle size={16} />, label: 'Khác' },
                   ].map((tool, i) => (
                     <Tooltip key={i} content={tool.label}>
@@ -2110,6 +2325,45 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
                   ))}
                 </div>
               </aside>
+            )}
+
+            {/* ── RESTORE DRAFT DIALOG ── */}
+            {showRestoreDialog && pendingDraft && (
+              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="fixed inset-0 bg-[#0F172A]/60 backdrop-blur-sm transition-opacity duration-300" onClick={handleRestoreDraft} />
+                <div className="bg-white rounded-3xl w-full max-w-[420px] p-6 shadow-2xl relative overflow-hidden flex flex-col z-[101] border border-slate-100 animate-scaleUp text-center space-y-5 select-none">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-primary flex items-center justify-center mx-auto shadow-sm">
+                    <RefreshCw size={22} className="text-primary animate-spin" />
+                  </div>
+
+                  <div className="space-y-2 leading-relaxed">
+                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">Khôi phục bản nháp?</h3>
+                    <p className="text-[11px] text-slate-500 font-bold">
+                      Phát hiện bản nháp chưa được lưu từ phiên trước. Bạn có muốn khôi phục không?
+                    </p>
+                    {pendingDraft.lastSaved && (
+                      <div className="text-[10px] text-slate-400 font-semibold bg-slate-50 py-1.5 px-3 rounded-lg inline-block mt-2">
+                        Lưu lần cuối: <span className="font-bold text-slate-655">{formatFullSavedTime(pendingDraft.lastSaved)}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                    <button
+                      onClick={handleDiscardRestore}
+                      className="w-full sm:flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-black rounded-xl transition cursor-pointer"
+                    >
+                      Bỏ qua
+                    </button>
+                    <button
+                      onClick={handleRestoreDraft}
+                      className="w-full sm:flex-1 py-2.5 bg-primary hover:bg-primary-hover text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md shadow-indigo-150"
+                    >
+                      Khôi phục
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
 
           </div>
@@ -2308,4 +2562,46 @@ export const transformClientToDbPayload = (
       content: mergedContent,
     };
   });
+};
+
+export const transformChaptersToDb = (
+  chapters: Chapter[],
+  documentId: string
+): { dbChapters: DbChapter[]; dbLessons: DbLesson[]; dbBlocks: DbBlock[] } => {
+  const dbChapters: DbChapter[] = [];
+  const dbLessons: DbLesson[] = [];
+  const dbBlocks: DbBlock[] = [];
+
+  chapters.forEach((chapter, chIdx) => {
+    dbChapters.push({
+      id: chapter.id,
+      title: chapter.title,
+      document_id: documentId,
+      order: chIdx,
+    });
+
+    const traverseLessons = (lessons: Lesson[], parentLessonId: string | null, chapterId: string | null) => {
+      lessons.forEach((lesson, lesIdx) => {
+        dbLessons.push({
+          id: lesson.id,
+          title: lesson.title,
+          chapter_id: chapterId,
+          parent_lesson_id: parentLessonId,
+          is_folder: !!lesson.isFolder,
+          order: lesIdx,
+        });
+
+        const blocks = transformClientToDbPayload(lesson.id, lesson.blocks || []);
+        dbBlocks.push(...blocks);
+
+        if (lesson.subLessons && lesson.subLessons.length > 0) {
+          traverseLessons(lesson.subLessons, lesson.id, null);
+        }
+      });
+    };
+
+    traverseLessons(chapter.lessons, null, chapter.id);
+  });
+
+  return { dbChapters, dbLessons, dbBlocks };
 };

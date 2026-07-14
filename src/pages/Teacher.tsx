@@ -1,14 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { TeacherDashboard } from '../components/teacher/TeacherDashboard';
 import { DocEditorWorkspace } from '../components/teacher/doc-editor/DocEditorWorkspace';
-import type { Chapter } from '../types/doc-editor';
+import type { Chapter, Lesson, DocSetupMetadata } from '../types/doc-editor';
 import { FileUploaderWorkspace } from '../components/teacher/file-uploader/FileUploaderWorkspace';
 import { ExamEditorWorkspace } from '../components/teacher/exam-editor/ExamEditorWorkspace';
-import { DocSetupWorkspace } from '../components/teacher/DocSetupWorkspace';
-import type { DocSetupMetadata } from '../components/teacher/DocSetupWorkspace';
+import { useAlert } from '../components/common/Alert';
+import { PublishModal } from '../components/teacher/doc-editor/PublishModal';
 
-type TeacherMode = 'dashboard' | 'editor' | 'upload' | 'exam-editor' | 'document-setup';
+type TeacherMode = 'dashboard' | 'editor' | 'upload' | 'exam-editor';
 type ExamSubView = 'edit' | 'config' | 'publish';
 type ExamTab = 'code' | 'quick' | 'bank';
 type ViewportMode = 'desktop' | 'tablet' | 'mobile';
@@ -18,20 +18,20 @@ const TEACHER_EXAM_WORKSPACE_KEY = 'omni_teacher_exam_workspace';
 const loadTeacherExamWorkspace = () => {
   try {
     const saved = localStorage.getItem(TEACHER_EXAM_WORKSPACE_KEY);
-    return saved ? JSON.parse(saved) : null;
-  } catch {
-    localStorage.removeItem(TEACHER_EXAM_WORKSPACE_KEY);
-    return null;
+    if (saved) return JSON.parse(saved);
+  } catch (err) {
+    console.error('Failed to load teacher exam workspace:', err);
   }
+  return null;
 };
 
 export const Teacher: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { showAlert } = useAlert();
 
   const getModeFromPath = (path: string): TeacherMode => {
-    if (path === '/teacher/document/new') return 'document-setup';
-    if (path === '/teacher/document/editor') return 'editor';
+    if (path === '/teacher/document/new' || path === '/teacher/document/editor') return 'editor';
     if (path === '/teacher/upload') return 'upload';
     if (path === '/teacher/exam-editor') return 'exam-editor';
     return 'dashboard';
@@ -44,8 +44,6 @@ export const Teacher: React.FC = () => {
     setModeState(nextMode);
     if (nextMode === 'dashboard') {
       navigate('/teacher');
-    } else if (nextMode === 'document-setup') {
-      navigate('/teacher/document/new');
     } else if (nextMode === 'editor') {
       navigate('/teacher/document/editor');
     } else {
@@ -214,8 +212,63 @@ export const Teacher: React.FC = () => {
   const [editorMetadata, setEditorMetadata] = useState<DocSetupMetadata | undefined>(undefined);
 
   const handleStartSelfCompose = () => {
-    setMode('document-setup');
+    const activeDraft = localStorage.getItem('omni_doc_active_draft');
+    if (activeDraft) {
+      try {
+        const draftInfo = JSON.parse(activeDraft);
+        if (draftInfo && draftInfo.metadata) {
+          setEditorMetadata(draftInfo.metadata);
+          setEditorChapters([]);
+          setEditorActiveLessonId(undefined);
+          setMode('editor');
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to parse active draft metadata:', err);
+      }
+    }
+
+    // Initialize with default metadata and bypass setup page directly to editor
+    const defaultMeta: DocSetupMetadata = {
+      name: 'Tài liệu chưa đặt tên',
+      subject: '',
+      grade: '',
+      docType: '',
+      description: '',
+    };
+    setEditorMetadata(defaultMeta);
+    setEditorChapters([]);
+    setEditorActiveLessonId(undefined);
+
+    // Save active draft info immediately so F5 reload functions correctly
+    try {
+      localStorage.setItem('omni_doc_active_draft', JSON.stringify({
+        documentId: 'tai_lieu_chua_dat_ten___',
+        metadata: defaultMeta,
+        lastSaved: new Date().toISOString()
+      }));
+    } catch (e) {
+      console.error(e);
+    }
+
+    setMode('editor');
   };
+
+  // Restore active document draft metadata on mount
+  useEffect(() => {
+    const activeDraft = localStorage.getItem('omni_doc_active_draft');
+    if (activeDraft) {
+      try {
+        const draftInfo = JSON.parse(activeDraft);
+        if (draftInfo && draftInfo.metadata) {
+          setEditorMetadata(draftInfo.metadata);
+          setEditorChapters([]);
+        }
+      } catch (err) {
+        console.error('Failed to restore active draft metadata on mount:', err);
+      }
+    }
+  }, []);
 
   const handleUploadFile = (file: File) => {
     setSelectedUploadFile(file);
@@ -223,21 +276,6 @@ export const Teacher: React.FC = () => {
   };
 
   // Render workspace based on active mode
-  if (mode === 'document-setup') {
-    return (
-      <DocSetupWorkspace 
-        setMode={setMode} 
-        metadata={editorMetadata}
-        onSubmit={(meta) => {
-          setEditorMetadata(meta);
-          setEditorChapters([]);
-          setEditorActiveLessonId(undefined);
-          setMode('editor');
-        }}
-      />
-    );
-  }
-
   if (mode === 'editor') {
     return (
       <DocEditorWorkspace 
@@ -245,6 +283,9 @@ export const Teacher: React.FC = () => {
         initialChaptersData={editorChapters}
         initialActiveLessonId={editorActiveLessonId}
         metadata={editorMetadata}
+        onChangeMetadata={(meta) => {
+          setEditorMetadata(meta);
+        }}
       />
     );
   }

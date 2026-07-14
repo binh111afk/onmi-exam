@@ -8,7 +8,7 @@ import { DividerBlock } from './DividerBlock';
 import { ImageBlock } from './ImageBlock';
 import { TableBlock } from './table/TableBlock';
 import { FormulaBlock } from './FormulaBlock';
-import { CodeBlock } from './CodeBlock';
+import { CodeBlock } from './code/CodeBlock';
 import { QuizBlock } from './quiz/QuizBlock';
 import { FlashcardBlock } from './flashcard/FlashcardBlock';
 import { MindmapBlock } from './mindmap/MindmapBlock';
@@ -22,7 +22,7 @@ import { FillBlankBlock } from './fillblank/Block';
 import { DragDropBlock } from './dragdrop/Block';
 import { SortOrderBlock } from './sortorder/Block';
 import { MediaBlock } from './MediaBlock';
-import { containsLatexDelimiter, LatexText } from './common/LatexText';
+
 
 interface BlockRendererProps {
   block: DocBlock;
@@ -292,6 +292,7 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
         <CodeBlock
           block={block}
           idx={idx}
+          isActive={isActive}
           setActiveBlockIndex={setActiveBlockIndex}
           onUpdateBlock={onUpdateBlock}
         />

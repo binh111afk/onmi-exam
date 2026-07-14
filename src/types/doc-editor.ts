@@ -1,4 +1,7 @@
 import type { MindmapData } from '../components/teacher/doc-editor/blocks/mindmap/MindmapTypes';
+import type { CodeBlockContent } from '../components/teacher/doc-editor/blocks/code/CodeTypes';
+
+export type { CodeBlockContent };
 
 export interface TableCellStyle {
   align?: 'left' | 'center' | 'right';
@@ -41,6 +44,7 @@ export interface DocBlock {
     fillblankContent?: FillBlankContent;
     dragdropContent?: DragDropContent;
     sortorderContent?: SortOrderContent;
+    codeContent?: CodeBlockContent;
     level?: 1 | 2 | 3;
     url?: string;
     sourceType?: 'upload' | 'embed';
@@ -77,6 +81,7 @@ export interface DocBlock {
   fillblankContent?: FillBlankContent;
   dragdropContent?: DragDropContent;
   sortorderContent?: SortOrderContent;
+  codeContent?: CodeBlockContent;
   url?: string;
   sourceType?: 'upload' | 'embed';
 }
@@ -432,4 +437,13 @@ export interface SortOrderContent {
   version: number;
   items: SortOrderItem[];
   settings: SortOrderSettings;
+}
+
+export interface DocSetupMetadata {
+  name: string;
+  subject: string;
+  grade: string;
+  docType: string;
+  description: string;
+  coverImage?: string;
 }

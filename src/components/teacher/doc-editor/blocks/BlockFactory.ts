@@ -5,6 +5,7 @@ import { createDefaultMindmapData } from './mindmap/MindmapUtils';
 import { createDefaultFillBlankContent } from './fillblank/Utils';
 import { createDefaultDragDropContent } from './dragdrop/Utils';
 import { createDefaultSortOrderContent } from './sortorder/Utils';
+import { createDefaultCodeContent } from './code/CodeUtils';
 
 export const generateBlockId = (): string => `b-${crypto.randomUUID()}`;
 
@@ -272,15 +273,19 @@ export const createDefaultBlock = (
       };
     }
 
-    case 'code':
+    case 'code': {
+      const codeContent = createDefaultCodeContent();
       return {
         ...base,
-        language: 'typescript',
+        language: codeContent.language,
+        codeContent,
         content: {
           ...base.content,
-          language: 'typescript',
+          language: codeContent.language,
+          codeContent,
         },
       };
+    }
 
     case 'media':
       return {

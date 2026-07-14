@@ -11,11 +11,12 @@ import {
   Activity, 
   HelpCircle, 
   Award, 
-  Video 
+  Video,
+  Code2,
 } from 'lucide-react';
 
 export interface DocCommand {
-  type: 'paragraph' | 'heading-1' | 'heading-2' | 'heading-3' | 'divider' | 'callout' | 'image' | 'table' | 'formula' | 'quiz' | 'flashcard' | 'mindmap' | 'media' | 'fillblank' | 'dragdrop' | 'sortorder';
+  type: 'paragraph' | 'heading-1' | 'heading-2' | 'heading-3' | 'divider' | 'callout' | 'image' | 'table' | 'formula' | 'code' | 'quiz' | 'flashcard' | 'mindmap' | 'media' | 'fillblank' | 'dragdrop' | 'sortorder';
   label: string;
   desc: string;
   icon: React.ReactNode;
@@ -93,5 +94,11 @@ export const BLOCK_COMMANDS: DocCommand[] = [
     label: 'Phương tiện (Media)', 
     desc: 'Chèn video hoặc tệp âm thanh', 
     icon: <Video size={14} className="text-slate-500" /> 
+  },
+  { 
+    type: 'code', 
+    label: 'Mã nguồn (Code)', 
+    desc: 'Chèn khối code với tô màu cú pháp', 
+    icon: <Code2 size={14} className="text-slate-500" /> 
   },
 ];

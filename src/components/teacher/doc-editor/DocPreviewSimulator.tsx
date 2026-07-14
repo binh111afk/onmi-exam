@@ -40,7 +40,8 @@ import { MatchingPreview } from './blocks/matching/MatchingPreview';
 import { Preview as FillBlankPreview } from './blocks/fillblank/Preview';
 import { Preview as DragDropPreview } from './blocks/dragdrop/Preview';
 import { Preview as SortOrderPreview } from './blocks/sortorder/Preview';
-import type { Chapter, DocBlock, Lesson, LiveTableResizeState } from '../../../types/doc-editor';
+import type { Chapter, DocBlock, LiveTableResizeState } from '../../../types/doc-editor';
+import { THEME_STYLES, highlightCode, CODE_THEME_CSS, PRISM_LANG_MAP } from './blocks/code/CodeUtils';
 
 interface DocPreviewSimulatorProps {
   documentTree: Chapter[];
@@ -250,6 +251,7 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
       className={`bg-white rounded-2xl shadow-lg border border-slate-200/50 p-6 sm:p-7 font-sans h-fit transition-all duration-300 shrink-0 w-full select-text ${className}`}
       style={style}
     >
+      <style>{CODE_THEME_CSS}</style>
       {/* Chapter Label (uppercase, bold, indigo, e.g. CHƯƠNG 1) */}
       <div className="inline-flex rounded-md bg-primary px-2 py-1 text-[8px] font-black uppercase tracking-wider text-white mb-4 select-none">
         CHƯƠNG {currentDocument ? chapterIndexToRoman(currentDocument.chapterIndex + 1) : ''}
@@ -282,7 +284,7 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
                 : 'text-left';
 
           const indentStyle = { paddingLeft: `${(block.indent || 0) * 16}px` };
-          const isFileNameHeading = !activeDocument?.isFolder
+          const isFileNameHeading = activeDocument && !activeDocument.isFolder
             && idx === 0
             && block.type === 'heading'
             && getPreviewNodeTitle(block.text) === getPreviewNodeTitle(activeDocument.title);
@@ -431,13 +433,48 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
           }
 
           if (block.type === 'code') {
+            const cc = block.codeContent;
+            const lang = cc?.language || block.language || 'typescript';
+            const code = cc?.code ?? block.text ?? '';
+            const showNums = cc?.showLineNumbers ?? true;
+            const wrap = cc?.wrapLine ?? false;
+            const theme = cc?.theme ?? 'dark';
+            const styles = THEME_STYLES[theme];
+            const lines = code.split('\n');
+            const highlighted = highlightCode(code, lang);
+            const prismLang = PRISM_LANG_MAP[lang] || 'plaintext';
+
+            const fontStyles: React.CSSProperties = {
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+              fontSize: '11px',
+              lineHeight: '1.65',
+              padding: '12px',
+              margin: 0,
+              border: 0,
+              boxSizing: 'border-box',
+            };
+
             return (
-              <pre key={block.id} className="bg-slate-900 border border-slate-800 rounded-xl p-3 text-slate-200 font-mono text-[8px] leading-normal overflow-x-auto my-2.5 select-text">
-                <div className="text-slate-500 uppercase tracking-widest text-[7px] font-black mb-1.5">{block.language || 'typescript'}</div>
-                <code>{block.text}</code>
-              </pre>
+              <div key={block.id} className={`theme-code-${theme} rounded-lg overflow-hidden my-2.5 select-text`} style={{ background: styles.bg, border: `1px solid ${styles.border}` }}>
+                {/* Header badge */}
+                <div className="flex items-center justify-between px-3 py-1.5 text-[9px] font-black uppercase tracking-widest select-none" style={{ background: styles.lineNumBg, color: styles.lineNumText, borderBottom: `1px solid ${styles.border}` }}>
+                  <span>{lang}</span>
+                  <span className="opacity-60">{lines.length} dòng</span>
+                </div>
+                <div className="flex overflow-x-auto">
+                  {showNums && (
+                    <div className="select-none text-right shrink-0" style={{ ...fontStyles, background: styles.lineNumBg, color: styles.lineNumText, borderRight: `1px solid ${styles.border}`, minWidth: '2.8rem' }}>
+                      {lines.map((_, i) => <div key={i}>{i + 1}</div>)}
+                    </div>
+                  )}
+                  <pre className="flex-1 overflow-x-auto animate-fadeIn" style={{ ...fontStyles, color: styles.text, background: 'transparent', whiteSpace: wrap ? 'pre-wrap' : 'pre', wordBreak: wrap ? 'break-all' : undefined }}>
+                    <code className={`language-${prismLang}`} dangerouslySetInnerHTML={{ __html: highlighted + '\n' }} />
+                  </pre>
+                </div>
+              </div>
             );
           }
+
 
           if (block.type === 'quiz') {
             return (
