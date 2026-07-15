@@ -3,7 +3,7 @@ import React from 'react';
 // ── INLINE MARKDOWN renderer (bold / italic / highlight / inline formula) ──
 export const renderInlineMarkdown = (text: string): React.ReactNode => {
   if (!text) return null;
-  
+
   // Simple replacements for display — no external dep needed
   let html = text
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -11,19 +11,38 @@ export const renderInlineMarkdown = (text: string): React.ReactNode => {
     .replace(/==(.+?)==/g, '<mark class="bg-yellow-100 rounded px-0.5">$1</mark>')
     .replace(/`(.+?)`/g, '<code class="bg-slate-100 rounded px-1 font-mono text-[10px]">$1</code>');
 
-  // Render inline LaTeX using KaTeX if loaded, fallback to code tag
-  html = html.replace(/\$(.+?)\$/g, (_, latex) => {
+  // ── STEP 1: Render block LaTeX $$...$$ FIRST (display mode)
+  // IMPORTANT: Must run BEFORE the inline $...$ pass so double-dollar delimiters
+  // are not partially consumed by the single-dollar regex.
+  // We still use displayMode:false here because this function always renders
+  // into an inline context (<p><span dangerouslySetInnerHTML>). Using
+  // displayMode:true produces block-level KaTeX HTML which violates DOM nesting
+  // rules inside <p> and causes React to crash.
+  html = html.replace(/\$\$([^$]+?)\$\$/g, (_, latex) => {
+    const katex = (window as any).katex;
+    if (katex) {
+      try {
+        return `<span class="katex-block-inline">${katex.renderToString(latex.trim(), { displayMode: false, throwOnError: false })}</span>`;
+      } catch (e) {
+        return `<code class="bg-purple-50 text-purple-700 rounded px-1 font-mono text-[10px]">${latex}</code>`;
+      }
+    }
+    return `<code class="bg-purple-50 text-purple-700 rounded px-1 font-mono text-[10px]">${latex}</code>`;
+  });
+
+  // ── STEP 2: Render inline LaTeX $...$ (must run AFTER the $$ pass above)
+  html = html.replace(/\$([^$\n]+?)\$/g, (_, latex) => {
     const katex = (window as any).katex;
     if (katex) {
       try {
         return katex.renderToString(latex, { displayMode: false, throwOnError: false });
       } catch (e) {
-        // fallback
+        return `<code class="bg-purple-50 text-purple-700 rounded px-1 font-mono text-[10px]">${latex}</code>`;
       }
     }
     return `<code class="bg-purple-50 text-purple-700 rounded px-1 font-mono text-[10px]">${latex}</code>`;
   });
-  
+
   return <span dangerouslySetInnerHTML={{ __html: html }} />;
 };
 

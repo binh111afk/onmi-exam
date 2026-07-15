@@ -24,11 +24,10 @@ export const OmlGuideModal: React.FC<OmlGuideModalProps> = ({ isOpen, onClose })
     { id: 'structure', label: '2. Cấu trúc cơ bản' },
     { id: 'layout-blocks', label: '3. Các Block hỗ trợ' },
     { id: 'questions', label: '4. Các loại câu hỏi' },
-    { id: 'latex', label: '5. Công thức LaTeX' },
-    { id: 'image', label: '6. Chèn hình ảnh' },
-    { id: 'table', label: '7. Cấu trúc Bảng' },
-    { id: 'tips', label: '8. Mẹo sử dụng' },
-    { id: 'full-example', label: '9. Đề thi mẫu hoàn chỉnh' },
+    { id: 'image', label: '5. Chèn hình ảnh' },
+    { id: 'table', label: '6. Cấu trúc Bảng' },
+    { id: 'tips', label: '7. Mẹo sử dụng' },
+    { id: 'full-example', label: '8. Đề thi mẫu hoàn chỉnh' },
   ];
 
   // Helper for copy button
@@ -350,36 +349,6 @@ export const OmlGuideModal: React.FC<OmlGuideModalProps> = ({ isOpen, onClose })
               </div>
             )}
 
-            {/* ── TAB: LATEX ── */}
-            {activeTab === 'latex' && (
-              <div className="space-y-4 animate-fadeIn">
-                <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide border-b border-slate-100 pb-2">Hỗ trợ soạn thảo LaTeX</h3>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Hệ thống tự động biên dịch và vẽ các công thức toán học/khoa học thông qua thư viện **KaTeX** nhanh chóng.
-                </p>
-                <ul className="list-disc pl-5 text-xs text-slate-600 space-y-1">
-                  <li><strong>Công thức nội dòng (Inline)</strong>: Kẹp giữa cặp dấu một đô la <code>$...$</code>. Ví dụ: <code>$\\sqrt{x}$</code>.</li>
-                  <li><strong>Công thức khối (Block)</strong>: Kẹp giữa cặp dấu hai đô la <code>$$...$$</code>. Ví dụ: <code>$$\\sum_{i=1}^n i$$</code>.</li>
-                </ul>
-
-                <div className="grid grid-cols-2 gap-4 pt-2">
-                  <div className="relative">
-                    <pre className="p-3.5 bg-slate-900 text-slate-100 text-[9px] rounded-xl font-mono">
-{`{
-  "type": "paragraph",
-  "text": "Tính giới hạn sau: $$\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1$$"
-}`}
-                    </pre>
-                    <CopyButton id="latex-code" text={`{\n  "type": "paragraph",\n  "text": "Tính giới hạn sau: $$\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1$$"\n}`} />
-                  </div>
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-center">
-                    <div className="w-full text-xs">
-                      <OmlBlockRouter block={{ type: 'paragraph', text: 'Tính giới hạn sau: $$\\lim_{x \\to 0} \\frac{\\sin x}{x} = 1$$' }} idx={7} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* ── TAB: IMAGE ── */}
             {activeTab === 'image' && (
