@@ -516,6 +516,31 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
     }
   }, [chapters]);
 
+  // Automatically expand parent folders/chapters of the active lesson
+  useEffect(() => {
+    if (!activeLessonId || !documentTree.nodesMap) return;
+
+    const parentsToExpand: Record<string, boolean> = {};
+    let currentId = activeLessonId;
+    let node = documentTree.nodesMap[currentId];
+
+    while (node && node.parent) {
+      parentsToExpand[node.parent] = true;
+      node = documentTree.nodesMap[node.parent];
+    }
+
+    if (Object.keys(parentsToExpand).length > 0) {
+      documentTree.setExpandedNodeIds((prev) => {
+        const needsUpdate = Object.keys(parentsToExpand).some((id) => !prev[id]);
+        if (!needsUpdate) return prev;
+        return {
+          ...prev,
+          ...parentsToExpand,
+        };
+      });
+    }
+  }, [activeLessonId, documentTree.nodesMap, documentTree.setExpandedNodeIds]);
+
   // Set coordinates for Slash Command menu popover
   useEffect(() => {
     if (showSlashMenu) {

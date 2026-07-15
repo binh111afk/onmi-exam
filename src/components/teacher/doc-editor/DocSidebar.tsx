@@ -1,7 +1,36 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FolderOpen, ChevronDown, Folder, File, Edit, Trash2, FolderPlus, FilePlus } from 'lucide-react';
+import { ChevronDown, Edit, Trash2, FolderPlus, FilePlus } from 'lucide-react';
 import type { Chapter, Lesson } from '../../../types/doc-editor';
 import { Tooltip } from './Tooltip';
+
+// Custom SVGs for folder and file
+const FolderIcon: React.FC<{ size?: number; className?: string }> = ({ size = 12, className = '' }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 16 16" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <path d="M0 2.5C0 1.67157 0.671573 1 1.5 1H6.2C6.55 1 6.88 1.16 7.1 1.44L8.9 3.56C9.12 3.84 9.45 4 9.8 4H14.5C15.3284 4 16 4.67157 16 5.5V13.5C16 14.3284 15.3284 15 14.5 15H1.5C0.671571 15 0 14.3284 0 13.5V2.5Z" fill="#4F46E5"></path> 
+  </svg>
+);
+
+const FileIcon: React.FC<{ size?: number; className?: string }> = ({ size = 11, className = '' }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="-1.2 -1.2 26.4 26.4" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className={`overflow-visible ${className}`}
+  >
+    <path d="M4 12.5C4 8.0217 4 5.78258 5.3913 4.3913C6.78258 3 9.0217 3 13.5 3C17.9783 3 20.2174 3 21.6087 4.3913C23 5.78258 23 8.0217 23 12.5V13.5C23 17.9783 23 20.2174 21.6087 21.6087C20.2174 23 17.9783 23 13.5 23C9.0217 23 6.78258 23 5.3913 21.6087C4 20.2174 4 17.9783 4 13.5V12.5Z" fill="#818CF8" fillOpacity="0.05"/>
+    <path d="M3 6.5C3 4.567 4.567 3 6.5 3H13.5L21 10.5V20.5C21 22.433 19.433 24 17.5 24H6.5C4.567 24 3 22.433 3 20.5V6.5Z" fill="#F5F3FF" stroke="#4F46E5" strokeWidth="1.8" strokeLinejoin="round"/>
+    <path d="M13.5 3V6.5C13.5 8.70914 15.2909 10.5 17.5 10.5H21L13.5 3Z" fill="#EEF2FF" stroke="#6366F1" strokeWidth="1.8" strokeLinejoin="round"/>
+  </svg>
+);
 
 interface DocSidebarProps {
   chapters: Chapter[];
@@ -217,7 +246,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
             onClick={(e) => { e.stopPropagation(); onSelectChapter(null); onSelectLesson(null); }}
             className="flex items-center gap-2 text-xs font-black text-text-primary cursor-pointer"
           >
-            <FolderOpen size={14} className="text-primary" />
+            <FolderIcon size={16} className="shrink-0" />
             <span>{metadata ? `${metadata.subject} ${metadata.grade.replace(/Lop\s+/i, '').replace(/L\u1edbp\s+/i, '')}` : ''}</span>
           </button>
           <div className="pl-2 space-y-1.5">
@@ -234,7 +263,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                     className={`group w-full flex items-center justify-between text-[11px] font-bold py-1 px-1.5 rounded-lg transition cursor-pointer ${isChSelected ? 'bg-slate-100/60 text-text-primary ring-1 ring-slate-200/50' : 'text-text-secondary hover:text-text-primary hover:bg-slate-50/30'}`}
                   >
                     <div className="flex-1 flex items-center gap-1.5 min-w-0">
-                      {expandedNodeIds[ch.id] ? <FolderOpen size={12} className="text-primary shrink-0" /> : <Folder size={12} className="text-slate-400 shrink-0" />}
+                      <FolderIcon size={15} className="shrink-0" />
                       {isChEditing ? (
                         <InlineInput initialValue={ch.title} onSave={(v) => onSaveEdit(ch.id, v)} onCancel={() => onCancelEdit(ch.id)} />
                       ) : (
@@ -279,8 +308,8 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                                   <button type="button" onClick={(e) => { e.stopPropagation(); onToggleNodeExpand(lesson.id); }} className="p-0.5 -ml-1 rounded transition cursor-pointer">
                                     <ChevronDown size={11} className={`transition ${expandedNodeIds[lesson.id] ? '' : '-rotate-90'}`} />
                                   </button>
-                                ) : <File size={11} className={isActive ? 'text-primary' : 'text-slate-400'} />}
-                                {hasSubLessons && <Folder size={11} className={isLessonSelected ? 'text-primary' : 'text-slate-400'} />}
+                                ) : <FileIcon size={14} className="shrink-0" />}
+                                {hasSubLessons && <FolderIcon size={14} className="shrink-0" />}
                                 {isLessonEditing ? (
                                   <InlineInput initialValue={lesson.title} onSave={(v) => onSaveEdit(lesson.id, v)} onCancel={() => onCancelEdit(lesson.id)} />
                                 ) : (
@@ -323,8 +352,8 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                                             <button type="button" onClick={(e) => { e.stopPropagation(); onToggleNodeExpand(sub.id); }} className="p-0.5 -ml-1 rounded transition cursor-pointer">
                                               <ChevronDown size={10} className={`transition ${expandedNodeIds[sub.id] ? '' : '-rotate-90'}`} />
                                             </button>
-                                          ) : <File size={10} className={isSubActive ? 'text-primary' : 'text-slate-400'} />}
-                                          {hasSubChildren && <Folder size={10} className={isSubSelected ? 'text-primary' : 'text-slate-400'} />}
+                                          ) : <FileIcon size={13} className="shrink-0" />}
+                                          {hasSubChildren && <FolderIcon size={13} className="shrink-0" />}
                                           {isSubEditing ? (
                                             <InlineInput initialValue={sub.title} onSave={(v) => onSaveEdit(sub.id, v)} onCancel={() => onCancelEdit(sub.id)} />
                                           ) : (
@@ -359,7 +388,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                                                 onDoubleClick={(e) => { e.stopPropagation(); onStartEditing(file.id); }}
                                               >
                                                 <div className="flex items-center gap-1.5 truncate flex-1 min-w-0">
-                                                  <File size={10} className={isFileActive ? 'text-primary' : 'text-slate-400'} />
+                                                  <FileIcon size={13} className="shrink-0" />
                                                   {isFileEditing ? (
                                                     <InlineInput initialValue={file.title} onSave={(v) => onSaveEdit(file.id, v)} onCancel={() => onCancelEdit(file.id)} />
                                                   ) : (

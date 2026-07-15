@@ -22,9 +22,11 @@ import {
   Grid,
   FileText,
   Settings,
-  GripVertical
+  GripVertical,
+  Palette
 } from 'lucide-react';
 import { LatexText } from './blocks/common/LatexText';
+import { Tooltip } from './Tooltip';
 
 interface DocGuideModalProps {
   isOpen: boolean;
@@ -33,14 +35,16 @@ interface DocGuideModalProps {
 
 // ── REUSABLE SIMULATION LAYOUT TOOLBAR ──
 const PreviewWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="space-y-0 shadow-sm border border-slate-200 rounded-2xl overflow-hidden bg-white max-w-full">
-    <div className="flex items-center justify-between bg-slate-50 px-3 py-1.5 border-b border-slate-200 text-[9px] font-black text-slate-400">
-      <span className="uppercase tracking-wider select-none">Học liệu học sinh</span>
-      <div className="flex items-center gap-1.5 select-none">
-        <span className="text-[8px] font-bold text-slate-400">Thầy/Cô có thể tùy chỉnh thay đổi màu sắc trực tiếp trên thanh công cụ</span>
-        <button type="button" className="p-0.5 hover:bg-slate-200 text-slate-500 rounded transition cursor-pointer">
-          <Settings size={10} />
-        </button>
+  <div className="space-y-0 shadow-sm border border-slate-200 rounded-2xl overflow-hidden bg-white max-w-full font-sans">
+    <div className="flex items-center justify-between bg-slate-50 px-3 py-1.5 border-b border-slate-200 text-[9px] font-black text-slate-400 select-none">
+      <span className="uppercase tracking-wider">Học liệu học sinh</span>
+      <div className="flex items-center gap-1.5">
+        <Tooltip content="Thầy/Cô có thể tùy chỉnh màu sắc cho khối này trên thanh công cụ thực tế">
+          <button type="button" className="p-1 hover:bg-slate-200 text-slate-500 rounded transition cursor-pointer flex items-center gap-1">
+            <Palette size={10} className="text-slate-400 hover:text-primary" />
+            <Settings size={10} className="text-slate-400 hover:text-primary" />
+          </button>
+        </Tooltip>
       </div>
     </div>
     <div className="p-4 bg-slate-50/50">
@@ -55,18 +59,18 @@ const MiniFlashcard = () => {
   return (
     <div 
       onClick={() => setIsFlipped(!isFlipped)}
-      className="w-[220px] h-[120px] cursor-pointer select-none [perspective:1000px] mx-auto"
+      className="w-[240px] h-[130px] cursor-pointer select-none [perspective:1000px] mx-auto hover:-translate-y-0.5 transition-transform duration-300"
     >
-      <div className={`w-full h-full relative transition-transform duration-500 [transform-style:preserve-3d] ${isFlipped ? '[transform:rotateY(180deg)]' : ''}`}>
+      <div className={`w-full h-full relative transition-transform duration-[480ms] ease-[cubic-bezier(0.2,0.8,0.2,1)] [transform-style:preserve-3d] ${isFlipped ? '[transform:rotateY(180deg)]' : ''}`}>
         {/* Front */}
-        <div className="absolute inset-0 bg-white rounded-2xl border-2 border-indigo-200 shadow-md flex flex-col items-center justify-center p-3 [backface-visibility:hidden]">
-          <span className="text-[10px] font-black text-indigo-700 text-center">Định nghĩa quang phổ liên tục là gì?</span>
-          <span className="absolute bottom-1.5 text-[8px] font-bold text-slate-400 uppercase tracking-wide">Nhấp để xem mặt sau</span>
+        <div className="absolute inset-0 bg-primary-light rounded-2xl border border-primary/20 shadow-sm flex flex-col items-center justify-center p-4 [backface-visibility:hidden] hover:bg-primary-light/80 transition-colors">
+          <span className="text-[10.5px] font-black text-primary text-center leading-relaxed">Định nghĩa quang phổ liên tục là gì?</span>
+          <span className="absolute bottom-2 text-[7.5px] font-bold text-[#7E8B9B] uppercase tracking-wider">Nhấp để xem mặt sau</span>
         </div>
         {/* Back */}
-        <div className="absolute inset-0 bg-indigo-50 rounded-2xl border-2 border-indigo-300 shadow-md flex flex-col items-center justify-center p-3 [backface-visibility:hidden] [transform:rotateY(180deg)]">
-          <span className="text-[10px] font-black text-indigo-800 text-center">Là dải màu liên tục từ đỏ đến tím, thu được khi phát ánh sáng từ chất rắn, lỏng, khí áp suất cao bị nung nóng.</span>
-          <span className="absolute bottom-1.5 text-[8px] font-bold text-indigo-500 uppercase tracking-wide">Nhấp để lật lại</span>
+        <div className="absolute inset-0 bg-white rounded-2xl border border-primary/10 shadow-sm flex flex-col items-center justify-center p-4 [backface-visibility:hidden] [transform:rotateY(180deg)]">
+          <span className="text-[10px] font-bold text-slate-700 text-center leading-relaxed">Là dải màu liên tục từ đỏ đến tím, thu được khi phát ánh sáng từ chất rắn, lỏng, khí áp suất cao bị nung nóng.</span>
+          <span className="absolute bottom-2 text-[7.5px] font-bold text-primary uppercase tracking-wider">Nhấp để lật lại</span>
         </div>
       </div>
     </div>
@@ -82,24 +86,24 @@ const MiniTabs = () => {
     { title: 'Điện học', content: 'Nghiên cứu về dòng điện, điện tích và các hiện tượng cảm ứng điện từ trường.' }
   ];
   return (
-    <div className="w-full bg-white border border-indigo-100 rounded-xl p-3 shadow-sm space-y-2">
-      <div className="flex border-b border-slate-100 gap-2">
+    <div className="w-full bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+      <div className="flex border-b border-slate-200 gap-2 select-none overflow-x-auto scrollbar-none">
         {tabData.map((tab, idx) => (
           <button
             key={idx}
             type="button"
             onClick={() => setActiveIdx(idx)}
-            className={`px-3 py-1 text-[10px] font-black border-b-2 transition cursor-pointer ${
+            className={`px-3.5 py-2 text-[10px] font-bold border-b-2 transition cursor-pointer whitespace-nowrap -mb-[1px] ${
               activeIdx === idx 
-                ? 'border-indigo-600 text-indigo-700' 
-                : 'border-transparent text-slate-400 hover:text-slate-655'
+                ? 'border-primary text-primary' 
+                : 'border-transparent text-slate-400 hover:text-[#7E8B9B]'
             }`}
           >
             {tab.title}
           </button>
         ))}
       </div>
-      <div className="text-[10px] font-bold text-slate-600 min-h-10 flex items-center leading-normal">
+      <div className="text-[10px] font-semibold text-slate-655 min-h-[48px] flex items-center leading-relaxed">
         {tabData[activeIdx].content}
       </div>
     </div>
@@ -116,8 +120,7 @@ export const DocGuideModal: React.FC<DocGuideModalProps> = ({ isOpen, onClose })
     { id: 'interactive-learning', label: '4. Học liệu Tương tác' },
     { id: 'media-block', label: '5. Đa phương tiện' },
     { id: 'quiz-assessment', label: '6. Câu hỏi & Khảo thí' },
-    { id: 'code-block', label: '7. Khối Mã nguồn (Code)' },
-    { id: 'tips-shortcuts', label: '8. Mẹo & Phím tắt' },
+    { id: 'tips-shortcuts', label: '7. Mẹo & Phím tắt' },
   ];
 
   if (!isOpen) return null;
@@ -411,7 +414,7 @@ export const DocGuideModal: React.FC<DocGuideModalProps> = ({ isOpen, onClose })
                     </div>
 
                     <PreviewWrapper>
-                      <div className="flex items-center justify-center bg-white border border-indigo-100 rounded-xl py-6 select-none shadow-sm">
+                      <div className="flex items-center justify-center bg-primary-light/30 border border-primary/10 rounded-2xl py-6 select-none shadow-sm min-h-[80px]">
                         <LatexText value="$$x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$$" />
                       </div>
                     </PreviewWrapper>
@@ -582,19 +585,21 @@ export const DocGuideModal: React.FC<DocGuideModalProps> = ({ isOpen, onClose })
                     </div>
 
                     <PreviewWrapper>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="border border-indigo-100 bg-white rounded-xl shadow-sm overflow-hidden font-bold">
-                          <div className="bg-indigo-50 px-3 py-2 text-[10px] font-black text-indigo-900 border-b border-indigo-100 text-center">Nhiệt lượng tỏa ra</div>
-                          <div className="p-3 text-[9px] text-slate-600 leading-normal space-y-1">
-                            <div>• Q_toa = m * c * delta_t</div>
-                            <div className="text-slate-400 font-medium">Lượng nhiệt truyền từ vật ra môi trường.</div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="border border-slate-200 bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col hover:shadow-xs transition duration-200">
+                          <div className="bg-primary px-3 py-2 text-[10px] font-black text-white border-b border-primary-hover text-center">Nhiệt lượng tỏa ra</div>
+                          <div className="p-3 text-[9.5px] text-slate-700 leading-normal space-y-1 flex-1 bg-white">
+                            <div className="bg-primary-light/40 p-1.5 rounded-lg font-bold text-primary">Q_tỏa = m · c · Δt</div>
+                            <div className="p-1.5 font-medium text-slate-600">Năng lượng nhiệt mà vật truyền cho các vật khác xung quanh.</div>
+                            <div className="bg-primary-light/40 p-1.5 rounded-lg font-medium text-slate-600">Đơn vị đo lường: Jun (J) hoặc Calo (cal).</div>
                           </div>
                         </div>
-                        <div className="border border-indigo-100 bg-white rounded-xl shadow-sm overflow-hidden font-bold">
-                          <div className="bg-indigo-50 px-3 py-2 text-[10px] font-black text-indigo-900 border-b border-indigo-100 text-center">Nhiệt lượng thu vào</div>
-                          <div className="p-3 text-[9px] text-slate-600 leading-normal space-y-1">
-                            <div>• Q_thu = m * c * delta_t</div>
-                            <div className="text-slate-400 font-medium">Năng lượng hấp thụ làm tăng nhiệt của vật.</div>
+                        <div className="border border-slate-200 bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col hover:shadow-xs transition duration-200">
+                          <div className="bg-primary px-3 py-2 text-[10px] font-black text-white border-b border-primary-hover text-center">Nhiệt lượng thu vào</div>
+                          <div className="p-3 text-[9.5px] text-slate-700 leading-normal space-y-1 flex-1 bg-white">
+                            <div className="bg-primary-light/40 p-1.5 rounded-lg font-bold text-primary">Q_thu = m · c · Δt</div>
+                            <div className="p-1.5 font-medium text-slate-600">Năng lượng nhiệt mà vật nhận từ các nguồn phát bên ngoài.</div>
+                            <div className="bg-primary-light/40 p-1.5 rounded-lg font-medium text-slate-600">Phụ thuộc trực tiếp vào khối lượng và độ tăng nhiệt.</div>
                           </div>
                         </div>
                       </div>
@@ -632,12 +637,12 @@ export const DocGuideModal: React.FC<DocGuideModalProps> = ({ isOpen, onClose })
 
                     <PreviewWrapper>
                       <div className="flex flex-col items-center gap-1.5">
-                        <div className="border border-indigo-100 bg-white p-1 rounded-2xl shadow-sm w-full max-w-[280px]">
-                          <div className="aspect-video bg-indigo-50/50 rounded-xl flex items-center justify-center text-indigo-400 border border-dashed border-indigo-200">
-                            <ImageIcon size={30} />
+                        <div className="border border-slate-200 bg-white p-1 rounded-2xl shadow-sm w-full max-w-[320px] overflow-hidden">
+                          <div className="aspect-video bg-[#F4F6FA] rounded-xl flex items-center justify-center text-[#A3AED0] border border-dashed border-slate-200/80">
+                            <ImageIcon size={28} />
                           </div>
                         </div>
-                        <span className="text-[9px] font-bold text-slate-500 italic select-none">Hình 1.1: Đồ thị vận tốc chuyển động theo thời gian</span>
+                        <span className="text-[8.5px] font-medium text-slate-400 italic select-none">Hình 1.1: Đồ thị vận tốc chuyển động theo thời gian</span>
                       </div>
                     </PreviewWrapper>
 
@@ -829,12 +834,12 @@ export const DocGuideModal: React.FC<DocGuideModalProps> = ({ isOpen, onClose })
                           { step: 2, text: "Quan sát màu sắc quỳ tím biến đổi" },
                           { step: 3, text: "Đo nồng độ pH tương ứng thang đo" }
                         ].map((item, idx) => (
-                          <div key={idx} className="flex items-center gap-2 bg-white border border-indigo-100 rounded-xl p-2 shadow-sm text-[9px] font-bold text-slate-655">
-                            <div className="cursor-grab text-slate-350 hover:text-indigo-650 transition flex items-center pr-1 border-r border-slate-100">
-                              <GripVertical size={11} />
+                          <div key={idx} className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-xl p-2.5 shadow-xs text-[10px] font-semibold text-slate-700 hover:border-slate-300 transition-all duration-200">
+                            <div className="cursor-grab text-slate-350 hover:text-primary transition flex items-center pr-1.5 border-r border-slate-100">
+                              <GripVertical size={12} />
                             </div>
-                            <div className="w-5 h-5 rounded bg-indigo-50 text-indigo-700 flex items-center justify-center font-black shrink-0 text-[8px]">{item.step}</div>
-                            <span className="flex-1 text-slate-700">{item.text}</span>
+                            <div className="w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center font-black shrink-0 text-[8px] select-none">{item.step}</div>
+                            <span className="flex-1 text-[10px] font-semibold text-slate-700">{item.text}</span>
                           </div>
                         ))}
                       </div>
