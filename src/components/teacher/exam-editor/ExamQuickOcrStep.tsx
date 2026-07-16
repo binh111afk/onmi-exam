@@ -1,4 +1,6 @@
 import React from 'react';
+import Prism from 'prismjs';
+import 'prismjs/components/prism-json';
 import {
   File,
   X,
@@ -62,6 +64,41 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
   renderExamPreviewColumn,
 }) => {
   const codeLines = examJsonCode.split('\n');
+  const quickPreRef = React.useRef<HTMLPreElement>(null);
+
+  const highlightedCode = React.useMemo(() => {
+    if (!examJsonCode) return '';
+    try {
+      let html = Prism.highlight(examJsonCode, Prism.languages.json, 'json');
+      html = html.replace(/(\$\$[\s\S]+?\$\$|\$[\s\S]+?\$)/g, (match) => {
+        return `<span class="token-latex">${match}</span>`;
+      });
+      return html;
+    } catch (e) {
+      return examJsonCode
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+  }, [examJsonCode]);
+
+  const handleQuickHorizontalScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (quickPreRef.current) {
+      quickPreRef.current.scrollLeft = e.currentTarget.scrollLeft;
+    }
+  };
+
+  const [quickEditorHeight, setQuickEditorHeight] = React.useState<number | string>('auto');
+
+  React.useEffect(() => {
+    const textarea = quickTextareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      const scrollHeight = textarea.scrollHeight;
+      textarea.style.height = `${scrollHeight}px`;
+      setQuickEditorHeight(scrollHeight);
+    }
+  }, [examJsonCode]);
 
   if (quickStep === 1) {
     return (
@@ -345,23 +382,72 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
         </div>
 
         {/* JSON Editor body */}
-        <div className="flex-1 flex font-mono text-[11px] bg-white overflow-hidden relative min-h-0">
+        <div className="flex-1 flex font-mono text-[11px] bg-slate-50/50 overflow-y-auto relative min-h-0 oml-editor-theme">
+          {/* Embedded Theme CSS */}
+          <style>{`
+            .oml-editor-theme .token.punctuation {
+              color: #4338CA !important;
+              font-weight: bold;
+            }
+            .oml-editor-theme .token.property {
+              color: #1E1B4B !important;
+              font-weight: 600;
+            }
+            .oml-editor-theme .token.string {
+              color: #6D28D9 !important;
+            }
+            .oml-editor-theme .token.number,
+            .oml-editor-theme .token.boolean {
+              color: #BE185D !important;
+              font-weight: bold;
+            }
+            .oml-editor-theme .token-latex {
+              color: #047857 !important;
+              font-weight: 600;
+            }
+            .oml-editor-theme .oml-editor-pre,
+            .oml-editor-theme textarea {
+              white-space: pre !important;
+              word-wrap: normal !important;
+              word-break: keep-all !important;
+            }
+            .oml-editor-theme .oml-editor-pre::-webkit-scrollbar {
+              display: none !important;
+              height: 0 !important;
+              width: 0 !important;
+            }
+            .oml-editor-theme .oml-editor-pre {
+              scrollbar-width: none !important;
+            }
+          `}</style>
+
           <div
             ref={quickLineNumbersRef}
-            className="bg-slate-50/60 text-[#A3AED0] select-none text-right px-2.5 py-4 border-r border-slate-100 flex flex-col leading-[18px] shrink-0 font-mono overflow-hidden h-full"
+            className="bg-slate-55 text-[#A3AED0] select-none text-right px-2.5 py-4 border-r border-slate-100 flex flex-col font-mono text-[11px] leading-[18px] tracking-wide shrink-0 overflow-hidden"
+            style={{ height: quickEditorHeight }}
           >
             {codeLines.map((_, idx) => (
               <span key={idx} className="min-w-[20px] h-[18px] block">{idx + 1}</span>
             ))}
           </div>
-          <textarea
-            ref={quickTextareaRef}
-            value={examJsonCode}
-            onChange={(e) => setExamJsonCode(e.target.value)}
-            onScroll={handleQuickScroll}
-            className="flex-1 p-4 bg-transparent outline-none border-none resize-none leading-[18px] font-mono text-slate-800 focus:ring-0 focus:outline-none overflow-y-auto h-full"
-            spellCheck={false}
-          />
+
+          <div className="flex-1 relative overflow-hidden min-h-0" style={{ height: quickEditorHeight }}>
+            <pre
+              ref={quickPreRef}
+              className="absolute inset-0 p-4 m-0 border-none outline-none font-mono text-[11px] leading-[18px] tracking-wide pointer-events-none overflow-x-auto overflow-y-hidden select-none text-slate-800 bg-transparent box-border shadow-none oml-editor-pre"
+              style={{ height: quickEditorHeight }}
+              dangerouslySetInnerHTML={{ __html: highlightedCode }}
+            />
+            <textarea
+              ref={quickTextareaRef}
+              value={examJsonCode}
+              onChange={(e) => setExamJsonCode(e.target.value)}
+              onScroll={handleQuickHorizontalScroll}
+              className="absolute inset-0 p-4 m-0 border-none outline-none resize-none leading-[18px] font-mono text-[11px] tracking-wide text-transparent caret-[#6C5DD3] focus:ring-0 focus:outline-none overflow-x-auto overflow-y-hidden z-10 box-border shadow-none"
+              style={{ height: quickEditorHeight }}
+              spellCheck={false}
+            />
+          </div>
         </div>
 
         {/* Footer message */}

@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Edit,
-  Cloud,
   Save,
   Eye,
   Code,
@@ -23,6 +22,8 @@ import {
   ZoomOut,
   Send,
 } from 'lucide-react';
+import Prism from 'prismjs';
+import 'prismjs/components/prism-json';
 
 import { ExamSidebar } from './ExamSidebar';
 import { QuestionBankWorkspace } from './QuestionBankWorkspace';
@@ -84,8 +85,43 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   const jsonFileInputRef = useRef<HTMLInputElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const preRef = useRef<HTMLPreElement>(null);
   const quickLineNumbersRef = useRef<HTMLDivElement>(null);
   const quickTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const highlightedCode = React.useMemo(() => {
+    if (!examJsonCode) return '';
+    try {
+      let html = Prism.highlight(examJsonCode, Prism.languages.json, 'json');
+      html = html.replace(/(\$\$[\s\S]+?\$\$|\$[\s\S]+?\$)/g, (match) => {
+        return `<span class="token-latex">${match}</span>`;
+      });
+      return html;
+    } catch (e) {
+      return examJsonCode
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+  }, [examJsonCode]);
+
+  const handleHorizontalScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (preRef.current) {
+      preRef.current.scrollLeft = e.currentTarget.scrollLeft;
+    }
+  };
+
+  const [editorHeight, setEditorHeight] = useState<number | string>('auto');
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      const scrollHeight = textarea.scrollHeight;
+      textarea.style.height = `${scrollHeight}px`;
+      setEditorHeight(scrollHeight);
+    }
+  }, [examJsonCode]);
 
   // Hooks integration
   const {
@@ -181,6 +217,9 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
     if (lineNumbersRef.current) {
       lineNumbersRef.current.scrollTop = e.currentTarget.scrollTop;
     }
+    if (preRef.current) {
+      preRef.current.scrollTop = e.currentTarget.scrollTop;
+    }
   };
 
   const handleQuickScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
@@ -236,6 +275,10 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
         {isPreviewFullscreenOpen ? (
           <div className="w-full rounded-2xl border border-dashed border-slate-200 bg-white/70 p-6 text-center text-[10px] font-bold text-slate-400">
             Preview đang mở ở chế độ phóng to
+          </div>
+        ) : examJsonCode.trim() === '' ? (
+          <div className="w-full rounded-2xl border border-dashed border-slate-200 bg-white/70 p-12 text-center text-xs font-bold text-slate-400 font-sans">
+            Đề thi trống
           </div>
         ) : (
           <OmlPreviewPaper
@@ -319,13 +362,19 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
           {/* Content */}
           <div ref={fullscreenPreviewScrollRef} className="flex-1 overflow-auto bg-slate-100/80 p-6">
             <div className="flex min-h-full justify-center items-start">
-              <OmlPreviewPaper
-                omlBlocks={omlBlocks}
-                infoMeta={infoMeta}
-                selectedQuestionId={selectedQuestionId}
-                setSelectedQuestionId={setSelectedQuestionId}
-                style={{ width: paperWidth }}
-              />
+              {examJsonCode.trim() === '' ? (
+                <div className="w-full max-w-[840px] rounded-2xl border border-dashed border-slate-200 bg-white p-12 text-center text-xs font-bold text-slate-400 font-sans">
+                  Đề thi trống
+                </div>
+              ) : (
+                <OmlPreviewPaper
+                  omlBlocks={omlBlocks}
+                  infoMeta={infoMeta}
+                  selectedQuestionId={selectedQuestionId}
+                  setSelectedQuestionId={setSelectedQuestionId}
+                  style={{ width: paperWidth }}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -481,19 +530,9 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
         {examSubView === 'edit' && (
           <header className="h-16 bg-white border-b border-slate-100 px-6 flex items-center justify-between shrink-0 shadow-sm z-10">
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <h1 className="text-xs font-black text-[#1E293B] truncate max-w-xs sm:max-w-md">
-                  Tạo đề: {lastValidMetadata?.title || ''}
-                </h1>
-                <button className="p-1 text-slate-400 hover:text-slate-655 rounded transition cursor-pointer font-sans">
-                  <Edit size={12} />
-                </button>
-              </div>
-              <div className="h-4 w-px bg-slate-200" />
-              <div className="flex items-center gap-1 text-[10px] text-slate-400 font-bold font-sans">
-                <Cloud size={14} className="stroke-[2.5]" />
-                <span>Chưa lưu</span>
-              </div>
+              <h1 className="text-xs font-black text-[#1E293B] uppercase tracking-wider">
+                Soạn thảo đề thi OML
+              </h1>
             </div>
 
             {/* Actions buttons - Edit tab only */}
@@ -621,26 +660,73 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
               {/* Editor Workspace */}
               <div className="flex-1 px-4 pt-4 bg-slate-50/10 flex flex-col min-h-0 overflow-hidden">
-                <div className="flex-1 flex font-mono text-[11px] bg-slate-50/70 border border-slate-100 rounded-2xl overflow-hidden min-h-0 relative">
+                <div className="flex-1 flex font-mono text-[11px] bg-slate-50/50 border border-slate-100 rounded-2xl overflow-y-auto min-h-0 relative oml-editor-theme">
+                  {/* Embedded Theme CSS */}
+                  <style>{`
+                    .oml-editor-theme .token.punctuation {
+                      color: #4338CA !important;
+                      font-weight: bold;
+                    }
+                    .oml-editor-theme .token.property {
+                      color: #1E1B4B !important;
+                      font-weight: 600;
+                    }
+                    .oml-editor-theme .token.string {
+                      color: #6D28D9 !important;
+                    }
+                    .oml-editor-theme .token.number,
+                    .oml-editor-theme .token.boolean {
+                      color: #BE185D !important;
+                      font-weight: bold;
+                    }
+                    .oml-editor-theme .token-latex {
+                      color: #047857 !important;
+                      font-weight: 600;
+                    }
+                    .oml-editor-theme .oml-editor-pre,
+                    .oml-editor-theme textarea {
+                      white-space: pre !important;
+                      word-wrap: normal !important;
+                      word-break: keep-all !important;
+                    }
+                    .oml-editor-theme .oml-editor-pre::-webkit-scrollbar {
+                      display: none !important;
+                      height: 0 !important;
+                      width: 0 !important;
+                    }
+                    .oml-editor-theme .oml-editor-pre {
+                      scrollbar-width: none !important;
+                    }
+                  `}</style>
+                  
                   {/* Line numbers */}
                   <div
                     ref={lineNumbersRef}
-                    className="bg-slate-100/50 text-[#A3AED0] select-none text-right px-3 py-4 border-r border-slate-200/50 flex flex-col font-mono leading-[20px] tracking-wide shrink-0 overflow-hidden"
+                    className="bg-slate-100/50 text-[#A3AED0] select-none text-right px-3 py-4 border-r border-slate-200/50 flex flex-col font-mono text-[11px] leading-[18px] tracking-wide shrink-0 overflow-hidden"
+                    style={{ height: editorHeight }}
                   >
                     {codeLines.map((_, idx) => (
-                      <span key={idx} className="min-w-[24px] h-[20px] block">{idx + 1}</span>
+                      <span key={idx} className="min-w-[24px] h-[18px] block">{idx + 1}</span>
                     ))}
                   </div>
 
-                  {/* Textarea */}
-                  <textarea
-                    ref={textareaRef}
-                    value={examJsonCode}
-                    onChange={(e) => setExamJsonCode(e.target.value)}
-                    onScroll={handleScroll}
-                    className="flex-1 p-4 bg-transparent outline-none border-none resize-none leading-[20px] font-mono text-slate-800 focus:ring-0 focus:outline-none overflow-y-auto"
-                    spellCheck={false}
-                  />
+                  <div className="flex-1 relative overflow-hidden min-h-0" style={{ height: editorHeight }}>
+                    <pre
+                      ref={preRef}
+                      className="absolute inset-0 p-4 m-0 border-none outline-none font-mono text-[11px] leading-[18px] tracking-wide pointer-events-none overflow-x-auto overflow-y-hidden select-none text-slate-800 bg-transparent box-border shadow-none oml-editor-pre"
+                      style={{ height: editorHeight }}
+                      dangerouslySetInnerHTML={{ __html: highlightedCode }}
+                    />
+                    <textarea
+                      ref={textareaRef}
+                      value={examJsonCode}
+                      onChange={(e) => setExamJsonCode(e.target.value)}
+                      onScroll={handleHorizontalScroll}
+                      className="absolute inset-0 p-4 m-0 border-none outline-none resize-none leading-[18px] font-mono text-[11px] tracking-wide text-transparent caret-[#6C5DD3] focus:ring-0 focus:outline-none overflow-x-auto overflow-y-hidden z-10 box-border shadow-none"
+                      style={{ height: editorHeight }}
+                      spellCheck={false}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -658,9 +744,9 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                 ) : (
                   <button
                     onClick={handleCheckCode}
-                    className="px-3 py-1.5 bg-[#ECFDF5] hover:bg-[#D1FAE5] text-success text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer font-sans"
+                    className="px-4 py-1.5 bg-primary hover:bg-primary-hover text-white text-[10px] font-bold rounded-xl transition cursor-pointer font-sans shadow-sm text-center"
                   >
-                    <Check size={12} /> Kiểm tra mã
+                    Kiểm tra mã
                   </button>
                 )}
 
@@ -797,7 +883,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                     <div>Khối lớp: <span className="text-text-primary">Khối {infoMeta.grade || 10}</span></div>
                     <div>Thời gian: <span className="text-text-primary">{infoMeta.time || 90} phút</span></div>
                     <div>Số câu hỏi: <span className="text-text-primary">{lastValidMetadata?.questionCount ?? 0} câu</span></div>
-                    <div>Độ khó: <span className="text-text-primary font-black uppercase text-primary text-[8px] px-1.5 py-0.5 rounded bg-primary-light border border-primary/10">{infoMeta.level === 'easy' ? 'Dễ' : infoMeta.level === 'hard' ? 'Khó' : 'Trung bình'}</span></div>
+                    <div>Độ khó: <span className="text-text-primary font-black uppercase text-primary text-[8px] px-1.5 py-0.5 rounded bg-primary-light border border-primary/10">{infoMeta.difficulty === 'easy' ? 'Dễ' : infoMeta.difficulty === 'hard' ? 'Khó' : 'Trung bình'}</span></div>
                     <div>Điểm mỗi câu: <span className="text-text-primary font-mono">{lastValidMetadata?.questionCount ? (10 / lastValidMetadata.questionCount).toFixed(2) : '0.00'} đ</span></div>
                   </div>
 
@@ -941,7 +1027,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
               </button>
               <button
                 onClick={handleConfirmNewExam}
-                className="flex-1 py-2.5 bg-red-550 hover:bg-red-600 text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md shadow-red-100"
+                className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md shadow-red-500/30 text-center flex items-center justify-center"
               >
                 Tiếp tục
               </button>

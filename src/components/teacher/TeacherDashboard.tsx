@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Select } from '../Select';
 import { 
   BookOpen, 
   FileText, 
@@ -234,6 +235,17 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   // Filter subject list dynamically
   const subjects = ['All', ...Array.from(new Set(initialHistory.map(item => item.subject)))];
 
+  const subjectOptions = subjects.map(sub => ({
+    value: sub,
+    label: sub === 'All' ? 'Tất cả môn học' : sub
+  }));
+
+  const sortOptions = [
+    { value: 'newest', label: 'Sắp xếp: Mới nhất' },
+    { value: 'oldest', label: 'Sắp xếp: Cũ nhất' },
+    { value: 'questions', label: 'Sắp xếp: Số câu hỏi' },
+  ];
+
   // Filtering
   const filtered = history.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -416,42 +428,23 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             </div>
 
             {/* Subject filter */}
-            <div className="relative">
-              <select
+            <div className="w-48">
+              <Select
                 value={subjectFilter}
-                onChange={(e) => { setSubjectFilter(e.target.value); setCurrentPage(1); }}
-                className="pl-8 pr-8 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 bg-white appearance-none outline-none focus:border-[#6C5DD3] transition cursor-pointer"
-              >
-                <option value="All">Tất cả môn học</option>
-                {subjects.filter(s => s !== 'All').map(sub => (
-                  <option key={sub} value={sub}>{sub}</option>
-                ))}
-              </select>
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                <Filter size={12} />
-              </div>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                <ChevronDown size={12} />
-              </div>
+                onChange={(val) => { setSubjectFilter(val); setCurrentPage(1); }}
+                options={subjectOptions}
+                size="sm"
+              />
             </div>
 
             {/* Sort order */}
-            <div className="relative">
-              <select
+            <div className="w-48">
+              <Select
                 value={sortOrder}
-                onChange={(e) => { setSortOrder(e.target.value); setCurrentPage(1); }}
-                className="pl-8 pr-8 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 bg-white appearance-none outline-none focus:border-[#6C5DD3] transition cursor-pointer"
-              >
-                <option value="newest">Sắp xếp: Mới nhất</option>
-                <option value="oldest">Sắp xếp: Cũ nhất</option>
-                <option value="questions">Sắp xếp: Số câu hỏi</option>
-              </select>
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                <ArrowUpDown size={12} />
-              </div>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                <ChevronDown size={12} />
-              </div>
+                onChange={(val) => { setSortOrder(val); setCurrentPage(1); }}
+                options={sortOptions}
+                size="sm"
+              />
             </div>
           </div>
         </div>

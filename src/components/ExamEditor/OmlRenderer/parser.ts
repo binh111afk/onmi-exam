@@ -26,29 +26,24 @@ export interface OmlParseResult {
 
 export const translateJsonError = (msg: string): string => {
   const lower = msg.toLowerCase();
-  if (lower.includes('unexpected token }') || lower.includes('expected double-quoted property name')) {
-    return 'Thiếu dấu ngoặc nhọn "}" hoặc thừa dấu phẩy "," ở cuối thuộc tính.';
+  
+  if (lower.includes("expected ',' or '}' after property value")) {
+    return "Thiếu dấu phẩy ',' hoặc dấu đóng ngoặc nhọn '}' sau giá trị thuộc tính.";
   }
-  if (lower.includes('unexpected token ]')) {
-    return 'Thiếu dấu ngoặc vuông "]" hoặc thừa dấu phẩy "," ở cuối mảng.';
+  if (lower.includes('expected double-quoted property name')) {
+    return 'Tên thuộc tính (Key) trong cấu trúc JSON bắt buộc phải được bao bởi dấu ngoặc kép đôi ".';
   }
-  if (lower.includes('unexpected token ,')) {
-    return 'Dấu phẩy "," đặt sai vị trí hoặc thừa dấu phẩy ở cuối thuộc tính.';
-  }
-  if (lower.includes('unexpected token :')) {
-    return 'Dấu hai chấm ":" đặt sai vị trí hoặc thiếu dấu nháy kép cho khóa thuộc tính.';
+  if (lower.includes('unexpected end of json input') || lower.includes('unexpected end of input')) {
+    return 'Dữ liệu JSON chưa được đóng ngoặc đầy đủ hoặc bị ngắt quãng giữa chừng.';
   }
   if (lower.includes('unexpected token') || lower.includes('unexpected identifier')) {
-    return 'Ký tự không hợp lệ hoặc không đúng vị trí trong JSON.';
+    return 'Ký tự không hợp lệ hoặc không đúng vị trí cấu trúc JSON.';
   }
   if (lower.includes('unexpected string')) {
     return 'Chuỗi ký tự đặt sai vị trí. Có thể bạn đã quên dấu phẩy "," phân tách giữa các trường.';
   }
   if (lower.includes('unexpected number')) {
     return 'Số đặt sai vị trí. Có thể bạn đã quên dấu phẩy "," phân tách giữa các trường.';
-  }
-  if (lower.includes('unexpected end of json input') || lower.includes('unexpected end of input')) {
-    return 'Lỗi kết thúc JSON đột ngột. Có thể bạn thiếu dấu đóng ngoặc nhọn "}" hoặc dấu ngoặc vuông "]".';
   }
   if (lower.includes('unterminated string')) {
     return 'Chuỗi ký tự chưa được đóng. Có thể thiếu dấu nháy kép " ở cuối chuỗi.';
@@ -57,10 +52,18 @@ export const translateJsonError = (msg: string): string => {
 };
 
 export const parseErrorLocation = (error: Error, json: string): { line: number; column: number } => {
+  // Check for native Firefox properties
+  if ('lineNumber' in error && typeof (error as any).lineNumber === 'number') {
+    return {
+      line: (error as any).lineNumber,
+      column: typeof (error as any).columnNumber === 'number' ? (error as any).columnNumber : 1,
+    };
+  }
+
   const message = error.message;
   
-  // Match "at line X column Y" or similar
-  const lineColMatch = message.match(/at line (\d+) column (\d+)/i);
+  // Match "line X column Y" or "line X, column Y" or "(line X column Y)"
+  const lineColMatch = message.match(/line\s+(\d+).*?col(?:umn)?\s+(\d+)/i);
   if (lineColMatch) {
     return {
       line: parseInt(lineColMatch[1], 10),
@@ -73,7 +76,7 @@ export const parseErrorLocation = (error: Error, json: string): { line: number; 
   if (posMatch) {
     const pos = parseInt(posMatch[1], 10);
     const textBefore = json.slice(0, pos);
-    const lines = textBefore.split('\n');
+    const lines = textBefore.split(/\r?\n/);
     return {
       line: lines.length,
       column: lines[lines.length - 1].length + 1,

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Select } from '../../Select';
 import {
   CheckCircle2,
   Send,
@@ -73,6 +74,42 @@ export const ExamConfigPanel: React.FC<ExamConfigPanelProps> = ({
   questionTypesCount,
   counts,
 }) => {
+  const subjectOptions = [
+    { value: 'Sinh học', label: 'Sinh học' },
+    { value: 'Toán học', label: 'Toán học' },
+    { value: 'Vật lý', label: 'Vật lý' },
+    { value: 'Hóa học', label: 'Hóa học' },
+    { value: 'Tiếng Anh', label: 'Tiếng Anh' },
+    { value: 'Ngữ văn', label: 'Ngữ văn' },
+    { value: 'Lịch sử', label: 'Lịch sử' },
+    { value: 'Địa lý', label: 'Địa lý' },
+  ];
+
+  const gradeOptions = [
+    { value: '6', label: 'Khối 6' },
+    { value: '7', label: 'Khối 7' },
+    { value: '8', label: 'Khối 8' },
+    { value: '9', label: 'Khối 9' },
+    { value: '10', label: 'Khối 10' },
+    { value: '11', label: 'Khối 11' },
+    { value: '12', label: 'Khối 12' },
+  ];
+
+  const timeOptions = [
+    { value: '15', label: '15 phút' },
+    { value: '30', label: '30 phút' },
+    { value: '45', label: '45 phút' },
+    { value: '60', label: '60 phút' },
+    { value: '90', label: '90 phút' },
+    { value: '120', label: '120 phút' },
+  ];
+
+  const difficultyOptions = [
+    { value: 'easy', label: 'Dễ (Easy)' },
+    { value: 'medium', label: 'Trung bình (Medium)' },
+    { value: 'hard', label: 'Khó (Hard)' },
+  ];
+
   const getDifficultyLabel = (diff?: string) => {
     if (!diff) return 'Trung bình';
     const d = diff.toLowerCase();
@@ -162,25 +199,11 @@ export const ExamConfigPanel: React.FC<ExamConfigPanelProps> = ({
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block font-sans">
                       Môn học
                     </label>
-                    <div className="relative">
-                      <select
-                        value={infoMeta.subject || 'Sinh học'}
-                        onChange={(e) => updateJsonField('subject', e.target.value)}
-                        className="w-full bg-white border border-[#E2E8F0] focus:border-[#6C5DD3] rounded-2xl px-3.5 py-3 text-xs font-bold text-slate-800 appearance-none outline-none focus:ring-2 focus:ring-[#6C5DD3]/10 transition cursor-pointer pr-10"
-                      >
-                        <option value="Sinh học">Sinh học</option>
-                        <option value="Toán học">Toán học</option>
-                        <option value="Vật lý">Vật lý</option>
-                        <option value="Hóa học">Hóa học</option>
-                        <option value="Tiếng Anh">Tiếng Anh</option>
-                        <option value="Ngữ văn">Ngữ văn</option>
-                        <option value="Lịch sử">Lịch sử</option>
-                        <option value="Địa lý">Địa lý</option>
-                      </select>
-                      <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                        <ChevronDown size={14} />
-                      </div>
-                    </div>
+                    <Select
+                      value={infoMeta.subject || 'Sinh học'}
+                      onChange={(val) => updateJsonField('subject', val)}
+                      options={subjectOptions}
+                    />
                   </div>
 
                   {/* Khối lớp */}
@@ -188,24 +211,11 @@ export const ExamConfigPanel: React.FC<ExamConfigPanelProps> = ({
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block font-sans">
                       Khối lớp
                     </label>
-                    <div className="relative">
-                      <select
-                        value={infoMeta.grade || 10}
-                        onChange={(e) => updateJsonField('grade', parseInt(e.target.value) || e.target.value)}
-                        className="w-full bg-white border border-[#E2E8F0] focus:border-[#6C5DD3] rounded-2xl px-3.5 py-3 text-xs font-bold text-slate-800 appearance-none outline-none focus:ring-2 focus:ring-[#6C5DD3]/10 transition cursor-pointer pr-10"
-                      >
-                        <option value={6}>Khối 6</option>
-                        <option value={7}>Khối 7</option>
-                        <option value={8}>Khối 8</option>
-                        <option value={9}>Khối 9</option>
-                        <option value={10}>Khối 10</option>
-                        <option value={11}>Khối 11</option>
-                        <option value={12}>Khối 12</option>
-                      </select>
-                      <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                        <ChevronDown size={14} />
-                      </div>
-                    </div>
+                    <Select
+                      value={String(infoMeta.grade || 10)}
+                      onChange={(val) => updateJsonField('grade', parseInt(val) || 10)}
+                      options={gradeOptions}
+                    />
                   </div>
 
                   {/* Thời gian làm bài */}
@@ -213,23 +223,11 @@ export const ExamConfigPanel: React.FC<ExamConfigPanelProps> = ({
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block font-sans">
                       Thời gian làm bài
                     </label>
-                    <div className="relative">
-                      <select
-                        value={infoMeta.time || 60}
-                        onChange={(e) => updateJsonField('time', parseInt(e.target.value) || 0)}
-                        className="w-full bg-white border border-[#E2E8F0] focus:border-[#6C5DD3] rounded-2xl px-3.5 py-3 text-xs font-bold text-slate-800 appearance-none outline-none focus:ring-2 focus:ring-[#6C5DD3]/10 transition cursor-pointer pr-10"
-                      >
-                        <option value={15}>15 phút</option>
-                        <option value={30}>30 phút</option>
-                        <option value={45}>45 phút</option>
-                        <option value={60}>60 phút</option>
-                        <option value={90}>90 phút</option>
-                        <option value={120}>120 phút</option>
-                      </select>
-                      <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                        <ChevronDown size={14} />
-                      </div>
-                    </div>
+                    <Select
+                      value={String(infoMeta.time || 60)}
+                      onChange={(val) => updateJsonField('time', parseInt(val) || 60)}
+                      options={timeOptions}
+                    />
                   </div>
 
                   {/* Độ khó */}
@@ -237,20 +235,11 @@ export const ExamConfigPanel: React.FC<ExamConfigPanelProps> = ({
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-wider block font-sans">
                       Độ khó
                     </label>
-                    <div className="relative">
-                      <select
-                        value={infoMeta.difficulty || 'medium'}
-                        onChange={(e) => updateJsonField('difficulty', e.target.value)}
-                        className="w-full bg-white border border-[#E2E8F0] focus:border-[#6C5DD3] rounded-2xl px-3.5 py-3 text-xs font-bold text-slate-800 appearance-none outline-none focus:ring-2 focus:ring-[#6C5DD3]/10 transition cursor-pointer pr-10"
-                      >
-                        <option value="easy">Dễ (Easy)</option>
-                        <option value="medium">Trung bình (Medium)</option>
-                        <option value="hard">Khó (Hard)</option>
-                      </select>
-                      <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                        <ChevronDown size={14} />
-                      </div>
-                    </div>
+                    <Select
+                      value={infoMeta.difficulty || 'medium'}
+                      onChange={(val) => updateJsonField('difficulty', val)}
+                      options={difficultyOptions}
+                    />
                   </div>
                 </div>
               </div>
@@ -462,7 +451,9 @@ export const ExamConfigPanel: React.FC<ExamConfigPanelProps> = ({
                   </div>
                   <div className="border-r border-white/20 h-7 self-center" />
                   <div>
-                    <div className="text-lg font-black">10.00</div>
+                    <div className="text-lg font-black">
+                      {previewQuestions.reduce((sum, q) => sum + (Number(q.points) || 0), 0).toFixed(2)}
+                    </div>
                     <div className="text-[8px] opacity-75 font-semibold uppercase mt-0.5 tracking-wider font-sans">Điểm</div>
                   </div>
                   <div className="border-r border-white/20 h-7 self-center" />

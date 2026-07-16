@@ -16,18 +16,37 @@ export const useExamOmlCompiler = ({
 }: UseExamOmlCompilerProps) => {
   // Parser and validation states
   const [lastValidOml, setLastValidOml] = useState<any>(() => {
+    if (examJsonCode.trim() === '') {
+      return { version: "1.0", info: {}, content: [] };
+    }
     const result = parseOML(examJsonCode);
     return result.success ? result.data : null;
   });
   const [lastValidMetadata, setLastValidMetadata] = useState<any>(() => {
+    if (examJsonCode.trim() === '') {
+      return {
+        title: 'Đề thi trống',
+        subject: '',
+        grade: '',
+        time: 0,
+        questionCount: 0,
+        version: '1.0'
+      };
+    }
     const result = parseOML(examJsonCode);
     return result.metadata;
   });
   const [validationErrors, setValidationErrors] = useState<any[]>(() => {
+    if (examJsonCode.trim() === '') {
+      return [];
+    }
     const result = parseOML(examJsonCode);
     return result.success ? [] : result.errors;
   });
   const [isJsonInvalid, setIsJsonInvalid] = useState<boolean>(() => {
+    if (examJsonCode.trim() === '') {
+      return false;
+    }
     const result = parseOML(examJsonCode);
     return !result.success;
   });
@@ -38,6 +57,9 @@ export const useExamOmlCompiler = ({
     type: 'success',
   });
   const [compileStatus, setCompileStatus] = useState<'unchecked' | 'compiling' | 'success' | 'error'>(() => {
+    if (examJsonCode.trim() === '') {
+      return 'success';
+    }
     const result = parseOML(examJsonCode);
     return result.success ? 'success' : 'error';
   });
@@ -50,21 +72,46 @@ export const useExamOmlCompiler = ({
   const highlightLineInTextarea = (lineNum: number) => {
     const textarea = textareaRef.current || quickTextareaRef.current;
     if (!textarea) return;
-    const lines = textarea.value.split('\n');
+    const text = textarea.value;
+    const lines = text.split(/\r?\n/);
     if (lineNum > lines.length) return;
+
     let startOffset = 0;
     for (let i = 0; i < lineNum - 1; i++) {
-      startOffset += lines[i].length + (textarea.value.includes('\r\n') ? 2 : 1);
+      const posAfterLine = startOffset + lines[i].length;
+      const hasCarriageReturn = text.charAt(posAfterLine) === '\r';
+      const delimiterLength = hasCarriageReturn ? 2 : 1;
+      startOffset += lines[i].length + delimiterLength;
     }
     const endOffset = startOffset + lines[lineNum - 1].length;
+
     textarea.focus();
     textarea.setSelectionRange(startOffset, endOffset);
-    const rowHeight = 20;
-    textarea.scrollTop = Math.max(0, (lineNum - 5) * rowHeight);
+    const parentContainer = textarea.parentElement?.parentElement;
+    if (parentContainer) {
+      const rowHeight = 18;
+      parentContainer.scrollTop = Math.max(0, (lineNum - 5) * rowHeight);
+    }
   };
 
   // Real-time parsed OML sync with Debounce (300-500ms)
   useEffect(() => {
+    if (examJsonCode.trim() === '') {
+      setLastValidOml({ version: "1.0", info: {}, content: [] });
+      setLastValidMetadata({
+        title: 'Đề thi trống',
+        subject: '',
+        grade: '',
+        time: 0,
+        questionCount: 0,
+        version: '1.0'
+      });
+      setValidationErrors([]);
+      setIsJsonInvalid(false);
+      setCompileStatus('success');
+      return;
+    }
+
     setCompileStatus('unchecked');
 
     const handler = setTimeout(() => {
@@ -87,6 +134,41 @@ export const useExamOmlCompiler = ({
     setCompileStatus('compiling');
 
     setTimeout(() => {
+      if (examJsonCode.trim() === '') {
+        setCompileStatus('success');
+        setLastValidOml({ version: "1.0", info: {}, content: [] });
+        setLastValidMetadata({
+          title: 'Đề thi trống',
+          subject: '',
+          grade: '',
+          time: 0,
+          questionCount: 0,
+          version: '1.0'
+        });
+        setValidationErrors([]);
+        setIsJsonInvalid(false);
+        setValidationDialog({
+          isOpen: true,
+          title: 'Kiểm tra thành công',
+          success: true,
+          type: 'success',
+          errors: [],
+          metadata: {
+            title: 'Đề thi trống',
+            subject: '',
+            grade: '',
+            time: 0,
+            questionCount: 0,
+            version: '1.0'
+          },
+        });
+
+        setTimeout(() => {
+          setValidationDialog((prev: any) => ({ ...prev, isOpen: false }));
+        }, 2000);
+        return;
+      }
+
       const result = parseOML(examJsonCode);
       if (result.success) {
         setCompileStatus('success');

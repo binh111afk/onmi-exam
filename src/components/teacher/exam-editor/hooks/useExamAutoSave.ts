@@ -192,9 +192,8 @@ export const useExamAutoSave = ({
   };
 
   const handleDiscardRestore = () => {
-    draftService.deleteDraft();
     setShowRestoreDialog(false);
-    setPendingDraft(null);
+    setShowConfirmNewDialog(true);
   };
 
   const resetEditorToDefault = () => {
@@ -216,6 +215,7 @@ export const useExamAutoSave = ({
     draftService.deleteDraft();
     resetEditorToDefault();
     setShowConfirmNewDialog(false);
+    setPendingDraft(null);
   };
 
   // Debounced auto-save effect
