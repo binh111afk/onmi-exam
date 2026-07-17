@@ -116,9 +116,11 @@ export const useExamOmlCompiler = ({
 
     const handler = setTimeout(() => {
       const result = parseOML(examJsonCode);
-      if (result.success) {
+      if (result.data) {
         setLastValidOml(result.data);
         setLastValidMetadata(result.metadata);
+      }
+      if (result.success) {
         setValidationErrors([]);
         setIsJsonInvalid(false);
       } else {
@@ -170,10 +172,12 @@ export const useExamOmlCompiler = ({
       }
 
       const result = parseOML(examJsonCode);
-      if (result.success) {
-        setCompileStatus('success');
+      if (result.data) {
         setLastValidOml(result.data);
         setLastValidMetadata(result.metadata);
+      }
+      if (result.success) {
+        setCompileStatus('success');
         setValidationErrors([]);
         setIsJsonInvalid(false);
         setValidationDialog({

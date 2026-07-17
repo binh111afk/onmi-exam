@@ -12,6 +12,7 @@ import {
   X,
   ChevronRight,
   ChevronLeft,
+  ArrowLeft,
   RefreshCw,
   Link,
   Copy,
@@ -76,10 +77,65 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   const [showLeftSidebar, setShowLeftSidebar] = useState(true);
 
   // Local OCR upload file state
-  const [uploadedFile, setUploadedFile] = useState<{ name: string; size: string } | null>({
-    name: 'Đề cương ôn tập Sinh học 10 học kỳ 2.pdf',
-    size: '2.45 MB'
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; size: string; file?: File } | null>(null);
+
+  const [creationMethod, setCreationMethod] = useState<'none' | 'code' | 'ocr' | 'bank'>('none');
+  const [pendingCreationMethod, setPendingCreationMethod] = useState<'code' | 'ocr' | 'bank' | null>(null);
+  const [isDraftResolved, setIsDraftResolved] = useState(false);
+  const [ocrTempCode, setOcrTempCode] = useState('');
+  const [ocrApplyConfirm, setOcrApplyConfirm] = useState<{ isOpen: boolean; codeToApply: string }>({
+    isOpen: false,
+    codeToApply: ''
   });
+
+  const handleApplyOcrCode = (ocrCode: string) => {
+    const isCodeDirty = examJsonCode.trim() !== '' && examJsonCode !== DEFAULT_EXAM_CODE;
+    if (isCodeDirty) {
+      setOcrApplyConfirm({
+        isOpen: true,
+        codeToApply: ocrCode
+      });
+    } else {
+      applyOcrCodeToWorkspace(ocrCode);
+    }
+  };
+
+  const activateCreationMethod = (method: 'code' | 'ocr' | 'bank') => {
+    setCreationMethod(method);
+    setExamTab(method === 'ocr' ? 'quick' : method);
+    setQuickStep(1);
+    if (method === 'ocr') setOcrTempCode('');
+  };
+
+  const applyOcrCodeToWorkspace = (ocrCode: string) => {
+    setExamJsonCode(ocrCode);
+
+    // Save draft immediately to localStorage
+    const now = new Date().toISOString();
+    let title = 'Đề thi chưa có tiêu đề';
+    let subject = 'Sinh học';
+    try {
+      const parsed = JSON.parse(ocrCode);
+      if (parsed.info?.title) title = parsed.info.title;
+      if (parsed.info?.subject) subject = parsed.info.subject;
+    } catch(e) {}
+
+    draftService.saveDraft({
+      version: '1.0',
+      editorMode: 'json',
+      rawJson: ocrCode,
+      lastSaved: now,
+      examTitle: title,
+      subject: subject,
+      draftId: tabInstanceId.current,
+    });
+
+    // Switch to config view
+    setCreationMethod('code');
+    setExamTab('code');
+    setExamSubView('config');
+    setOcrApplyConfirm({ isOpen: false, codeToApply: '' });
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonFileInputRef = useRef<HTMLInputElement>(null);
@@ -108,20 +164,12 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   const handleHorizontalScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
     if (preRef.current) {
       preRef.current.scrollLeft = e.currentTarget.scrollLeft;
+      preRef.current.scrollTop = e.currentTarget.scrollTop;
+    }
+    if (lineNumbersRef.current) {
+      lineNumbersRef.current.scrollTop = e.currentTarget.scrollTop;
     }
   };
-
-  const [editorHeight, setEditorHeight] = useState<number | string>('auto');
-
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = 'auto';
-      const scrollHeight = textarea.scrollHeight;
-      textarea.style.height = `${scrollHeight}px`;
-      setEditorHeight(scrollHeight);
-    }
-  }, [examJsonCode]);
 
   // Hooks integration
   const {
@@ -174,6 +222,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
     tabInstanceId,
     formatSavedTime,
     formatFullSavedTime,
+    checkForDraft,
     handleRestoreDraft,
     handleDiscardRestore,
     handleCreateNewExamClick,
@@ -184,6 +233,33 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
     examTab,
     lastValidMetadata,
   });
+
+  const onConfirmNewExam = () => {
+    handleConfirmNewExam();
+    setIsDraftResolved(true);
+    if (pendingCreationMethod) activateCreationMethod(pendingCreationMethod);
+    setPendingCreationMethod(null);
+  };
+
+  const onDiscardRestore = () => {
+    handleDiscardRestore();
+  };
+
+  const onRestoreDraft = () => {
+    handleRestoreDraft();
+    setIsDraftResolved(true);
+    setCreationMethod('code');
+    setExamTab('code');
+    setPendingCreationMethod(null);
+  };
+
+  const handleSelectCreationMethod = (method: 'code' | 'ocr' | 'bank') => {
+    setPendingCreationMethod(method);
+    if (isDraftResolved || !checkForDraft()) {
+      activateCreationMethod(method);
+      setPendingCreationMethod(null);
+    }
+  };
 
   const [showGuideModal, setShowGuideModal] = useState<boolean>(false);
 
@@ -476,7 +552,8 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
       const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
       setUploadedFile({
         name: file.name,
-        size: `${sizeMB} MB`
+        size: `${sizeMB} MB`,
+        file
       });
     }
   };
@@ -492,21 +569,19 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
       const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
       setUploadedFile({
         name: file.name,
-        size: `${sizeMB} MB`
+        size: `${sizeMB} MB`,
+        file
       });
     }
   };
 
-  const handleJsonUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleOcrJsonUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
       const reader = new FileReader();
       reader.onload = (event) => {
-        if (event.target?.result) {
-          setExamJsonCode(event.target.result as string);
-        }
+        if (event.target?.result) setOcrTempCode(event.target.result as string);
       };
-      reader.readAsText(file);
+      reader.readAsText(e.target.files[0]);
     }
   };
 
@@ -538,7 +613,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
             {/* Actions buttons - Edit tab only */}
             <div className="flex items-center gap-2">
               {/* Auto Save Status Indicator */}
-              {examTab === 'code' && saveStatus !== 'idle' && (
+              {creationMethod !== 'none' && creationMethod !== 'ocr' && saveStatus !== 'idle' && (
                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-555 select-none mr-1">
                   {saveStatus === 'saving' && (
                     <>
@@ -586,41 +661,47 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
           </header>
         )}
 
-        {/* Sub-header Tab Bar */}
-        {examSubView === 'edit' && (
-          <div className="h-12 bg-white border-b border-slate-100 px-6 flex items-center gap-6 shrink-0 select-none z-10">
+        {examSubView === 'edit' && creationMethod !== 'none' && (
+          <div className="h-12 bg-white border-b border-slate-100 px-6 flex items-center shrink-0 z-10">
             <button
-              onClick={() => { setExamSubView('edit'); setExamTab('code'); setQuickStep(1); }}
-              className={`h-full flex items-center gap-1.5 text-xs font-black border-b-2 px-1 transition ${examSubView === 'edit' && examTab === 'code'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-text-secondary hover:text-text-primary'
-                }`}
+              onClick={() => setCreationMethod('none')}
+              className="flex items-center gap-1.5 text-xs font-black text-text-secondary hover:text-primary transition cursor-pointer"
             >
-              <Code size={14} /> Soạn bằng mã
-            </button>
-            <button
-              onClick={() => { setExamSubView('edit'); setExamTab('quick'); }}
-              className={`h-full flex items-center gap-1.5 text-xs font-black border-b-2 px-1 transition ${examSubView === 'edit' && examTab === 'quick'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-text-secondary hover:text-text-primary'
-                }`}
-            >
-              <Edit size={14} /> Soạn nhanh
-            </button>
-            <button
-              onClick={() => { setExamSubView('edit'); setExamTab('bank'); setQuickStep(1); }}
-              className={`h-full flex items-center gap-1.5 text-xs font-black border-b-2 px-1 transition ${examSubView === 'edit' && examTab === 'bank'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-text-secondary hover:text-text-primary'
-                }`}
-            >
-              <Database size={14} /> Ngân hàng câu hỏi
+              <ArrowLeft size={14} /> Quay lại chọn phương thức
             </button>
           </div>
         )}
 
         {/* Main workspace layout */}
-        {examSubView === 'edit' && examTab === 'code' && (
+        {examSubView === 'edit' && creationMethod === 'none' && (
+          <div className="flex-1 overflow-y-auto bg-slate-50 p-8">
+            <section className="mx-auto flex min-h-full max-w-6xl flex-col justify-center py-[30px]">
+              <div className="mb-8 text-center">
+                <h2 className="text-2xl font-black text-text-primary">Chọn phương thức soạn đề</h2>
+                <p className="mt-2 text-sm font-medium text-text-secondary">Bắt đầu theo cách phù hợp nhất với nội dung đề thi của bạn.</p>
+              </div>
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <button onClick={() => handleSelectCreationMethod('code')} className="group rounded-[24px] border border-slate-100 bg-white p-8 text-left shadow-sm transition hover:-translate-y-1 hover:border-primary/20 hover:shadow-md cursor-pointer">
+                  <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-light text-primary"><Code size={30} className="stroke-[2.5]" /></div>
+                  <h3 className="text-lg font-black text-text-primary">Soạn bằng mã OML</h3>
+                  <p className="mt-3 text-sm font-medium leading-relaxed text-text-secondary">Soạn trực tiếp mã nguồn OML và xem trước đề thi theo thời gian thực.</p>
+                </button>
+                <button onClick={() => handleSelectCreationMethod('ocr')} className="group rounded-[24px] border border-slate-100 bg-white p-8 text-left shadow-sm transition hover:-translate-y-1 hover:border-primary/20 hover:shadow-md cursor-pointer">
+                  <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 text-primary"><Edit size={30} className="stroke-[2.5]" /></div>
+                  <h3 className="text-lg font-black text-text-primary">Soạn nhanh</h3>
+                  <p className="mt-3 text-sm font-medium leading-relaxed text-text-secondary">Tải file PDF hoặc ảnh để AI nhận diện OCR, sau đó kiểm tra và hiệu chỉnh.</p>
+                </button>
+                <button onClick={() => handleSelectCreationMethod('bank')} className="group rounded-[24px] border border-slate-100 bg-white p-8 text-left shadow-sm transition hover:-translate-y-1 hover:border-primary/20 hover:shadow-md cursor-pointer">
+                  <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600"><Database size={30} className="stroke-[2.5]" /></div>
+                  <h3 className="text-lg font-black text-text-primary">Ngân hàng câu hỏi</h3>
+                  <p className="mt-3 text-sm font-medium leading-relaxed text-text-secondary">Chọn và tổ chức các câu hỏi có sẵn từ ngân hàng của hệ thống.</p>
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {examSubView === 'edit' && creationMethod === 'code' && (
           <div className="flex-1 flex overflow-hidden animate-fadeIn min-h-0">
             {/* LEFT COLUMN: Code Editor */}
             <div className={`${showLivePreview ? 'w-1/2 border-r border-slate-100' : 'w-full'} bg-white flex flex-col overflow-hidden transition-all duration-300 min-h-0`}>
@@ -698,23 +779,21 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                       scrollbar-width: none !important;
                     }
                   `}</style>
-                  
+
                   {/* Line numbers */}
                   <div
                     ref={lineNumbersRef}
-                    className="bg-slate-100/50 text-[#A3AED0] select-none text-right px-3 py-4 border-r border-slate-200/50 flex flex-col font-mono text-[11px] leading-[18px] tracking-wide shrink-0 overflow-hidden"
-                    style={{ height: editorHeight }}
+                    className="bg-slate-100/50 text-[#A3AED0] select-none text-right px-3 py-4 border-r border-slate-200/50 flex flex-col font-mono text-[11px] leading-[18px] tracking-wide shrink-0 overflow-hidden min-h-0"
                   >
                     {codeLines.map((_, idx) => (
                       <span key={idx} className="min-w-[24px] h-[18px] block">{idx + 1}</span>
                     ))}
                   </div>
 
-                  <div className="flex-1 relative overflow-hidden min-h-0" style={{ height: editorHeight }}>
+                  <div className="flex-1 relative overflow-hidden min-h-0">
                     <pre
                       ref={preRef}
-                      className="absolute inset-0 p-4 m-0 border-none outline-none font-mono text-[11px] leading-[18px] tracking-wide pointer-events-none overflow-x-auto overflow-y-hidden select-none text-slate-800 bg-transparent box-border shadow-none oml-editor-pre"
-                      style={{ height: editorHeight }}
+                      className="absolute inset-0 p-4 m-0 border-none outline-none font-mono text-[11px] leading-[18px] tracking-wide pointer-events-none overflow-hidden select-none text-slate-800 bg-transparent box-border shadow-none oml-editor-pre"
                       dangerouslySetInnerHTML={{ __html: highlightedCode }}
                     />
                     <textarea
@@ -722,8 +801,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                       value={examJsonCode}
                       onChange={(e) => setExamJsonCode(e.target.value)}
                       onScroll={handleHorizontalScroll}
-                      className="absolute inset-0 p-4 m-0 border-none outline-none resize-none leading-[18px] font-mono text-[11px] tracking-wide text-transparent caret-[#6C5DD3] focus:ring-0 focus:outline-none overflow-x-auto overflow-y-hidden z-10 box-border shadow-none"
-                      style={{ height: editorHeight }}
+                      className="absolute inset-0 p-4 m-0 border-none outline-none resize-none leading-[18px] font-mono text-[11px] tracking-wide text-transparent caret-[#6C5DD3] focus:ring-0 focus:outline-none overflow-auto z-10 box-border shadow-none"
                       spellCheck={false}
                     />
                   </div>
@@ -812,12 +890,12 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
         )}
 
         {/* Ngân hàng câu hỏi workspace layout */}
-        {examSubView === 'edit' && examTab === 'bank' && (
+        {examSubView === 'edit' && creationMethod === 'bank' && (
           <QuestionBankWorkspace />
         )}
 
         {/* Soạn nhanh tab view */}
-        {examSubView === 'edit' && examTab === 'quick' && (
+        {examSubView === 'edit' && creationMethod === 'ocr' && (
           <ExamQuickOcrStep
             quickStep={quickStep}
             setQuickStep={setQuickStep}
@@ -825,8 +903,8 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
             setIsOcrLoading={setIsOcrLoading}
             uploadedFile={uploadedFile}
             setUploadedFile={setUploadedFile}
-            examJsonCode={examJsonCode}
-            setExamJsonCode={setExamJsonCode}
+            examJsonCode={ocrTempCode}
+            setExamJsonCode={setOcrTempCode}
             isJsonInvalid={isJsonInvalid}
             showLeftSidebar={showLeftSidebar}
             setShowLeftSidebar={setShowLeftSidebar}
@@ -838,9 +916,10 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
             handleFileChange={handleFileChange}
             handleDragOver={handleDragOver}
             handleDrop={handleDrop}
-            handleJsonUpload={handleJsonUpload}
+            handleJsonUpload={handleOcrJsonUpload}
             handleQuickScroll={handleQuickScroll}
             renderExamPreviewColumn={renderExamPreviewColumn}
+            onApplyOcrCode={handleApplyOcrCode}
           />
         )}
 
@@ -963,6 +1042,23 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
         )}
       </main>
 
+      {ocrApplyConfirm.isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fadeIn">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setOcrApplyConfirm({ isOpen: false, codeToApply: '' })} />
+          <div className="relative z-[101] w-full max-w-[420px] space-y-5 rounded-3xl border border-slate-100 bg-white p-6 text-center shadow-2xl animate-scaleUp">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-500"><RefreshCw size={24} className="stroke-[2.5]" /></div>
+            <div className="space-y-2">
+              <h3 className="text-sm font-black uppercase tracking-wide text-slate-800">Ghi đè nội dung đề thi?</h3>
+              <p className="text-[11px] font-bold leading-relaxed text-slate-500">Đề thi hiện tại sẽ được thay thế bằng kết quả OCR. Bản nháp mới sẽ được lưu ngay sau khi áp dụng.</p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => setOcrApplyConfirm({ isOpen: false, codeToApply: '' })} className="flex-1 rounded-xl border border-slate-200 py-2.5 text-xs font-black text-slate-600 transition hover:bg-slate-50 cursor-pointer">Hủy</button>
+              <button onClick={() => applyOcrCodeToWorkspace(ocrApplyConfirm.codeToApply)} className="flex-1 rounded-xl bg-primary py-2.5 text-xs font-black text-white shadow-md shadow-indigo-150 transition hover:bg-primary-hover cursor-pointer">Đồng ý ghi đè</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── RESTORE DRAFT DIALOG ── */}
       {showRestoreDialog && pendingDraft && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -978,7 +1074,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                 Chúng tôi phát hiện bạn còn một bản nháp chưa hoàn thành. Bạn muốn tiếp tục chỉnh sửa hay tạo đề mới?
               </p>
               {pendingDraft.lastSaved && (
-                <div className="text-[10px] text-slate-400 font-semibold bg-slate-50 py-1.5 px-3 rounded-lg inline-block mt-2">
+                <div className="mt-2 inline-block rounded-lg bg-slate-50 px-3 py-1.5 text-[10px] font-semibold text-slate-400">
                   Lưu lần cuối: <span className="font-bold text-slate-655">{formatFullSavedTime(pendingDraft.lastSaved)}</span>
                 </div>
               )}
@@ -986,14 +1082,14 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
             <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
               <button
-                onClick={handleDiscardRestore}
-                className="w-full sm:flex-1 py-2.5 border border-slate-200 hover:bg-slate-55 text-slate-650 text-xs font-black rounded-xl transition cursor-pointer"
+                onClick={onDiscardRestore}
+                className="w-full sm:flex-1 py-2.5 border border-slate-200 hover:bg-slate-55 text-slate-655 text-xs font-black rounded-xl transition cursor-pointer"
               >
                 Tạo đề mới
               </button>
               <button
-                onClick={handleRestoreDraft}
-                className="w-full sm:flex-1 py-2.5 bg-primary hover:bg-primary-hover text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md shadow-indigo-150"
+                onClick={onRestoreDraft}
+                className="w-full sm:flex-1 py-2.5 bg-[#6C5DD3] hover:bg-[#5a4db8] text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md shadow-indigo-150"
               >
                 Tiếp tục chỉnh sửa
               </button>
@@ -1026,7 +1122,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                 Hủy
               </button>
               <button
-                onClick={handleConfirmNewExam}
+                onClick={onConfirmNewExam}
                 className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md shadow-red-500/30 text-center flex items-center justify-center"
               >
                 Tiếp tục

@@ -154,16 +154,17 @@ export const useExamAutoSave = ({
     return `${hours}:${minutes} ${day}/${month}/${year}`;
   };
 
-  // Restore draft from localStorage on mount
-  useEffect(() => {
+  const checkForDraft = () => {
     if (draftService.hasDraft()) {
       const draft = draftService.loadDraft();
       if (draft) {
         setPendingDraft(draft);
         setShowRestoreDialog(true);
+        return true;
       }
     }
-  }, []);
+    return false;
+  };
 
   // Sync draft edits across multiple tabs
   useEffect(() => {
@@ -272,6 +273,7 @@ export const useExamAutoSave = ({
     tabInstanceId,
     formatSavedTime,
     formatFullSavedTime,
+    checkForDraft,
     handleRestoreDraft,
     handleDiscardRestore,
     handleCreateNewExamClick,
