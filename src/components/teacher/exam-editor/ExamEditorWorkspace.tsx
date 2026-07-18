@@ -30,6 +30,7 @@ import { ExamSidebar } from './ExamSidebar';
 import { QuestionBankWorkspace } from './QuestionBankWorkspace';
 import { OmlPreviewPaper } from '../../ExamEditor/OmlRenderer/OmlPreviewPaper';
 import { OmlGuideModal } from './OmlGuideModal';
+import { useAlert } from '../../common/Alert';
 
 // Hooks & Sub-components
 import { useExamOmlCompiler } from './hooks/useExamOmlCompiler';
@@ -38,6 +39,17 @@ import { useExamViewportZoom } from './hooks/useExamViewportZoom';
 import { ExamConfigPanel } from './ExamConfigPanel';
 import { ExamQuickOcrStep } from './ExamQuickOcrStep';
 import { draftService } from '../../../services/draftService';
+
+const findQuestionLineIndex = (jsonText: string, questionId: number): number => {
+  const lines = jsonText.split('\n');
+  const idPattern = new RegExp(`"id"\\s*:\\s*${questionId}\\b`);
+  for (let i = 0; i < lines.length; i++) {
+    if (idPattern.test(lines[i])) {
+      return i;
+    }
+  }
+  return -1;
+};
 
 interface ExamEditorWorkspaceProps {
   setMode: (mode: 'dashboard' | 'editor' | 'upload' | 'exam-editor') => void;
@@ -70,6 +82,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   // viewportMode,
   // setViewportMode,
 }) => {
+  const { showAlert, showConfirm } = useAlert();
   const [copied, setCopied] = useState(false);
   const [quickStep, setQuickStep] = useState<1 | 2>(1);
   const [isOcrLoading, setIsOcrLoading] = useState(false);
@@ -307,6 +320,42 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
     return () => window.clearTimeout(handler);
   }, [creationMethod, ocrTempCode, setLastSavedTime, setSaveStatus, tabInstanceId]);
 
+  useEffect(() => {
+    if (!selectedQuestionId) return;
+
+    // 1. Scroll and highlight the code editor textarea
+    const lineIdx = findQuestionLineIndex(examJsonCode, selectedQuestionId);
+    if (lineIdx !== -1 && textareaRef.current) {
+      const textarea = textareaRef.current;
+      const lineHeight = 18;
+      const targetScrollTop = lineIdx * lineHeight - textarea.clientHeight / 3;
+      textarea.scrollTop = Math.max(0, targetScrollTop);
+      if (preRef.current) {
+        preRef.current.scrollTop = textarea.scrollTop;
+      }
+      if (lineNumbersRef.current) {
+        lineNumbersRef.current.scrollTop = textarea.scrollTop;
+      }
+      
+      // Select the line to highlight it visually
+      highlightLineInTextarea(lineIdx + 1);
+    }
+
+    // 2. Scroll the preview panel
+    const timer = window.setTimeout(() => {
+      const previewEl = document.getElementById(`preview-question-${selectedQuestionId}`);
+      if (previewEl) {
+        previewEl.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'nearest'
+        });
+      }
+    }, 100);
+
+    return () => window.clearTimeout(timer);
+  }, [selectedQuestionId]);
+
   const handleBackFromEditor = () => {
     if (examSubView === 'edit' && creationMethod !== 'none') {
       setCreationMethod('none');
@@ -516,12 +565,83 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
   const codeLines = examJsonCode.split('\n');
 
-  const handleSaveExam = () => {
-    alert('Đã lưu nháp đề thi thành công!');
+  const handleSaveExam = async () => {
+    await showAlert({
+      type: 'success',
+      title: 'Đã lưu nháp',
+      description: 'Lưu nháp đề thi thành công!'
+    });
   };
 
-  const handlePublishExam = () => {
-    alert('Đăng tải đề thi thành công!');
+  const handlePublishExam = async () => {
+    let finalCode = examJsonCode;
+    let autoRedistributed = false;
+    try {
+      const data = JSON.parse(examJsonCode);
+      if (data && Array.isArray(data.content)) {
+        const questions: any[] = [];
+        data.content.forEach((block: any) => {
+          if (block && block.type === 'question') {
+            questions.push(block);
+          } else if (block && block.type === 'question-group' && Array.isArray(block.questions)) {
+            questions.push(...block.questions);
+          }
+        });
+
+        if (questions.length > 0) {
+          const totalPoints = questions.reduce((sum, q) => sum + (Number(q.points) || 0), 0);
+          if (totalPoints < 10) {
+            const confirmed = await showConfirm({
+              type: 'question',
+              title: 'Cấu hình lại điểm số?',
+              description: `Tổng điểm hiện tại (${totalPoints}đ) không đủ 10đ. Bạn có muốn hệ thống tự động chia đều điểm cho các câu hỏi để đạt tổng 10đ không?`,
+              confirmLabel: 'Chia đều điểm',
+              cancelLabel: 'Hủy bỏ'
+            });
+
+            if (!confirmed) {
+              return;
+            }
+
+            const equalPoint = Number((10 / questions.length).toFixed(2));
+            let allocatedSum = 0;
+            questions.forEach((q, idx) => {
+              if (idx === questions.length - 1) {
+                q.points = Number((10 - allocatedSum).toFixed(2));
+              } else {
+                q.points = equalPoint;
+                allocatedSum += equalPoint;
+              }
+            });
+            finalCode = JSON.stringify(data, null, 2);
+            setExamJsonCode(finalCode);
+            autoRedistributed = true;
+          }
+        }
+      }
+    } catch (e) {
+      await showAlert({
+        type: 'error',
+        title: 'Mã nguồn không hợp lệ',
+        description: 'Mã nguồn JSON hiện tại không hợp lệ. Vui lòng kiểm tra lại trước khi xuất bản.'
+      });
+      return;
+    }
+
+    if (autoRedistributed) {
+      await showAlert({
+        type: 'success',
+        title: 'Đăng tải thành công',
+        description: 'Đã chia đều điểm và đăng tải đề thi thành công!'
+      });
+    } else {
+      await showAlert({
+        type: 'success',
+        title: 'Đăng tải thành công',
+        description: 'Đăng tải đề thi thành công!'
+      });
+    }
+
     draftService.deleteDraft();
     setMode('dashboard');
   };

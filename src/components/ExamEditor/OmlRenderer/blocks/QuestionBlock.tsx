@@ -59,13 +59,14 @@ export const QuestionBlock: React.FC<QuestionBlockProps> = ({
 
   return (
     <div
+      id={`preview-question-${block.id}`}
       onClick={() => {
         if (setSelectedQuestionId && Number.isFinite(numericQuestionId)) {
           setSelectedQuestionId(numericQuestionId);
         }
       }}
-      className={`p-4 border rounded-xl transition duration-150 cursor-pointer ${
-        isActive ? 'border-primary/30 bg-primary-light/5 shadow-sm' : 'border-slate-100 hover:border-slate-200 bg-white'
+      className={`p-4 border rounded-xl transition-all duration-300 cursor-pointer ${
+        isActive ? 'border-primary bg-indigo-50/60 shadow-md scale-[1.01] ring-4 ring-primary/10' : 'border-slate-100 hover:border-slate-200 bg-white'
       }`}
     >
       {/* Question metadata tags */}

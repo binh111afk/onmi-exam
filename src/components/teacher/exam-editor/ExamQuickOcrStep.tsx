@@ -44,6 +44,26 @@ interface ExamQuickOcrStepProps {
   onApplyOcrCode: (code: string) => void;
 }
 
+const getFileIconUrl = (fileName: string) => {
+  const extension = fileName.split('.').pop()?.toLowerCase() ?? '';
+  if (extension === 'docx' || extension === 'doc') {
+    return '/doc.png';
+  }
+  if (extension === 'pdf') {
+    return '/pdf.png';
+  }
+  if (extension === 'ppt' || extension === 'pptx') {
+    return '/ppt.png';
+  }
+  if (extension === 'xlsx' || extension === 'xls') {
+    return '/xlsx.png';
+  }
+  if (extension === 'png' || extension === 'jpg') {
+    return '/img.png';
+  }
+  return '/doc.png';
+};
+
 const isOmlQuestionBlock = (block: unknown): block is OmlQuestionBlock => (
   typeof block === 'object'
   && block !== null
@@ -84,6 +104,7 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
   const codeLines = localJsonCode.split('\n');
   const quickPreRef = React.useRef<HTMLPreElement>(null);
   const [ocrError, setOcrError] = React.useState<string | null>(null);
+  const [ocrProgress, setOcrProgress] = React.useState('Đang chuẩn bị nhận diện OCR...');
 
   React.useEffect(() => {
     if (!isTempOcrMode) {
@@ -106,9 +127,10 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
   const runOcrParsing = async (fileToParse?: File): Promise<boolean> => {
     setIsOcrLoading(true);
     setOcrError(null);
+    setOcrProgress('Đang chuẩn bị nhận diện OCR...');
     try {
       if (fileToParse) {
-        const omlJson = await parseFileToOml(fileToParse);
+        const omlJson = await parseFileToOml(fileToParse, setOcrProgress);
         if (omlJson) {
           handleOcrSuccess(omlJson);
           return true;
@@ -116,9 +138,9 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
         throw new Error('API trả về kết quả rỗng.');
       }
       throw new Error('Không tìm thấy file để nhận diện OCR.');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('OCR Parsing failed:', err);
-      setOcrError(err.message || String(err));
+      setOcrError(err instanceof Error ? err.message : String(err));
       return false;
     } finally {
       setIsOcrLoading(false);
@@ -181,7 +203,7 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
           <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-[1px] z-30 flex items-center justify-center animate-fadeIn">
             <div className="bg-white px-8 py-6 rounded-3xl shadow-xl border border-slate-100 flex flex-col items-center gap-3">
               <RefreshCw size={24} className="text-[#6C5DD3] animate-spin" />
-              <span className="text-xs font-black text-slate-700">Đang chạy nhận diện OCR...</span>
+              <span className="text-xs font-black text-slate-700">{ocrProgress}</span>
             </div>
           </div>
         )}
@@ -226,19 +248,22 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
         <div className="flex-[3] bg-white rounded-3xl p-8 border border-slate-100 shadow-sm flex flex-col justify-between min-h-[480px]">
           <div className="space-y-6">
             <h2 className="text-xs font-black text-[#1E293B] uppercase tracking-wider">
-              BƯỚC 1: TẢI FILE ĐỀ THI
+              TẢI FILE ĐỀ THI
             </h2>
 
             {uploadedFile ? (
               <div className="space-y-4 animate-fadeIn">
                 <div className="p-4 border border-emerald-100 bg-emerald-50/10 rounded-2xl flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-red-100 text-red-655 flex flex-col items-center justify-center text-[9px] font-black font-sans shrink-0">
-                      <File size={16} className="stroke-[2.5]" />
-                      <span className="-mt-0.5">PDF</span>
+                    <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shrink-0">
+                      <img 
+                        src={getFileIconUrl(uploadedFile.name)} 
+                        alt="File icon" 
+                        className="w-full h-full object-contain"
+                      />
                     </div>
                     <div>
-                      <h4 className="text-xs font-black text-text-primary truncate max-w-[200px] sm:max-w-md">
+                      <h4 className="text-xs font-black text-text-primary truncate max-w-[200px] sm:max-w-md font-sans">
                         {uploadedFile.name}
                       </h4>
                       <p className="text-[9px] text-[#7E8B9B] font-bold mt-0.5">
@@ -370,7 +395,7 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
         <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-[1px] z-30 flex items-center justify-center animate-fadeIn">
           <div className="bg-white px-8 py-6 rounded-3xl shadow-xl border border-slate-100 flex flex-col items-center gap-3">
             <RefreshCw size={24} className="text-[#6C5DD3] animate-spin" />
-            <span className="text-xs font-black text-slate-700">Đang chạy nhận diện OCR...</span>
+            <span className="text-xs font-black text-slate-700">{ocrProgress}</span>
           </div>
         </div>
       )}
@@ -431,9 +456,12 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
             {uploadedFile && (
               <div className="p-3 border border-slate-200 bg-white rounded-xl flex items-center justify-between">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-red-50 text-red-655 flex flex-col items-center justify-center text-[7px] font-black font-sans shrink-0">
-                    <File size={12} className="stroke-[2.5]" />
-                    <span className="-mt-0.5">PDF</span>
+                  <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center shrink-0">
+                    <img 
+                      src={getFileIconUrl(uploadedFile.name)} 
+                      alt="File icon" 
+                      className="w-full h-full object-contain"
+                    />
                   </div>
                   <div className="min-w-0">
                     <h4 className="text-[10px] font-black text-text-primary truncate max-w-[90px]">

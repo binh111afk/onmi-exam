@@ -1,14 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { 
-  Upload, 
-  File, 
-  CheckCircle2, 
-  X, 
-  ChevronDown, 
-  HelpCircle, 
-  Download, 
-  ChevronLeft, 
-  ChevronRight 
+import {
+  Upload,
+  File,
+  CheckCircle2,
+  X,
+  ChevronDown,
+  HelpCircle,
+  Download,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 interface FileUploaderWorkspaceProps {
@@ -39,13 +39,36 @@ const createUploadedFileInfo = (file: File): UploadedFileInfo => ({
   kind: getFileKind(file.name),
 });
 
-export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({ 
+const getFileIconUrl = (fileName: string) => {
+  const extension = fileName.split('.').pop()?.toLowerCase() ?? '';
+  if (extension === 'docx' || extension === 'doc') {
+    return '/doc.png';
+  }
+  if (extension === 'pdf') {
+    return '/pdf.png';
+  }
+  if (extension === 'ppt' || extension === 'pptx') {
+    return '/ppt.png';
+  }
+  if (extension === 'xlsx' || extension === 'xls') {
+    return '/xlsx.png';
+  }
+  return '/doc.png';
+};
+
+export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
   setMode,
   initialFile
 }) => {
-  const [uploadedFile, setUploadedFile] = useState<UploadedFileInfo | null>(() => (
-    initialFile ? createUploadedFileInfo(initialFile) : null
-  ));
+  const [uploadedFile, setUploadedFile] = useState<UploadedFileInfo | null>(() => {
+    if (initialFile) {
+      const extension = initialFile.name.split('.').pop()?.toLowerCase() ?? '';
+      if (extension !== 'zip') {
+        return createUploadedFileInfo(initialFile);
+      }
+    }
+    return null;
+  });
 
   const [docTitle, setDocTitle] = useState(() => {
     if (initialFile) {
@@ -81,6 +104,11 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
 
   useEffect(() => {
     if (initialFile) {
+      const extension = initialFile.name.split('.').pop()?.toLowerCase() ?? '';
+      if (extension === 'zip') {
+        alert('Không hỗ trợ tải lên file ZIP. Vui lòng chọn định dạng file khác.');
+        return;
+      }
       setUploadedFile(createUploadedFileInfo(initialFile));
       setPreviewPage(1);
       setPreviewZoom(100);
@@ -98,6 +126,11 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
   }, [uploadedFile]);
 
   const applySelectedFile = (file: File) => {
+    const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+    if (extension === 'zip') {
+      alert('Không hỗ trợ tải lên file ZIP. Vui lòng chọn định dạng file khác.');
+      return;
+    }
     setUploadedFile(createUploadedFileInfo(file));
     setPreviewPage(1);
     setPreviewZoom(100);
@@ -180,7 +213,7 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
                 ref={fileInputRef}
                 onChange={handleFileChange}
                 className="hidden"
-                accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.zip"
+                accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt"
               />
               <div className="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3 transition-transform group-hover:scale-110 shadow-sm shadow-indigo-100/50">
                 <Upload size={20} />
@@ -191,7 +224,7 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
                 {uploadedFile ? 'Thay đổi file' : 'Chọn file từ máy tính'}
               </span>
               <p className="text-[9px] text-slate-400 font-bold text-center mt-3">
-                Hỗ trợ: PDF, DOCX, DOC, PPTX, ZIP (tối đa 50MB)
+                Hỗ trợ: PDF, DOCX, DOC, PPTX (tối đa 50MB)
               </p>
             </div>
 
@@ -199,9 +232,12 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
             {uploadedFile ? (
               <div className="p-3 border border-emerald-100 bg-emerald-50/20 rounded-2xl flex items-center justify-between animate-fadeIn">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-red-100 flex flex-col items-center justify-center text-[9px] font-black font-sans shrink-0 text-red-500">
-                    <File size={16} className="stroke-[2.5]" />
-                    <span className="-mt-0.5">{uploadedFile.kind}</span>
+                  <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shrink-0">
+                    <img 
+                      src={getFileIconUrl(uploadedFile.name)} 
+                      alt={uploadedFile.kind} 
+                      className="w-full h-full object-contain"
+                    />
                   </div>
                   <div>
                     <h4 className="text-xs font-black text-text-primary truncate max-w-[200px] sm:max-w-md">{uploadedFile.name}</h4>
@@ -361,10 +397,20 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
             {/* Card header: tiêu đề + tải xuống */}
             <div className="flex items-center justify-between mb-4 shrink-0">
               <div className="flex items-center gap-2 min-w-0">
-                <div className="w-7 h-7 rounded-lg bg-indigo-100 text-primary flex flex-col items-center justify-center text-[6px] font-black font-sans shrink-0">
-                  <File size={11} className="stroke-[2.5]" />
-                  <span className="-mt-0.5">{uploadedFile?.kind ?? 'FILE'}</span>
-                </div>
+                {uploadedFile ? (
+                  <div className="w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center shrink-0">
+                    <img 
+                      src={getFileIconUrl(uploadedFile.name)} 
+                      alt={uploadedFile.kind} 
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-7 h-7 rounded-lg bg-indigo-100 text-primary flex flex-col items-center justify-center text-[6px] font-black font-sans shrink-0">
+                    <File size={11} className="stroke-[2.5]" />
+                    <span className="-mt-0.5">FILE</span>
+                  </div>
+                )}
                 <span className="text-sm font-black text-text-primary">4. Xem trước file</span>
                 {uploadedFile && (
                   <span className="text-[10px] font-bold text-slate-400 truncate max-w-[160px] ml-1">
@@ -472,8 +518,12 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
                 {/* Office — no public URL */}
                 {isOfficeFile && !officePreviewSrc && (
                   <div className="flex h-full flex-col items-center justify-center p-6 text-center">
-                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-slate-400">
-                      <File size={20} />
+                    <div className="mb-3 w-12 h-12 flex items-center justify-center shrink-0">
+                      <img 
+                        src={getFileIconUrl(uploadedFile.name)} 
+                        alt="Office file icon" 
+                        className="w-full h-full object-contain"
+                      />
                     </div>
                     <p className="max-w-[320px] text-xs font-bold text-text-secondary">
                       Microsoft Office Online Viewer chỉ xem được Word, Excel và PowerPoint khi file đã có URL công khai.
@@ -484,8 +534,12 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
                 {/* Unsupported */}
                 {!isPdfFile && !isImageFile && !isOfficeFile && (
                   <div className="flex h-full flex-col items-center justify-center p-6 text-center">
-                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-slate-400">
-                      <File size={20} />
+                    <div className="mb-3 w-12 h-12 flex items-center justify-center shrink-0">
+                      <img 
+                        src={getFileIconUrl(uploadedFile.name)} 
+                        alt="Unsupported file icon" 
+                        className="w-full h-full object-contain"
+                      />
                     </div>
                     <p className="max-w-[280px] text-xs font-bold text-text-secondary">
                       Trình duyệt không hỗ trợ xem trước định dạng {uploadedFile.kind}. Bạn vẫn có thể tải file gốc để kiểm tra.
@@ -496,8 +550,12 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
               </div>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 text-center min-h-0">
-                <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-300 flex items-center justify-center mb-3">
-                  <File size={24} />
+                <div className="mb-3 w-14 h-14 flex items-center justify-center shrink-0">
+                  <img 
+                    src="/doc.png" 
+                    alt="Default file icon" 
+                    className="w-full h-full object-contain"
+                  />
                 </div>
                 <p className="text-xs font-bold text-text-secondary max-w-[200px]">
                   Hãy tải lên một file tài liệu để xem trước nội dung tại đây.
