@@ -116,6 +116,7 @@ interface UseExamAutoSaveProps {
   examJsonCode: string;
   setExamJsonCode: (code: string) => void;
   examTab: 'code' | 'quick' | 'bank';
+  isCodeEditorActive: boolean;
   lastValidMetadata: any;
 }
 
@@ -123,6 +124,7 @@ export const useExamAutoSave = ({
   examJsonCode,
   setExamJsonCode,
   examTab,
+  isCodeEditorActive,
   lastValidMetadata,
 }: UseExamAutoSaveProps) => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -192,6 +194,11 @@ export const useExamAutoSave = ({
     setPendingDraft(null);
   };
 
+  const dismissRestoreDraft = () => {
+    setShowRestoreDialog(false);
+    setPendingDraft(null);
+  };
+
   const handleDiscardRestore = () => {
     setShowRestoreDialog(false);
     setShowConfirmNewDialog(true);
@@ -221,7 +228,7 @@ export const useExamAutoSave = ({
 
   // Debounced auto-save effect
   useEffect(() => {
-    if (examTab !== 'code') return;
+    if (examTab !== 'code' || !isCodeEditorActive) return;
 
     const saved = draftService.loadDraft();
     if (saved && saved.rawJson === examJsonCode) {
@@ -256,7 +263,7 @@ export const useExamAutoSave = ({
     }, 500);
 
     return () => clearTimeout(handler);
-  }, [examJsonCode, examTab, lastValidMetadata?.title, lastValidMetadata?.subject]);
+  }, [examJsonCode, examTab, isCodeEditorActive, lastValidMetadata?.title, lastValidMetadata?.subject]);
 
   return {
     saveStatus,
@@ -275,6 +282,7 @@ export const useExamAutoSave = ({
     formatFullSavedTime,
     checkForDraft,
     handleRestoreDraft,
+    dismissRestoreDraft,
     handleDiscardRestore,
     handleCreateNewExamClick,
     handleConfirmNewExam,

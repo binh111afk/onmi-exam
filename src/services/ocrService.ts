@@ -1,17 +1,169 @@
-export const fileToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => {
-      const result = reader.result as string;
-      const base64 = result.split(',')[1];
-      resolve(base64);
-    };
-    reader.onerror = (error) => reject(error);
+declare const process: {
+  env: {
+    NEXT_PUBLIC_ILOVEPDF_PUBLIC_KEY?: string;
+  };
+};
+
+const ILOVEPDF_API_URL = 'https://api.ilovepdf.com/v1';
+const ILOVEPDF_POLL_INTERVAL_MS = 500;
+const ILOVEPDF_MAX_POLL_ATTEMPTS = 120;
+
+interface IlovePdfTaskResponse {
+  server?: string;
+  task?: string;
+  status?: string;
+  error?: string;
+  message?: string;
+  download_filename?: string;
+}
+
+interface IlovePdfAuthResponse {
+  token?: string;
+}
+
+interface IlovePdfUploadResponse {
+  server_filename?: string;
+  filename?: string;
+  files?: IlovePdfUploadResponse[];
+}
+
+export const fileToBase64 = async (file: Blob): Promise<string> => {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const chunkSize = 0x8000;
+  let binary = '';
+
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+
+  return btoa(binary);
+};
+
+const wait = (milliseconds: number) => new Promise<void>((resolve) => {
+  window.setTimeout(resolve, milliseconds);
+});
+
+const getIlovePdfError = async (response: Response, fallback: string): Promise<Error> => {
+  const body = await response.text();
+  return new Error(`${fallback}: ${body || response.statusText}`);
+};
+
+const getIlovePdfServerUrl = (server: string): string => (
+  server.startsWith('http') ? server : `https://${server}`
+);
+
+const getBearerHeaders = (token: string): HeadersInit => ({
+  Authorization: `Bearer ${token}`,
+});
+
+const getUploadedFiles = (upload: IlovePdfUploadResponse): IlovePdfUploadResponse[] => (
+  upload.files ?? [upload]
+);
+
+const isCompleteIlovePdfTask = (task: IlovePdfTaskResponse): boolean => (
+  task.status?.toLowerCase() === 'tasksuccess'
+  || task.status?.toLowerCase() === 'success'
+  || task.status?.toLowerCase() === 'completed'
+  || Boolean(task.download_filename)
+);
+
+const isFailedIlovePdfTask = (task: IlovePdfTaskResponse): boolean => (
+  task.status?.toLowerCase() === 'taskerror'
+  || task.status?.toLowerCase() === 'error'
+  || task.status?.toLowerCase() === 'failed'
+  || task.status?.toLowerCase() === 'cancelled'
+);
+
+const convertDocxToPdf = async (file: File): Promise<Blob> => {
+  const publicKey = process.env.NEXT_PUBLIC_ILOVEPDF_PUBLIC_KEY;
+  if (!publicKey) {
+    throw new Error('Vui lòng cấu hình NEXT_PUBLIC_ILOVEPDF_PUBLIC_KEY trong file .env trước khi chuyển đổi DOCX.');
+  }
+
+  const authResponse = await fetch(`${ILOVEPDF_API_URL}/auth`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ public_key: publicKey }),
   });
+  if (!authResponse.ok) throw await getIlovePdfError(authResponse, 'Không thể xác thực iLovePDF');
+
+  const auth = await authResponse.json() as IlovePdfAuthResponse;
+  if (!auth.token) {
+    throw new Error('iLovePDF không trả về token xác thực.');
+  }
+
+  const startResponse = await fetch(`${ILOVEPDF_API_URL}/start/officepdf`, {
+    headers: getBearerHeaders(auth.token),
+  });
+  if (!startResponse.ok) throw await getIlovePdfError(startResponse, 'Không thể khởi tạo tác vụ iLovePDF');
+
+  const startTask = await startResponse.json() as IlovePdfTaskResponse;
+  if (!startTask.task || !startTask.server) {
+    throw new Error('iLovePDF không trả về task hoặc server cho tác vụ chuyển đổi DOCX.');
+  }
+
+  const serverUrl = getIlovePdfServerUrl(startTask.server);
+  const uploadForm = new FormData();
+  uploadForm.append('task', startTask.task);
+  uploadForm.append('file', file, file.name);
+
+  const uploadResponse = await fetch(`${serverUrl}/v1/upload`, {
+    method: 'POST',
+    headers: getBearerHeaders(auth.token),
+    body: uploadForm,
+  });
+  if (!uploadResponse.ok) throw await getIlovePdfError(uploadResponse, 'Không thể tải DOCX lên iLovePDF');
+
+  const uploadedFiles = getUploadedFiles(await uploadResponse.json() as IlovePdfUploadResponse);
+  if (uploadedFiles.some((uploadedFile) => !uploadedFile.server_filename)) {
+    throw new Error('iLovePDF không trả về tên tệp DOCX đã tải lên.');
+  }
+
+  const processResponse = await fetch(`${serverUrl}/v1/process`, {
+    method: 'POST',
+    headers: {
+      ...getBearerHeaders(auth.token),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      task: startTask.task,
+      tool: 'officepdf',
+      files: uploadedFiles.map((uploadedFile) => ({
+        server_filename: uploadedFile.server_filename,
+        filename: uploadedFile.filename || file.name,
+      })),
+    }),
+  });
+  if (!processResponse.ok) throw await getIlovePdfError(processResponse, 'iLovePDF không thể chuyển đổi DOCX');
+
+  let taskStatus = await processResponse.json() as IlovePdfTaskResponse;
+  for (let attempt = 0; !isCompleteIlovePdfTask(taskStatus); attempt += 1) {
+    if (isFailedIlovePdfTask(taskStatus)) {
+      throw new Error(taskStatus.message || taskStatus.error || 'Tác vụ chuyển đổi DOCX của iLovePDF thất bại.');
+    }
+    if (attempt >= ILOVEPDF_MAX_POLL_ATTEMPTS) {
+      throw new Error('Chuyển đổi DOCX mất quá nhiều thời gian. Vui lòng thử lại.');
+    }
+
+    await wait(ILOVEPDF_POLL_INTERVAL_MS);
+    const statusResponse = await fetch(`${ILOVEPDF_API_URL}/task/${startTask.task}`, {
+      headers: getBearerHeaders(auth.token),
+    });
+    if (!statusResponse.ok) throw await getIlovePdfError(statusResponse, 'Không thể kiểm tra trạng thái iLovePDF');
+    taskStatus = await statusResponse.json() as IlovePdfTaskResponse;
+  }
+
+  const downloadResponse = await fetch(`${serverUrl}/v1/download/${startTask.task}`, {
+    headers: getBearerHeaders(auth.token),
+  });
+  if (!downloadResponse.ok) throw await getIlovePdfError(downloadResponse, 'Không thể tải PDF đã chuyển đổi từ iLovePDF');
+
+  return downloadResponse.blob();
 };
 
 export const parseFileToOml = async (file: File): Promise<string> => {
+  const isDocx = file.name.toLowerCase().endsWith('.docx');
+  const sourceFile: Blob = isDocx ? await convertDocxToPdf(file) : file;
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   const model = import.meta.env.VITE_GEMINI_MODEL || 'gemini-3.5-flash';
 
@@ -19,8 +171,8 @@ export const parseFileToOml = async (file: File): Promise<string> => {
     throw new Error('Vui lòng cấu hình VITE_GEMINI_API_KEY trong file .env trước khi thực hiện nhận diện.');
   }
 
-  const base64Data = await fileToBase64(file);
-  const mimeType = file.type || 'application/pdf';
+  const base64Data = await fileToBase64(sourceFile);
+  const mimeType = isDocx ? 'application/pdf' : file.type || 'application/pdf';
 
   const prompt = `Bạn là một chuyên gia chuyển đổi tài liệu giáo dục và đề thi từ PDF/ảnh sang ngôn ngữ đánh dấu OML v2.0 (Omni Markup Language) dưới dạng JSON.
 

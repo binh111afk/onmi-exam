@@ -4,7 +4,7 @@ import { ChevronLeft, Edit, Settings, FileCheck2, Search, GripVertical } from 'l
 interface ExamSidebarProps {
   examSubView: 'edit' | 'config' | 'publish';
   setExamSubView: (v: 'edit' | 'config' | 'publish') => void;
-  setMode: (mode: 'dashboard' | 'editor' | 'upload' | 'exam-editor') => void;
+  onBack: () => void;
   selectedQuestionId: number;
   setSelectedQuestionId: (id: number) => void;
   examSearchQuery: string;
@@ -15,7 +15,7 @@ interface ExamSidebarProps {
 export const ExamSidebar: React.FC<ExamSidebarProps> = ({
   examSubView,
   setExamSubView,
-  setMode,
+  onBack,
   selectedQuestionId,
   setSelectedQuestionId,
   examSearchQuery,
@@ -27,7 +27,7 @@ export const ExamSidebar: React.FC<ExamSidebarProps> = ({
       <div className="p-5 flex flex-col gap-6 flex-1 min-h-0">
         {/* Back Button */}
         <button
-          onClick={() => setMode('dashboard')}
+          onClick={onBack}
           className="flex items-center gap-2 px-3 py-2 border border-[#E2E8F0] hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-600 transition cursor-pointer"
         >
           <ChevronLeft size={16} /> Quay lại

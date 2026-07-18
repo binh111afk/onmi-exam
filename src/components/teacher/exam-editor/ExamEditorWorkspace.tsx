@@ -83,21 +83,8 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   const [pendingCreationMethod, setPendingCreationMethod] = useState<'code' | 'ocr' | 'bank' | null>(null);
   const [isDraftResolved, setIsDraftResolved] = useState(false);
   const [ocrTempCode, setOcrTempCode] = useState('');
-  const [ocrApplyConfirm, setOcrApplyConfirm] = useState<{ isOpen: boolean; codeToApply: string }>({
-    isOpen: false,
-    codeToApply: ''
-  });
-
   const handleApplyOcrCode = (ocrCode: string) => {
-    const isCodeDirty = examJsonCode.trim() !== '' && examJsonCode !== DEFAULT_EXAM_CODE;
-    if (isCodeDirty) {
-      setOcrApplyConfirm({
-        isOpen: true,
-        codeToApply: ocrCode
-      });
-    } else {
-      applyOcrCodeToWorkspace(ocrCode);
-    }
+    applyOcrCodeToWorkspace(ocrCode);
   };
 
   const activateCreationMethod = (method: 'code' | 'ocr' | 'bank') => {
@@ -134,7 +121,6 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
     setCreationMethod('code');
     setExamTab('code');
     setExamSubView('config');
-    setOcrApplyConfirm({ isOpen: false, codeToApply: '' });
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -224,6 +210,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
     formatFullSavedTime,
     checkForDraft,
     handleRestoreDraft,
+    dismissRestoreDraft,
     handleDiscardRestore,
     handleCreateNewExamClick,
     handleConfirmNewExam,
@@ -231,6 +218,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
     examJsonCode,
     setExamJsonCode,
     examTab,
+    isCodeEditorActive: creationMethod === 'code',
     lastValidMetadata,
   });
 
@@ -246,6 +234,20 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   };
 
   const onRestoreDraft = () => {
+    if (pendingCreationMethod === 'ocr' && pendingDraft) {
+      setOcrTempCode(pendingDraft.rawJson);
+      tabInstanceId.current = pendingDraft.draftId;
+      setLastSavedTime(pendingDraft.lastSaved);
+      setSaveStatus('saved');
+      dismissRestoreDraft();
+      setIsDraftResolved(true);
+      setCreationMethod('ocr');
+      setExamTab('quick');
+      setQuickStep(2);
+      setPendingCreationMethod(null);
+      return;
+    }
+
     handleRestoreDraft();
     setIsDraftResolved(true);
     setCreationMethod('code');
@@ -254,11 +256,65 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   };
 
   const handleSelectCreationMethod = (method: 'code' | 'ocr' | 'bank') => {
-    setPendingCreationMethod(method);
-    if (isDraftResolved || !checkForDraft()) {
-      activateCreationMethod(method);
-      setPendingCreationMethod(null);
+    const draft = draftService.loadDraft();
+    const shouldRestoreDraft = (
+      (method === 'code' && draft?.editorMode !== 'ocr')
+      || (method === 'ocr' && draft?.editorMode === 'ocr')
+    );
+
+    if (!isDraftResolved && shouldRestoreDraft && checkForDraft()) {
+      setPendingCreationMethod(method);
+      return;
     }
+
+    activateCreationMethod(method);
+    setPendingCreationMethod(null);
+  };
+
+  useEffect(() => {
+    if (creationMethod !== 'ocr' || !ocrTempCode.trim()) return;
+
+    const savedDraft = draftService.loadDraft();
+    if (savedDraft?.editorMode === 'ocr' && savedDraft.rawJson === ocrTempCode) return;
+
+    const handler = window.setTimeout(() => {
+      const now = new Date().toISOString();
+      let title = 'Đề thi chưa có tiêu đề';
+      let subject = 'Không rõ';
+
+      try {
+        const parsed = JSON.parse(ocrTempCode);
+        title = parsed.info?.title || title;
+        subject = parsed.info?.subject || subject;
+      } catch (error) {
+        console.error('Không thể đọc metadata của bản nháp OCR:', error);
+      }
+
+      const success = draftService.saveDraft({
+        version: '1.0',
+        editorMode: 'ocr',
+        rawJson: ocrTempCode,
+        lastSaved: now,
+        examTitle: title,
+        subject,
+        draftId: tabInstanceId.current,
+      });
+
+      setSaveStatus(success ? 'saved' : 'error');
+      if (success) setLastSavedTime(now);
+    }, 500);
+
+    return () => window.clearTimeout(handler);
+  }, [creationMethod, ocrTempCode, setLastSavedTime, setSaveStatus, tabInstanceId]);
+
+  const handleBackFromEditor = () => {
+    if (examSubView === 'edit' && creationMethod !== 'none') {
+      setCreationMethod('none');
+      setQuickStep(1);
+      return;
+    }
+
+    setMode('dashboard');
   };
 
   const [showGuideModal, setShowGuideModal] = useState<boolean>(false);
@@ -591,7 +647,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
       <ExamSidebar
         examSubView={examSubView}
         setExamSubView={setExamSubView}
-        setMode={setMode}
+        onBack={handleBackFromEditor}
         selectedQuestionId={selectedQuestionId}
         setSelectedQuestionId={setSelectedQuestionId}
         examSearchQuery={examSearchQuery}
@@ -1041,23 +1097,6 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
           </div>
         )}
       </main>
-
-      {ocrApplyConfirm.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fadeIn">
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setOcrApplyConfirm({ isOpen: false, codeToApply: '' })} />
-          <div className="relative z-[101] w-full max-w-[420px] space-y-5 rounded-3xl border border-slate-100 bg-white p-6 text-center shadow-2xl animate-scaleUp">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-500"><RefreshCw size={24} className="stroke-[2.5]" /></div>
-            <div className="space-y-2">
-              <h3 className="text-sm font-black uppercase tracking-wide text-slate-800">Ghi đè nội dung đề thi?</h3>
-              <p className="text-[11px] font-bold leading-relaxed text-slate-500">Đề thi hiện tại sẽ được thay thế bằng kết quả OCR. Bản nháp mới sẽ được lưu ngay sau khi áp dụng.</p>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button onClick={() => setOcrApplyConfirm({ isOpen: false, codeToApply: '' })} className="flex-1 rounded-xl border border-slate-200 py-2.5 text-xs font-black text-slate-600 transition hover:bg-slate-50 cursor-pointer">Hủy</button>
-              <button onClick={() => applyOcrCodeToWorkspace(ocrApplyConfirm.codeToApply)} className="flex-1 rounded-xl bg-primary py-2.5 text-xs font-black text-white shadow-md shadow-indigo-150 transition hover:bg-primary-hover cursor-pointer">Đồng ý ghi đè</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── RESTORE DRAFT DIALOG ── */}
       {showRestoreDialog && pendingDraft && (

@@ -1,6 +1,6 @@
 export interface ExamDraft {
   version: string;
-  editorMode: string; // "json"
+  editorMode: string; // "json" | "ocr"
   rawJson: string;
   lastSaved: string; // ISO String
   examTitle: string;

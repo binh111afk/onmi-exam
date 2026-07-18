@@ -1,10 +1,10 @@
 import React from 'react';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-json';
-import { DEFAULT_EXAM_CODE } from './hooks/useExamAutoSave';
 import { parseOML } from '../../ExamEditor/OmlRenderer/parser';
 import { OmlPreviewPaper } from '../../ExamEditor/OmlRenderer/OmlPreviewPaper';
 import { parseFileToOml } from '../../../services/ocrService';
+import type { OmlQuestionBlock } from '../../../types/oml';
 import {
   File,
   X,
@@ -15,8 +15,7 @@ import {
   RefreshCw,
   AlignLeft,
   Upload,
-  CheckCircle2,
-  Sliders
+  CheckCircle2
 } from 'lucide-react';
 
 interface ExamQuickOcrStepProps {
@@ -45,6 +44,15 @@ interface ExamQuickOcrStepProps {
   onApplyOcrCode: (code: string) => void;
 }
 
+const isOmlQuestionBlock = (block: unknown): block is OmlQuestionBlock => (
+  typeof block === 'object'
+  && block !== null
+  && (block as { type?: unknown }).type === 'question'
+  && 'id' in block
+  && 'question' in block
+  && 'answer' in block
+);
+
 export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
   quickStep,
   setQuickStep,
@@ -72,27 +80,10 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
 }) => {
   const [localJsonCode, setLocalJsonCode] = React.useState(examJsonCode);
   const [isTempOcrMode, setIsTempOcrMode] = React.useState(false);
-  const [overwriteConfirm, setOverwriteConfirm] = React.useState<{ isOpen: boolean; newCode: string }>({
-    isOpen: false,
-    newCode: ''
-  });
 
   const codeLines = localJsonCode.split('\n');
   const quickPreRef = React.useRef<HTMLPreElement>(null);
   const [ocrError, setOcrError] = React.useState<string | null>(null);
-
-  const confirmOverwrite = (newCode: string) => {
-    setExamJsonCode(newCode);
-    setLocalJsonCode(newCode);
-    setIsTempOcrMode(false);
-    setOverwriteConfirm({ isOpen: false, newCode: '' });
-  };
-
-  const cancelOverwrite = (newCode: string) => {
-    setLocalJsonCode(newCode);
-    setIsTempOcrMode(true);
-    setOverwriteConfirm({ isOpen: false, newCode: '' });
-  };
 
   React.useEffect(() => {
     if (!isTempOcrMode) {
@@ -100,18 +91,16 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
     }
   }, [examJsonCode, isTempOcrMode]);
 
-  const handleOcrSuccess = (newCode: string) => {
-    const isCodeDirty = examJsonCode.trim() !== '' && examJsonCode !== DEFAULT_EXAM_CODE;
-    if (isCodeDirty) {
-      setOverwriteConfirm({
-        isOpen: true,
-        newCode
-      });
-    } else {
-      setExamJsonCode(newCode);
-      setLocalJsonCode(newCode);
-      setIsTempOcrMode(false);
+  React.useEffect(() => {
+    if (quickStep === 2 && examJsonCode) {
+      setIsTempOcrMode(true);
     }
+  }, [examJsonCode, quickStep]);
+
+  const handleOcrSuccess = (newCode: string) => {
+    setExamJsonCode(newCode);
+    setLocalJsonCode(newCode);
+    setIsTempOcrMode(true);
   };
 
   const runOcrParsing = async (fileToParse?: File): Promise<boolean> => {
@@ -150,6 +139,28 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
     }
+  }, [localJsonCode]);
+
+  const ocrQuestionStats = React.useMemo(() => {
+    const parsed = parseOML(localJsonCode);
+    const questions: OmlQuestionBlock[] = [];
+
+    for (const block of parsed.data?.content ?? []) {
+      if (isOmlQuestionBlock(block)) {
+        questions.push(block);
+      } else if (block.type === 'question-group' && 'questions' in block && Array.isArray(block.questions)) {
+        questions.push(...block.questions.filter(isOmlQuestionBlock));
+      }
+    }
+    const multipleChoiceCount = questions.filter((question) => (
+      question.subType === 'choice' || question.subType === 'true-false'
+    )).length;
+
+    return {
+      total: questions.length,
+      multipleChoice: multipleChoiceCount,
+      essay: questions.length - multipleChoiceCount,
+    };
   }, [localJsonCode]);
 
   const handleQuickHorizontalScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
@@ -205,45 +216,6 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
                   className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black rounded-xl transition cursor-pointer"
                 >
                   Đóng
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Overwrite Confirmation popup modal */}
-        {overwriteConfirm.isOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fadeIn">
-            <div
-              className="fixed inset-0 bg-[#0F172A]/60 backdrop-blur-sm transition-opacity duration-300"
-              onClick={() => cancelOverwrite(overwriteConfirm.newCode)}
-            />
-            <div className="bg-white rounded-3xl w-full max-w-[420px] p-6 shadow-2xl relative overflow-hidden flex flex-col z-[101] border border-slate-100 animate-scaleUp text-center space-y-5">
-              <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center mx-auto shadow-sm">
-                <Sliders size={24} className="stroke-[2.5]" />
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">
-                  Xác nhận ghi đè dữ liệu
-                </h3>
-                <p className="text-[11px] text-slate-500 font-bold leading-relaxed">
-                  Bản nháp soạn bằng mã hiện tại của bạn sẽ bị thay thế bằng nội dung nhận diện từ OCR. Bạn có chắc chắn muốn ghi đè?
-                </p>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => cancelOverwrite(overwriteConfirm.newCode)}
-                  className="flex-1 py-2.5 border border-slate-200 hover:bg-slate-55 text-slate-655 text-xs font-black rounded-xl transition cursor-pointer"
-                >
-                  Hủy bỏ (Chỉ xem tạm thời)
-                </button>
-                <button
-                  onClick={() => confirmOverwrite(overwriteConfirm.newCode)}
-                  className="flex-1 py-2.5 bg-[#6C5DD3] hover:bg-[#5a4db8] text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md shadow-indigo-150"
-                >
-                  Đồng ý ghi đè
                 </button>
               </div>
             </div>
@@ -439,45 +411,6 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
         </div>
       )}
 
-      {/* Overwrite Confirmation popup modal */}
-      {overwriteConfirm.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fadeIn">
-          <div
-            className="fixed inset-0 bg-[#0F172A]/60 backdrop-blur-sm transition-opacity duration-300"
-            onClick={() => cancelOverwrite(overwriteConfirm.newCode)}
-          />
-          <div className="bg-white rounded-3xl w-full max-w-[420px] p-6 shadow-2xl relative overflow-hidden flex flex-col z-[101] border border-slate-100 animate-scaleUp text-center space-y-5">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center mx-auto shadow-sm">
-              <Sliders size={24} className="stroke-[2.5]" />
-            </div>
-
-            <div className="space-y-2">
-              <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">
-                Xác nhận ghi đè dữ liệu
-              </h3>
-              <p className="text-[11px] text-slate-500 font-bold leading-relaxed">
-                Bản nháp soạn bằng mã hiện tại của bạn sẽ bị thay thế bằng nội dung nhận diện từ OCR. Bạn có chắc chắn muốn ghi đè?
-              </p>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => cancelOverwrite(overwriteConfirm.newCode)}
-                className="flex-1 py-2.5 border border-slate-200 hover:bg-slate-55 text-slate-655 text-xs font-black rounded-xl transition cursor-pointer"
-              >
-                Hủy bỏ (Chỉ xem tạm thời)
-              </button>
-              <button
-                onClick={() => confirmOverwrite(overwriteConfirm.newCode)}
-                className="flex-1 py-2.5 bg-[#6C5DD3] hover:bg-[#5a4db8] text-white text-xs font-black rounded-xl transition cursor-pointer shadow-md shadow-indigo-150"
-              >
-                Đồng ý ghi đè
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* COLUMN 1: File Info & OCR summary (≈22%) */}
       <div className={`${showLeftSidebar ? 'w-[22%] border-r' : 'w-0 border-none'} bg-slate-50/30 border-slate-200 flex flex-col justify-between shrink-0 overflow-y-auto relative transition-all duration-300`}>
         <div className={`${showLeftSidebar ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200`}>
@@ -525,19 +458,19 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
               <div className="space-y-2.5 font-sans">
                 <div className="flex justify-between items-center text-[10px] text-slate-500 font-bold border-b border-slate-100 pb-2">
                   <span>Tổng số câu hỏi</span>
-                  <span className="text-text-primary font-black">50</span>
+                  <span className="text-text-primary font-black">{ocrQuestionStats.total}</span>
                 </div>
                 <div className="flex justify-between items-center text-[10px] text-slate-500 font-bold border-b border-slate-100 pb-2">
                   <span>Câu trắc nghiệm</span>
-                  <span className="text-text-primary font-black">50</span>
+                  <span className="text-text-primary font-black">{ocrQuestionStats.multipleChoice}</span>
                 </div>
                 <div className="flex justify-between items-center text-[10px] text-slate-500 font-bold border-b border-slate-100 pb-2">
                   <span>Câu tự luận</span>
-                  <span className="text-text-primary font-black">0</span>
+                  <span className="text-text-primary font-black">{ocrQuestionStats.essay}</span>
                 </div>
                 <div className="flex justify-between items-center text-[10px] text-slate-500 font-bold border-b border-slate-100 pb-2">
                   <span>Độ chính xác ước tính</span>
-                  <span className="text-emerald-500 font-black">98%</span>
+                  <span className="text-slate-400 font-black">Chưa đánh giá</span>
                 </div>
               </div>
             </div>
@@ -616,25 +549,6 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
             </button>
           </div>
         </div>
-
-        {/* Temp OCR warning banner */}
-        {isTempOcrMode && (
-          <div className="bg-amber-50 border-b border-amber-100 px-4 py-2 flex items-center justify-between text-[10px] text-amber-800 font-bold shrink-0 animate-fadeIn">
-            <div className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              <span>Bạn đang xem kết quả OCR tạm thời. Bản nháp gốc vẫn được giữ nguyên.</span>
-            </div>
-            <button
-              onClick={() => {
-                setExamJsonCode(localJsonCode);
-                setIsTempOcrMode(false);
-              }}
-              className="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded transition cursor-pointer text-[8px] font-black font-sans uppercase tracking-wide"
-            >
-              Áp dụng
-            </button>
-          </div>
-        )}
 
         {/* JSON Editor body */}
         <div className="flex-1 flex font-mono text-[11px] bg-slate-50/50 overflow-y-auto relative min-h-0 oml-editor-theme">
