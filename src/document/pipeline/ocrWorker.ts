@@ -5,6 +5,7 @@ import type { LegacyOcrMemoryTelemetry } from '../../services/ocrService';
 import type { OcrRegion } from './regionPlanner';
 import type { OcrCropProfilerData, OcrRequestProfilerRecord } from '../../types/ocr-profiler';
 import type { OcrDiagnosticReport } from '../../types/ocr-diagnostics';
+import type { BenchmarkRunOptions } from '../ocr/ocrProvider';
 
 export interface OcrTask {
   file?: File;
@@ -49,6 +50,8 @@ const toRawNodes = (content: DocumentContentNode[], region: OcrRegion): RawDocum
 });
 
 export class OcrWorker {
+  constructor(private readonly benchmarkRunOptions?: BenchmarkRunOptions) {}
+
   async process(task: OcrTask, onProgress?: (statusText: string) => void, memoryTelemetry?: LegacyOcrMemoryTelemetry, onRequestProfile?: (record: OcrRequestProfilerRecord) => void, onDiagnostics?: (report: OcrDiagnosticReport) => void): Promise<OcrWorkerResult> {
     const startedAt = performance.now();
     if (!task.file || task.region.action === 'math-ocr') {
@@ -77,7 +80,7 @@ export class OcrWorker {
       report.pages = [task.region.page];
       report.regions = [task.region.id];
       onDiagnostics?.(report);
-    });
+    }, this.benchmarkRunOptions);
     const networkRequestTimeMs = performance.now() - networkStartedAt;
     const processingTimeMs = performance.now() - startedAt;
     return { status: 'completed', nodes: toRawNodes(document.content, task.region), task, processingTimeMs, networkRequestTimeMs };

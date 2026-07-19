@@ -7,6 +7,7 @@ export interface OcrRejectedBlock {
   preview: string;
   rejected: true;
   reason: 'MissingQuestionNumber' | 'MissingOptions' | 'MissingStem' | 'InvalidChoiceStructure' | 'InvalidOML' | 'UnknownBlock' | 'EmptyText' | 'OcrNoise';
+  missingFields: string[];
 }
 
 export interface OcrDiagnosticStage {
@@ -27,8 +28,14 @@ export interface OcrDiagnosticSummary {
   mergeAfter: number;
   filter2Before: number;
   filter2After: number;
+  mergedContentLength: number;
   questionCount: number;
   omlBlocks: number;
+  questionGroupsDetected: number;
+  questionGroupsAccepted: number;
+  questionGroupsRejected: number;
+  questionsKeptFromGroups: number;
+  questionsRemovedFromGroups: number;
 }
 
 export interface OcrDiagnosticReport {

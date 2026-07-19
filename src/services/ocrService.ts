@@ -4,12 +4,15 @@ import type {
   OmlDocumentV2,
   OmlInfo,
   OmlQuestionBlock,
+  OmlQuestionGroupBlock,
   OmlQuestionOption,
 } from '../types/oml';
 import { omlToQuestionDocument, questionDocumentToOml } from '../document/adapters/omlQuestionObjectAdapter';
 import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist';
 import type { QuestionDocument } from '../types/question-object';
 import type { OcrDiagnosticReport, OcrRejectedBlock } from '../types/ocr-diagnostics';
+import { OcrProviderFactory } from '../document/ocr/ocrProvider';
+import type { BenchmarkRunOptions, OcrProviderId } from '../document/ocr/ocrProvider';
 
 declare const process: {
   env: {
@@ -66,9 +69,21 @@ const isValidOcrQuestionBlock = (value: unknown): value is OmlQuestionBlock => {
   return value.subType === undefined || value.subType === 'choice' || value.subType === 'true-false';
 };
 
-const filterValidOcrQuestions = (content: unknown[]): OmlQuestionBlock[] => (
-  content.filter(isValidOcrQuestionBlock)
-);
+type OcrFilteredBlock = OmlQuestionBlock | OmlQuestionGroupBlock;
+
+interface OcrQuestionGroupFilterStats {
+  detected: number;
+  accepted: number;
+  rejected: number;
+  questionsKept: number;
+  questionsRemoved: number;
+}
+
+interface OcrFilterResult {
+  content: OcrFilteredBlock[];
+  rejected: OcrRejectedBlock[];
+  questionGroups: OcrQuestionGroupFilterStats;
+}
 
 const diagnosticPreview = (value: unknown): string => {
   try { return JSON.stringify(value).slice(0, 500); } catch { return String(value).slice(0, 500); }
@@ -78,6 +93,16 @@ const diagnoseRejectedOcrBlock = (value: unknown): OcrRejectedBlock => {
   const block = isRecord(value) ? value : {};
   const id = typeof block.id === 'string' || typeof block.id === 'number' ? block.id : null;
   const type = typeof block.type === 'string' ? block.type : null;
+  const missingFields: string[] = [];
+  if (!isRecord(value)) missingFields.push('Invalid block');
+  else {
+    if (type !== 'question') missingFields.push('Invalid type');
+    if (id === null) missingFields.push('Missing id');
+    if (typeof block.question !== 'string' || block.question.trim().length === 0) missingFields.push('Missing question');
+    if (!Array.isArray(block.options) || block.options.length === 0) missingFields.push('Missing options');
+    else if (!block.options.every(isValidOcrOption)) missingFields.push('Invalid option');
+    if (!Array.isArray(block.answer)) missingFields.push('Missing answer');
+  }
   let reason: OcrRejectedBlock['reason'] = 'InvalidOML';
   if (!isRecord(value)) reason = 'InvalidOML';
   else if (type !== 'question') reason = 'UnknownBlock';
@@ -87,7 +112,54 @@ const diagnoseRejectedOcrBlock = (value: unknown): OcrRejectedBlock => {
   else if (!block.options.every(isValidOcrOption) || (block.subType !== undefined && block.subType !== 'choice' && block.subType !== 'true-false')) reason = 'InvalidChoiceStructure';
   else if (!Array.isArray(block.answer)) reason = 'InvalidOML';
   else if (containsOcrNoise(value)) reason = 'OcrNoise';
-  return { id, page: null, type, preview: diagnosticPreview(value), rejected: true, reason };
+  return { id, page: null, type, preview: diagnosticPreview(value), rejected: true, reason, missingFields };
+};
+
+const isOcrQuestionGroup = (value: unknown): value is OmlQuestionGroupBlock => (
+  isRecord(value)
+  && value.type === 'question-group'
+  && (typeof value.id === 'string' || typeof value.id === 'number')
+  && Array.isArray(value.context)
+  && Array.isArray(value.questions)
+);
+
+const filterValidOcrQuestions = (content: unknown[]): OcrFilterResult => {
+  const result: OcrFilterResult = {
+    content: [],
+    rejected: [],
+    questionGroups: { detected: 0, accepted: 0, rejected: 0, questionsKept: 0, questionsRemoved: 0 },
+  };
+
+  content.forEach((block) => {
+    if (isValidOcrQuestionBlock(block)) {
+      result.content.push(block);
+      return;
+    }
+
+    if (isRecord(block) && block.type === 'question-group') {
+      result.questionGroups.detected += 1;
+      const questions = Array.isArray(block.questions) ? block.questions : [];
+      const validQuestions = questions.filter(isValidOcrQuestionBlock);
+      const rejectedQuestions = questions.filter((question) => !isValidOcrQuestionBlock(question));
+      result.questionGroups.questionsKept += validQuestions.length;
+      result.questionGroups.questionsRemoved += rejectedQuestions.length;
+      result.rejected.push(...rejectedQuestions.map(diagnoseRejectedOcrBlock));
+
+      if (isOcrQuestionGroup(block) && validQuestions.length > 0) {
+        result.questionGroups.accepted += 1;
+        result.content.push({ ...block, questions: validQuestions });
+        return;
+      }
+
+      result.questionGroups.rejected += 1;
+      result.rejected.push(diagnoseRejectedOcrBlock(block));
+      return;
+    }
+
+    result.rejected.push(diagnoseRejectedOcrBlock(block));
+  });
+
+  return result;
 };
 
 const getQuestionOrder = (question: OmlQuestionBlock): number | null => {
@@ -98,6 +170,12 @@ const getQuestionOrder = (question: OmlQuestionBlock): number | null => {
   const matchedNumber = String(question.id).match(/\d+/);
   return matchedNumber ? Number.parseInt(matchedNumber[0], 10) : null;
 };
+
+const getOcrBlockOrder = (block: OcrFilteredBlock): number | null => (
+  block.type === 'question'
+    ? getQuestionOrder(block)
+    : getQuestionOrder(block.questions[0])
+);
 
 interface IlovePdfTaskResponse {
   server?: string;
@@ -274,40 +352,63 @@ export interface LegacyOcrRequestMeasurement {
 
 export type LegacyOcrDiagnosticsSink = (report: OcrDiagnosticReport) => void;
 
+export class OcrDiagnosticError extends Error {
+  readonly ocrDiagnostics: OcrDiagnosticReport[];
+
+  constructor(message: string, report: OcrDiagnosticReport, cause?: unknown) {
+    super(message, cause === undefined ? undefined : { cause });
+    this.name = 'OcrDiagnosticError';
+    this.ocrDiagnostics = [report];
+  }
+}
+
 export const runLegacyOcrToQuestionDocument = async (
   file: File,
   onProgress?: (statusText: string) => void,
   memoryTelemetry?: LegacyOcrMemoryTelemetry,
   onRequestMeasurement?: (measurement: LegacyOcrRequestMeasurement) => void,
   onDiagnostics?: LegacyOcrDiagnosticsSink,
+  providerOptions?: BenchmarkRunOptions,
 ): Promise<QuestionDocument> => {
+  const selectedProvider = OcrProviderFactory.create(providerOptions?.providerId === 'google' ? 'gemini' : providerOptions?.providerId === 'zhipu' ? 'zhipu' : 'gpt', providerOptions?.model);
+  const aiApiUrl = import.meta.env.AZURE_QWEN_ENDPOINT;
+  const aiModel = import.meta.env.AZURE_QWEN_MODEL;
+  const aiApiKey = import.meta.env.AZURE_QWEN_KEY;
+  const diagnostics: OcrDiagnosticReport = {
+    fileName: file.name,
+    provider: selectedProvider.displayName,
+    requestCount: 0,
+    pages: [],
+    regions: [],
+    stages: [],
+    summary: { rawBlocks: 0, normalizedBlocks: 0, parsedBlocks: 0, filter1Before: 0, filter1After: 0, mergeBefore: 0, mergeAfter: 0, filter2Before: 0, filter2After: 0, mergedContentLength: 0, questionCount: 0, omlBlocks: 0, questionGroupsDetected: 0, questionGroupsAccepted: 0, questionGroupsRejected: 0, questionsKeptFromGroups: 0, questionsRemovedFromGroups: 0 },
+    rejectedBlocks: [],
+    rawResponses: [],
+  };
+  let diagnosticsEmitted = false;
+  const emitDiagnostics = (): void => {
+    if (diagnosticsEmitted) return;
+    diagnosticsEmitted = true;
+    onDiagnostics?.(diagnostics);
+  };
+  const failWithDiagnostics = (message: string, cause?: unknown): never => {
+    diagnostics.error = message;
+    emitDiagnostics();
+    throw new OcrDiagnosticError(message, diagnostics, cause);
+  };
   const isDocx = file.name.toLowerCase().endsWith('.docx');
   let sourceFile: Blob = file;
 
   if (isDocx) {
     if (onProgress) onProgress('Đang chuyển đổi tài liệu DOCX sang PDF...');
-    sourceFile = await convertDocxToPdf(file);
+    try {
+      sourceFile = await convertDocxToPdf(file);
+    } catch (error) {
+      failWithDiagnostics('Không thể chuyển đổi tài liệu DOCX trước khi OCR.', error);
+    }
   }
 
   const isPdf = file.name.toLowerCase().endsWith('.pdf') || isDocx || sourceFile.type === 'application/pdf';
-  const aiApiUrl = import.meta.env.AZURE_QWEN_ENDPOINT;
-  const aiModel = import.meta.env.AZURE_QWEN_MODEL;
-  const aiApiKey = import.meta.env.AZURE_QWEN_KEY;
-
-  if (!aiApiUrl || !aiModel || !aiApiKey) {
-    throw new Error('Vui lòng cấu hình AZURE_QWEN_ENDPOINT, AZURE_QWEN_MODEL và AZURE_QWEN_KEY trong file .env.');
-  }
-  const diagnostics: OcrDiagnosticReport = {
-    fileName: file.name,
-    provider: aiApiUrl,
-    requestCount: 0,
-    pages: [],
-    regions: [],
-    stages: [],
-    summary: { rawBlocks: 0, normalizedBlocks: 0, parsedBlocks: 0, filter1Before: 0, filter1After: 0, mergeBefore: 0, mergeAfter: 0, filter2Before: 0, filter2After: 0, questionCount: 0, omlBlocks: 0 },
-    rejectedBlocks: [],
-    rawResponses: [],
-  };
 
   interface OcrPageData {
     base64Data: string;
@@ -330,12 +431,12 @@ export const runLegacyOcrToQuestionDocument = async (
   let pdfPageCount = 0;
   if (isPdf) {
     if (onProgress) onProgress('Đang phân tích cấu trúc tài liệu...');
-    loadingTask = pdfjsLib.getDocument({ data: await sourceFile.arrayBuffer() });
     try {
+      loadingTask = pdfjsLib.getDocument({ data: await sourceFile.arrayBuffer() });
       pdf = await loadingTask.promise;
     } catch (error) {
-      await loadingTask.destroy();
-      throw error;
+      if (loadingTask !== undefined) await loadingTask.destroy();
+      failWithDiagnostics('Không thể mở PDF để OCR.', error);
     }
     pdfPageCount = pdf.numPages;
     if (onProgress) onProgress(`Đang trích xuất ${pdfPageCount} trang từ file PDF...`);
@@ -488,18 +589,36 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
 
     const rawContent = (parsed as { content: unknown[] }).content;
     const filterStartedAt = performance.now();
-    const filteredContent = filterValidOcrQuestions(rawContent);
-    const rejected = rawContent.filter((block) => !isValidOcrQuestionBlock(block)).map(diagnoseRejectedOcrBlock);
+    const filterResult = filterValidOcrQuestions(rawContent);
+    const { content: filteredContent, rejected } = filterResult;
+    const rejectionCounts = rejected.reduce<Record<string, number>>((counts, block) => {
+      counts[block.reason] = (counts[block.reason] ?? 0) + 1;
+      return counts;
+    }, {});
+    const filterRuntime = {
+      rawCount: rawContent.length,
+      acceptedCount: filteredContent.length,
+      rejectedCount: rejected.length,
+      firstBlock: rawContent[0] ?? null,
+      lastBlock: rawContent.at(-1) ?? null,
+      firstRejected: rejected[0] ?? null,
+      topRejections: Object.entries(rejectionCounts).sort((first, second) => second[1] - first[1]),
+    };
     diagnostics.summary.rawBlocks += rawContent.length;
     diagnostics.summary.normalizedBlocks += rawContent.length;
     diagnostics.summary.parsedBlocks += rawContent.length;
     diagnostics.summary.filter1Before += rawContent.length;
     diagnostics.summary.filter1After += filteredContent.length;
+    diagnostics.summary.questionGroupsDetected += filterResult.questionGroups.detected;
+    diagnostics.summary.questionGroupsAccepted += filterResult.questionGroups.accepted;
+    diagnostics.summary.questionGroupsRejected += filterResult.questionGroups.rejected;
+    diagnostics.summary.questionsKeptFromGroups += filterResult.questionGroups.questionsKept;
+    diagnostics.summary.questionsRemovedFromGroups += filterResult.questionGroups.questionsRemoved;
     diagnostics.rejectedBlocks.push(...rejected);
     diagnostics.stages.push(
       { stage: 'Normalize', input: rawContent, output: rawContent, durationMs: 0, success: true },
       { stage: 'Parse', input: cleanJson, output: rawContent, durationMs: performance.now() - parseStartedAt, success: true },
-      { stage: 'Filter #1', input: rawContent, output: filteredContent, durationMs: performance.now() - filterStartedAt, success: true },
+      { stage: 'Filter #1', input: filterRuntime, output: filteredContent, durationMs: performance.now() - filterStartedAt, success: true },
     );
     const parsedInfo = (parsed as { info?: unknown }).info;
     return {
@@ -511,6 +630,23 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
   };
 
   const ocrWholeDocument = async (pages: OcrPageData[], base64EncodeTimeMs: number | null): Promise<ParsedOcrPage> => {
+    if (selectedProvider.id === 'gemini' || selectedProvider.id === 'zhipu') {
+      const uploadStart = performance.timeOrigin + performance.now();
+      const requestStartedAt = performance.now();
+      try {
+        const result = await selectedProvider.process({ prompt, images: pages });
+        diagnostics.requestCount += 1;
+        diagnostics.rawResponses.push(result.rawResponse);
+        diagnostics.stages.push({ stage: 'OCR Response', input: { provider: result.provider, model: result.model, imageCount: pages.length }, output: result.rawResponse, durationMs: performance.now() - requestStartedAt, success: true });
+        const parseStartedAt = performance.now();
+        const parsed = parseOcrPage(result.text, 0);
+        onRequestMeasurement?.({ base64Bytes: pages.reduce((total, page) => total + page.base64Data.length, 0), base64EncodeTimeMs, uploadStart, uploadEnd: null, uploadDurationMs: null, providerStart: null, providerEnd: null, providerDurationMs: null, downloadDurationMs: null, responseParseTimeMs: performance.now() - parseStartedAt, success: true, responseHeadersAt: performance.timeOrigin + performance.now(), timeToFirstByteMs: null });
+        return parsed;
+      } catch (error) {
+        onRequestMeasurement?.({ base64Bytes: pages.reduce((total, page) => total + page.base64Data.length, 0), base64EncodeTimeMs, uploadStart, uploadEnd: null, uploadDurationMs: null, providerStart: null, providerEnd: null, providerDurationMs: null, downloadDurationMs: null, responseParseTimeMs: null, success: false, responseHeadersAt: null, timeToFirstByteMs: null });
+        failWithDiagnostics(error instanceof Error ? error.message : String(error), error);
+      }
+    }
     const isResponsesApi = /\/responses(?:\?|$)/i.test(aiApiUrl);
     const imageParts = pages.map((pageData) => {
       const base64String = pageData.base64Data.replace(/^data:[^,]+,/, '');
@@ -581,7 +717,8 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
       return parsed;
     } catch (error) {
       onRequestMeasurement?.({ base64Bytes: pages.reduce((total, page) => total + page.base64Data.length, 0), base64EncodeTimeMs, uploadStart, uploadEnd: null, uploadDurationMs: null, providerStart: null, providerEnd: null, providerDurationMs: null, downloadDurationMs: null, responseParseTimeMs: null, success: false, responseHeadersAt, timeToFirstByteMs: responseHeadersAt === null ? null : responseHeadersAt - uploadStart });
-      throw error;
+      if (error instanceof OcrDiagnosticError) throw error;
+      failWithDiagnostics(error instanceof Error ? error.message : String(error), error);
     }
   };
 
@@ -637,7 +774,7 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
       batch.length = 0;
     }
   } catch (error: unknown) {
-    throw new Error(`Không thể hoàn tất nhận diện toàn bộ tài liệu: ${error instanceof Error ? error.message : String(error)}`);
+    failWithDiagnostics(`Không thể hoàn tất nhận diện toàn bộ tài liệu: ${error instanceof Error ? error.message : String(error)}`, error);
   } finally {
     if (pdf !== undefined) await pdf.cleanup();
     if (loadingTask !== undefined) await loadingTask.destroy();
@@ -651,18 +788,14 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
 
   if (failedPages.length > 0) {
     const failedPageNumbers = failedPages.map((result) => result.pageIndex + 1).join(', ');
-
-    diagnostics.error = `Azure Qwen không thể xử lý một hoặc nhiều trang. Các trang lỗi: ${failedPageNumbers}.`;
-    onDiagnostics?.(diagnostics);
-    throw new Error(
-      `Azure Qwen không thể xử lý một hoặc nhiều trang. Không tạo đề thi thiếu câu. Các trang lỗi: ${failedPageNumbers}.`
+    failWithDiagnostics(
+      `Azure Qwen không thể xử lý một hoặc nhiều trang. Không tạo đề thi thiếu câu. Các trang lỗi: ${failedPageNumbers}.`,
+      failedPages[0].error,
     );
   }
 
   if (successfulPages.length === 0) {
-    diagnostics.error = 'Không thể nhận diện bất kỳ trang nào trong tài liệu.';
-    onDiagnostics?.(diagnostics);
-    throw new Error('Không thể nhận diện bất kỳ trang nào trong tài liệu. Vui lòng thử lại.');
+    failWithDiagnostics('Không thể nhận diện bất kỳ trang nào trong tài liệu. Vui lòng thử lại.');
   }
 
   const firstPageInfo = successfulPages.find((result) => result.page.info.title)?.page.info;
@@ -675,16 +808,17 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
   diagnostics.summary.mergeAfter = mergeInput.length;
   diagnostics.stages.push({ stage: 'Merge', input: mergeInput, output: mergeInput, durationMs: 0, success: true });
   const filter2StartedAt = performance.now();
-  const filter2Content = filterValidOcrQuestions(mergeInput);
+  const filter2Result = filterValidOcrQuestions(mergeInput);
+  const { content: filter2Content } = filter2Result;
   diagnostics.summary.filter2Before = mergeInput.length;
   diagnostics.summary.filter2After = filter2Content.length;
-  diagnostics.rejectedBlocks.push(...mergeInput.filter((block) => !isValidOcrQuestionBlock(block)).map(diagnoseRejectedOcrBlock));
+  diagnostics.rejectedBlocks.push(...filter2Result.rejected);
   diagnostics.stages.push({ stage: 'Filter #2', input: mergeInput, output: filter2Content, durationMs: performance.now() - filter2StartedAt, success: true });
   const mergedContent = filter2Content
-    .map((question, originalIndex) => ({
-      question,
+    .map((block, originalIndex) => ({
+      block,
       originalIndex,
-      questionOrder: getQuestionOrder(question),
+      questionOrder: getOcrBlockOrder(block),
     }))
     .sort((first, second) => {
       if (first.questionOrder === null || second.questionOrder === null) {
@@ -693,12 +827,13 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
 
       return first.questionOrder - second.questionOrder || first.originalIndex - second.originalIndex;
     })
-    .map(({ question }) => question);
+    .map(({ block }) => block);
+  diagnostics.summary.mergedContentLength = mergedContent.length;
 
   if (mergedContent.length === 0) {
-    diagnostics.error = 'Không tìm thấy câu hỏi có cấu trúc hợp lệ sau khi lọc dữ liệu OCR.';
-    onDiagnostics?.(diagnostics);
-    throw new Error('Không tìm thấy câu hỏi có cấu trúc hợp lệ sau khi lọc dữ liệu OCR.');
+    const filterStage = diagnostics.stages.find((stage) => stage.stage === 'Filter #1');
+    console.error('OCR runtime filter diagnostics:', filterStage?.input);
+    failWithDiagnostics('Không tìm thấy câu hỏi có cấu trúc hợp lệ sau khi lọc dữ liệu OCR.');
   }
 
   const finalOml: OmlDocumentV2 = {
@@ -706,17 +841,24 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
     info: mergedInfo,
     content: mergedContent,
   };
-
-  // The legacy OCR provider still returns OML-shaped JSON. Normalize it through
-  // the canonical Question Object before compiling the renderer output.
-  const questionDocument = omlToQuestionDocument(finalOml);
-  diagnostics.summary.questionCount = questionDocument.content.filter((node) => node.kind === 'question').length;
+  let questionDocument: QuestionDocument;
+  try {
+    // The legacy OCR provider still returns OML-shaped JSON. Normalize it through
+    // the canonical Question Object before compiling the renderer output.
+    questionDocument = omlToQuestionDocument(finalOml);
+  } catch (error) {
+    diagnostics.stages.push({ stage: 'Question Object', input: finalOml, output: null, durationMs: 0, success: false });
+    failWithDiagnostics('Không thể chuyển OML OCR sang Question Object.', error);
+  }
+  diagnostics.summary.questionCount = mergedContent.reduce((total, block) => (
+    total + (block.type === 'question' ? 1 : block.type === 'question-group' ? block.questions.length : 0)
+  ), 0);
   diagnostics.summary.omlBlocks = finalOml.content.length;
   diagnostics.stages.push(
     { stage: 'Question Object', input: finalOml, output: questionDocument, durationMs: 0, success: true },
     { stage: 'OML', input: questionDocument, output: finalOml, durationMs: 0, success: true },
   );
-  onDiagnostics?.(diagnostics);
+  emitDiagnostics();
   return questionDocument;
 }
 

@@ -24,6 +24,8 @@ export interface BenchmarkFileSource {
 
 export interface BenchmarkDocumentCounts {
   question: number;
+  questionGroup: number;
+  questionInGroup: number;
   option: number;
   image: number;
   table: number;

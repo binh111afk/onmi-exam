@@ -7,7 +7,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    envPrefix: ['VITE_', 'NEXT_PUBLIC_', 'AZURE_'],
+    envPrefix: ['VITE_', 'NEXT_PUBLIC_', 'AZURE_', 'OCR_', 'OPENAI_', 'GEMINI_', 'GLM_'],
     define: {
       'process.env.NEXT_PUBLIC_ILOVEPDF_PUBLIC_KEY': JSON.stringify(
         env.NEXT_PUBLIC_ILOVEPDF_PUBLIC_KEY ?? '',

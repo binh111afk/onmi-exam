@@ -12,6 +12,7 @@ import type { OcrTask } from './ocrWorker';
 import type { OcrRegion, RegionPlanMetrics } from './regionPlanner';
 import type { OcrRequestProfilerRecord } from '../../types/ocr-profiler';
 import type { OcrDiagnosticReport } from '../../types/ocr-diagnostics';
+import type { BenchmarkRunOptions } from '../ocr/ocrProvider';
 
 const FULL_PAGE_BOUNDING_BOX = {
   x: 0,
@@ -48,6 +49,7 @@ export interface DocumentPipelineMetrics {
 export interface DocumentPipelineDispatcherOptions {
   regionConcurrency?: number;
   maxHeapBytes?: number;
+  benchmarkRunOptions?: BenchmarkRunOptions;
 }
 
 export interface DocumentPipelineResult {
@@ -63,7 +65,7 @@ export class DocumentPipelineDispatcher {
   private readonly parser = new LayoutQuestionParser();
   private readonly regionPlanner = new RegionPlanner();
   private readonly cropEngine = new CropEngine();
-  private readonly worker = new OcrWorker();
+  private readonly worker: OcrWorker;
   private readonly mergeEngine = new MergeEngine();
   private readonly regionConcurrency: number;
   private readonly maxHeapBytes?: number;
@@ -71,6 +73,7 @@ export class DocumentPipelineDispatcher {
   constructor(options: DocumentPipelineDispatcherOptions = {}) {
     this.regionConcurrency = Math.max(1, options.regionConcurrency ?? 4);
     this.maxHeapBytes = options.maxHeapBytes;
+    this.worker = new OcrWorker(options.benchmarkRunOptions);
   }
 
   async dispatch(file: File, onProgress?: (statusText: string) => void): Promise<DocumentPipelineResult> {
