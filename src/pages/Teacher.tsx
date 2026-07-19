@@ -209,6 +209,7 @@ export const Teacher: React.FC = () => {
   const [editorChapters, setEditorChapters] = useState<Chapter[] | undefined>(undefined);
   const [editorActiveLessonId, setEditorActiveLessonId] = useState<string | undefined>(undefined);
   const [selectedUploadFile, setSelectedUploadFile] = useState<File | null>(null);
+  const benchmarkReviewFile = (location.state as { benchmarkReviewFile?: File } | null)?.benchmarkReviewFile;
   const [editorMetadata, setEditorMetadata] = useState<DocSetupMetadata | undefined>(undefined);
 
   const handleStartSelfCompose = () => {
@@ -310,6 +311,7 @@ export const Teacher: React.FC = () => {
         setExamSearchQuery={setExamSearchQuery}
         viewportMode={viewportMode}
         setViewportMode={setViewportMode}
+        initialOcrFile={benchmarkReviewFile}
       />
     );
   }

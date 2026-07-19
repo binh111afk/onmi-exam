@@ -6,6 +6,10 @@ import type {
   OmlQuestionBlock,
   OmlQuestionOption,
 } from '../types/oml';
+import { omlToQuestionDocument, questionDocumentToOml } from '../document/adapters/omlQuestionObjectAdapter';
+import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist';
+import type { QuestionDocument } from '../types/question-object';
+import type { OcrDiagnosticReport, OcrRejectedBlock } from '../types/ocr-diagnostics';
 
 declare const process: {
   env: {
@@ -16,7 +20,6 @@ declare const process: {
 const ILOVEPDF_API_URL = 'https://api.ilovepdf.com/v1';
 const ILOVEPDF_POLL_INTERVAL_MS = 500;
 const ILOVEPDF_MAX_POLL_ATTEMPTS = 120;
-const OCR_MAX_CONCURRENT_REQUESTS = 4;
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
   typeof value === 'object' && value !== null
@@ -67,6 +70,26 @@ const filterValidOcrQuestions = (content: unknown[]): OmlQuestionBlock[] => (
   content.filter(isValidOcrQuestionBlock)
 );
 
+const diagnosticPreview = (value: unknown): string => {
+  try { return JSON.stringify(value).slice(0, 500); } catch { return String(value).slice(0, 500); }
+};
+
+const diagnoseRejectedOcrBlock = (value: unknown): OcrRejectedBlock => {
+  const block = isRecord(value) ? value : {};
+  const id = typeof block.id === 'string' || typeof block.id === 'number' ? block.id : null;
+  const type = typeof block.type === 'string' ? block.type : null;
+  let reason: OcrRejectedBlock['reason'] = 'InvalidOML';
+  if (!isRecord(value)) reason = 'InvalidOML';
+  else if (type !== 'question') reason = 'UnknownBlock';
+  else if (id === null) reason = 'MissingQuestionNumber';
+  else if (typeof block.question !== 'string' || block.question.trim().length === 0) reason = 'MissingStem';
+  else if (!Array.isArray(block.options) || block.options.length === 0) reason = 'MissingOptions';
+  else if (!block.options.every(isValidOcrOption) || (block.subType !== undefined && block.subType !== 'choice' && block.subType !== 'true-false')) reason = 'InvalidChoiceStructure';
+  else if (!Array.isArray(block.answer)) reason = 'InvalidOML';
+  else if (containsOcrNoise(value)) reason = 'OcrNoise';
+  return { id, page: null, type, preview: diagnosticPreview(value), rejected: true, reason };
+};
+
 const getQuestionOrder = (question: OmlQuestionBlock): number | null => {
   if (typeof question.id === 'number' && Number.isFinite(question.id)) {
     return question.id;
@@ -110,29 +133,6 @@ export const fileToBase64 = async (file: Blob): Promise<string> => {
 const wait = (milliseconds: number) => new Promise<void>((resolve) => {
   window.setTimeout(resolve, milliseconds);
 });
-
-const runWithConcurrency = async <T, R>(
-  items: T[],
-  maxConcurrency: number,
-  handler: (item: T, index: number) => Promise<R>,
-): Promise<R[]> => {
-  const results = new Array<R>(items.length);
-  let nextIndex = 0;
-
-  const worker = async (): Promise<void> => {
-    while (nextIndex < items.length) {
-      const currentIndex = nextIndex;
-      nextIndex += 1;
-      results[currentIndex] = await handler(items[currentIndex], currentIndex);
-    }
-  };
-
-  await Promise.all(
-    Array.from({ length: Math.min(maxConcurrency, items.length) }, () => worker())
-  );
-
-  return results;
-};
 
 const getIlovePdfError = async (response: Response, fallback: string): Promise<Error> => {
   const body = await response.text();
@@ -252,10 +252,35 @@ const convertDocxToPdf = async (file: File): Promise<Blob> => {
   return downloadResponse.blob();
 };
 
-export const parseFileToOml = async (
+export interface LegacyOcrMemoryTelemetry {
+  recordBase64Peak(bytes: number): void;
+}
+
+export interface LegacyOcrRequestMeasurement {
+  base64Bytes: number | null;
+  base64EncodeTimeMs: number | null;
+  uploadStart: number | null;
+  uploadEnd: number | null;
+  uploadDurationMs: number | null;
+  providerStart: number | null;
+  providerEnd: number | null;
+  providerDurationMs: number | null;
+  downloadDurationMs: number | null;
+  responseParseTimeMs: number | null;
+  success: boolean;
+  responseHeadersAt: number | null;
+  timeToFirstByteMs: number | null;
+}
+
+export type LegacyOcrDiagnosticsSink = (report: OcrDiagnosticReport) => void;
+
+export const runLegacyOcrToQuestionDocument = async (
   file: File,
-  onProgress?: (statusText: string) => void
-): Promise<string> => {
+  onProgress?: (statusText: string) => void,
+  memoryTelemetry?: LegacyOcrMemoryTelemetry,
+  onRequestMeasurement?: (measurement: LegacyOcrRequestMeasurement) => void,
+  onDiagnostics?: LegacyOcrDiagnosticsSink,
+): Promise<QuestionDocument> => {
   const isDocx = file.name.toLowerCase().endsWith('.docx');
   let sourceFile: Blob = file;
 
@@ -272,6 +297,17 @@ export const parseFileToOml = async (
   if (!aiApiUrl || !aiModel || !aiApiKey) {
     throw new Error('Vui lòng cấu hình AZURE_QWEN_ENDPOINT, AZURE_QWEN_MODEL và AZURE_QWEN_KEY trong file .env.');
   }
+  const diagnostics: OcrDiagnosticReport = {
+    fileName: file.name,
+    provider: aiApiUrl,
+    requestCount: 0,
+    pages: [],
+    regions: [],
+    stages: [],
+    summary: { rawBlocks: 0, normalizedBlocks: 0, parsedBlocks: 0, filter1Before: 0, filter1After: 0, mergeBefore: 0, mergeAfter: 0, filter2Before: 0, filter2After: 0, questionCount: 0, omlBlocks: 0 },
+    rejectedBlocks: [],
+    rawResponses: [],
+  };
 
   interface OcrPageData {
     base64Data: string;
@@ -289,47 +325,21 @@ export const parseFileToOml = async (
     error?: Error;
   }
 
-  const pageImages: OcrPageData[] = [];
-
+  let loadingTask: PDFDocumentLoadingTask | undefined;
+  let pdf: PDFDocumentProxy | undefined;
+  let pdfPageCount = 0;
   if (isPdf) {
     if (onProgress) onProgress('Đang phân tích cấu trúc tài liệu...');
-    const arrayBuffer = await sourceFile.arrayBuffer();
-    
-    // Configure PDF.js worker
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
-    
-    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-    const pdf = await loadingTask.promise;
-    
-    if (onProgress) onProgress(`Đang trích xuất ${pdf.numPages} trang từ file PDF...`);
-    
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const viewport = page.getViewport({ scale: 1.5 });
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
-
-      if (context) {
-        await page.render({ canvasContext: context, viewport }).promise;
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        const base64 = dataUrl.split(',')[1];
-        pageImages.push({ base64Data: base64, mimeType: 'image/jpeg' });
-      }
+    loadingTask = pdfjsLib.getDocument({ data: await sourceFile.arrayBuffer() });
+    try {
+      pdf = await loadingTask.promise;
+    } catch (error) {
+      await loadingTask.destroy();
+      throw error;
     }
-  } else {
-    if (onProgress) onProgress('Đang xử lý hình ảnh...');
-    const base64 = await fileToBase64(sourceFile);
-    pageImages.push({ base64Data: base64, mimeType: sourceFile.type || 'image/jpeg' });
-  }
-
-  if (pageImages.length === 0) {
-    throw new Error('Không thể bóc tách nội dung trang từ tệp.');
-  }
-
-  if (onProgress) {
-    onProgress(`Đang phân tích toàn bộ ${pageImages.length} trang đề thi trong một lần...`);
+    pdfPageCount = pdf.numPages;
+    if (onProgress) onProgress(`Đang trích xuất ${pdfPageCount} trang từ file PDF...`);
+    if (pdfPageCount > 100 && onProgress) onProgress(`Tài liệu có ${pdfPageCount} trang; đang xử lý theo lô để giới hạn bộ nhớ.`);
   }
 
   const prompt = `Bạn là một chuyên gia chuyển đổi tài liệu giáo dục và đề thi từ PDF/ảnh sang ngôn ngữ đánh dấu OML v2.0 (Omni Markup Language) dưới dạng JSON.
@@ -464,6 +474,7 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
   + KHÔNG bọc chuỗi bằng các ký tự \`\`\`json ở đầu và cuối. Chỉ xuất ra chuỗi ký tự JSON thuần túy để hệ thống có thể nhận diện lập tức.`;
 
   const parseOcrPage = (rawText: string, pageIndex: number): ParsedOcrPage => {
+    const parseStartedAt = performance.now();
     const cleanJson = rawText.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
     const parsed: unknown = JSON.parse(cleanJson);
 
@@ -475,16 +486,31 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
       throw new Error(`AI trả về cấu trúc OML không hợp lệ tại trang ${pageIndex + 1}.`);
     }
 
+    const rawContent = (parsed as { content: unknown[] }).content;
+    const filterStartedAt = performance.now();
+    const filteredContent = filterValidOcrQuestions(rawContent);
+    const rejected = rawContent.filter((block) => !isValidOcrQuestionBlock(block)).map(diagnoseRejectedOcrBlock);
+    diagnostics.summary.rawBlocks += rawContent.length;
+    diagnostics.summary.normalizedBlocks += rawContent.length;
+    diagnostics.summary.parsedBlocks += rawContent.length;
+    diagnostics.summary.filter1Before += rawContent.length;
+    diagnostics.summary.filter1After += filteredContent.length;
+    diagnostics.rejectedBlocks.push(...rejected);
+    diagnostics.stages.push(
+      { stage: 'Normalize', input: rawContent, output: rawContent, durationMs: 0, success: true },
+      { stage: 'Parse', input: cleanJson, output: rawContent, durationMs: performance.now() - parseStartedAt, success: true },
+      { stage: 'Filter #1', input: rawContent, output: filteredContent, durationMs: performance.now() - filterStartedAt, success: true },
+    );
     const parsedInfo = (parsed as { info?: unknown }).info;
     return {
       info: typeof parsedInfo === 'object' && parsedInfo !== null
         ? parsedInfo as Partial<OmlInfo>
         : {},
-      content: filterValidOcrQuestions((parsed as { content: unknown[] }).content),
+      content: filteredContent,
     };
   };
 
-  const ocrWholeDocument = async (pages: OcrPageData[]): Promise<ParsedOcrPage> => {
+  const ocrWholeDocument = async (pages: OcrPageData[], base64EncodeTimeMs: number | null): Promise<ParsedOcrPage> => {
     const isResponsesApi = /\/responses(?:\?|$)/i.test(aiApiUrl);
     const imageParts = pages.map((pageData) => {
       const base64String = pageData.base64Data.replace(/^data:[^,]+,/, '');
@@ -498,7 +524,11 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
     const requestContent = isResponsesApi
       ? [{ type: 'input_text' as const, text: `${prompt}\n\nBạn là chuyên gia OCR đề thi. Hãy bóc tách toàn bộ các ảnh trang được đính kèm thành một định dạng OML JSON sạch, giữ đúng thứ tự câu hỏi giữa các trang. Chỉ trả về chuỗi JSON thuần.` }, ...imageParts]
       : [{ type: 'text' as const, text: `${prompt}\n\nBạn là chuyên gia OCR đề thi. Hãy bóc tách toàn bộ các ảnh trang được đính kèm thành một định dạng OML JSON sạch, giữ đúng thứ tự câu hỏi giữa các trang. Chỉ trả về chuỗi JSON thuần, không bọc trong markdown, không kèm lời giải thích.` }, ...imageParts];
-    const response = await fetch(aiApiUrl, {
+    const uploadStart = performance.timeOrigin + performance.now();
+    const requestStartedAt = performance.now();
+    let responseHeadersAt: number | null = null;
+    try {
+      const response = await fetch(aiApiUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${aiApiKey}`,
@@ -511,46 +541,106 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
           ? { text: { format: { type: 'json_object' } } }
           : { response_format: { type: 'json_object' } }),
       }),
-    });
+      });
+      responseHeadersAt = performance.timeOrigin + performance.now();
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Azure Qwen error: ${response.status} ${response.statusText} - ${errorText}`);
-    }
+      const responseTextStartedAt = performance.now();
+      const responseText = await response.text();
+      const downloadDurationMs = performance.now() - responseTextStartedAt;
+      diagnostics.requestCount += 1;
+      diagnostics.rawResponses.push(responseText);
+      diagnostics.stages.push({ stage: 'OCR Response', input: { imageCount: pages.length }, output: responseText, durationMs: performance.now() - requestStartedAt, success: response.ok });
+      if (!response.ok) throw new Error(`Azure Qwen error: ${response.status} ${response.statusText} - ${responseText}`);
 
-    const responseBody = await response.json() as {
+      const parseStartedAt = performance.now();
+      const responseBody = JSON.parse(responseText) as {
       choices?: Array<{ message?: { content?: string } }>;
       output_text?: string;
       output?: Array<{ content?: Array<{ text?: string }> }>;
-    };
-    const rawText = responseBody.output_text
+      };
+      const rawText = responseBody.output_text
       || responseBody.output?.flatMap((item) => item.content || []).map((item) => item.text || '').join('')
       || responseBody.choices?.[0]?.message?.content
       || '';
-    return parseOcrPage(rawText, 0);
+      const parsed = parseOcrPage(rawText, 0);
+      onRequestMeasurement?.({
+        base64Bytes: pages.reduce((total, page) => total + page.base64Data.length, 0),
+        base64EncodeTimeMs,
+        uploadStart,
+        uploadEnd: null,
+        uploadDurationMs: null,
+        providerStart: null,
+        providerEnd: null,
+        providerDurationMs: null,
+        downloadDurationMs,
+        responseParseTimeMs: performance.now() - parseStartedAt,
+        success: true,
+        responseHeadersAt,
+        timeToFirstByteMs: responseHeadersAt - uploadStart,
+      });
+      return parsed;
+    } catch (error) {
+      onRequestMeasurement?.({ base64Bytes: pages.reduce((total, page) => total + page.base64Data.length, 0), base64EncodeTimeMs, uploadStart, uploadEnd: null, uploadDurationMs: null, providerStart: null, providerEnd: null, providerDurationMs: null, downloadDurationMs: null, responseParseTimeMs: null, success: false, responseHeadersAt, timeToFirstByteMs: responseHeadersAt === null ? null : responseHeadersAt - uploadStart });
+      throw error;
+    }
   };
 
-  let pagesResults: OcrPageResult[];
-  try {
-    const batchSize = 4;
-    pagesResults = [];
+  const renderPdfPage = async (pageNumber: number): Promise<OcrPageData> => {
+    if (!pdf) throw new Error('PDF document is unavailable.');
+    const page = await pdf.getPage(pageNumber);
+    const canvas = document.createElement('canvas');
+    try {
+      const viewport = page.getViewport({ scale: 1.5 });
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error(`Không thể tạo canvas cho trang ${pageNumber}.`);
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+      await page.render({ canvas, canvasContext: context, viewport }).promise;
+      const base64Data = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+      if (!base64Data) throw new Error(`Không thể mã hóa trang ${pageNumber}.`);
+      return { base64Data, mimeType: 'image/jpeg' };
+    } finally {
+      canvas.width = 0;
+      canvas.height = 0;
+      page.cleanup();
+    }
+  };
 
-    for (let batchStart = 0; batchStart < pageImages.length; batchStart += batchSize) {
-      const batch = pageImages.slice(batchStart, batchStart + batchSize);
-      if (onProgress) {
-        onProgress(`Đang phân tích nhóm trang ${batchStart + 1}-${batchStart + batch.length}/${pageImages.length}...`);
+  const pagesResults: OcrPageResult[] = [];
+  try {
+    const totalPages = isPdf ? pdfPageCount : 1;
+    const batchSize = pdfPageCount > 100 ? 10 : 4;
+    for (let batchStart = 0; batchStart < totalPages; batchStart += batchSize) {
+      const pageCount = Math.min(batchSize, totalPages - batchStart);
+      const batch: OcrPageData[] = [];
+      let base64EncodeTimeMs: number | null = null;
+      if (isPdf) {
+        for (let offset = 0; offset < pageCount; offset += 1) {
+          batch.push(await renderPdfPage(batchStart + offset + 1));
+        }
+      } else {
+        const base64StartedAt = performance.now();
+        batch.push({ base64Data: await fileToBase64(sourceFile), mimeType: sourceFile.type || 'image/jpeg' });
+        memoryTelemetry?.recordBase64Peak(batch.reduce((total, page) => total + (page.base64Data.length * 2), 0));
+        base64EncodeTimeMs = performance.now() - base64StartedAt;
       }
+      if (onProgress) onProgress(`Đang phân tích nhóm trang ${batchStart + 1}-${batchStart + batch.length}/${totalPages}...`);
+      memoryTelemetry?.recordBase64Peak(batch.reduce((total, page) => total + (page.base64Data.length * 2), 0));
 
       try {
-        pagesResults.push({ pageIndex: batchStart, page: await ocrWholeDocument(batch) });
+        pagesResults.push({ pageIndex: batchStart, page: await ocrWholeDocument(batch, base64EncodeTimeMs) });
       } catch (error: unknown) {
         const batchError = error instanceof Error ? error : new Error(String(error));
         console.error(`Thất bại tại nhóm trang ${batchStart + 1}-${batchStart + batch.length}:`, batchError);
         pagesResults.push({ pageIndex: batchStart, error: batchError });
       }
+      batch.length = 0;
     }
   } catch (error: unknown) {
     throw new Error(`Không thể hoàn tất nhận diện toàn bộ tài liệu: ${error instanceof Error ? error.message : String(error)}`);
+  } finally {
+    if (pdf !== undefined) await pdf.cleanup();
+    if (loadingTask !== undefined) await loadingTask.destroy();
   }
 
   if (onProgress) onProgress('Đang tổng hợp kết quả nhận diện...');
@@ -562,12 +652,16 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
   if (failedPages.length > 0) {
     const failedPageNumbers = failedPages.map((result) => result.pageIndex + 1).join(', ');
 
+    diagnostics.error = `Azure Qwen không thể xử lý một hoặc nhiều trang. Các trang lỗi: ${failedPageNumbers}.`;
+    onDiagnostics?.(diagnostics);
     throw new Error(
       `Azure Qwen không thể xử lý một hoặc nhiều trang. Không tạo đề thi thiếu câu. Các trang lỗi: ${failedPageNumbers}.`
     );
   }
 
   if (successfulPages.length === 0) {
+    diagnostics.error = 'Không thể nhận diện bất kỳ trang nào trong tài liệu.';
+    onDiagnostics?.(diagnostics);
     throw new Error('Không thể nhận diện bất kỳ trang nào trong tài liệu. Vui lòng thử lại.');
   }
 
@@ -576,9 +670,17 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
     title: firstPageInfo?.title || 'Đề thi nhận diện OCR',
     ...firstPageInfo,
   };
-  const mergedContent = filterValidOcrQuestions(
-    successfulPages.flatMap((result) => result.page.content)
-  )
+  const mergeInput = successfulPages.flatMap((result) => result.page.content);
+  diagnostics.summary.mergeBefore = mergeInput.length;
+  diagnostics.summary.mergeAfter = mergeInput.length;
+  diagnostics.stages.push({ stage: 'Merge', input: mergeInput, output: mergeInput, durationMs: 0, success: true });
+  const filter2StartedAt = performance.now();
+  const filter2Content = filterValidOcrQuestions(mergeInput);
+  diagnostics.summary.filter2Before = mergeInput.length;
+  diagnostics.summary.filter2After = filter2Content.length;
+  diagnostics.rejectedBlocks.push(...mergeInput.filter((block) => !isValidOcrQuestionBlock(block)).map(diagnoseRejectedOcrBlock));
+  diagnostics.stages.push({ stage: 'Filter #2', input: mergeInput, output: filter2Content, durationMs: performance.now() - filter2StartedAt, success: true });
+  const mergedContent = filter2Content
     .map((question, originalIndex) => ({
       question,
       originalIndex,
@@ -594,6 +696,8 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
     .map(({ question }) => question);
 
   if (mergedContent.length === 0) {
+    diagnostics.error = 'Không tìm thấy câu hỏi có cấu trúc hợp lệ sau khi lọc dữ liệu OCR.';
+    onDiagnostics?.(diagnostics);
     throw new Error('Không tìm thấy câu hỏi có cấu trúc hợp lệ sau khi lọc dữ liệu OCR.');
   }
 
@@ -603,5 +707,25 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
     content: mergedContent,
   };
 
-  return JSON.stringify(finalOml, null, 2);
+  // The legacy OCR provider still returns OML-shaped JSON. Normalize it through
+  // the canonical Question Object before compiling the renderer output.
+  const questionDocument = omlToQuestionDocument(finalOml);
+  diagnostics.summary.questionCount = questionDocument.content.filter((node) => node.kind === 'question').length;
+  diagnostics.summary.omlBlocks = finalOml.content.length;
+  diagnostics.stages.push(
+    { stage: 'Question Object', input: finalOml, output: questionDocument, durationMs: 0, success: true },
+    { stage: 'OML', input: questionDocument, output: finalOml, durationMs: 0, success: true },
+  );
+  onDiagnostics?.(diagnostics);
+  return questionDocument;
 }
+
+/** Public compatibility entry point used by the existing Teacher Studio UI. */
+export const parseFileToOml = async (
+  file: File,
+  onProgress?: (statusText: string) => void,
+): Promise<string> => {
+  const { DocumentPipelineDispatcher } = await import('../document/pipeline/documentPipelineDispatcher');
+  const result = await new DocumentPipelineDispatcher().dispatch(file, onProgress);
+  return JSON.stringify(questionDocumentToOml(result.document), null, 2);
+};

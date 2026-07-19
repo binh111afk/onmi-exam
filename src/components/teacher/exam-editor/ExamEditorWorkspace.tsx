@@ -65,6 +65,7 @@ interface ExamEditorWorkspaceProps {
   setExamSearchQuery: (q: string) => void;
   viewportMode: 'desktop' | 'tablet' | 'mobile';
   setViewportMode: (mode: 'desktop' | 'tablet' | 'mobile') => void;
+  initialOcrFile?: File;
 }
 
 export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
@@ -78,6 +79,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   selectedQuestionId,
   setSelectedQuestionId,
   examSearchQuery,
+  initialOcrFile,
   setExamSearchQuery,
   // viewportMode,
   // setViewportMode,
@@ -96,6 +98,13 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   const [pendingCreationMethod, setPendingCreationMethod] = useState<'code' | 'ocr' | 'bank' | null>(null);
   const [isDraftResolved, setIsDraftResolved] = useState(false);
   const [ocrTempCode, setOcrTempCode] = useState('');
+  useEffect(() => {
+    if (!initialOcrFile) return;
+    setUploadedFile({ name: initialOcrFile.name, size: `${(initialOcrFile.size / (1024 * 1024)).toFixed(2)} MB`, file: initialOcrFile });
+    setCreationMethod('ocr');
+    setExamTab('quick');
+    setQuickStep(1);
+  }, [initialOcrFile, setExamTab]);
   const handleApplyOcrCode = (ocrCode: string) => {
     applyOcrCodeToWorkspace(ocrCode);
   };

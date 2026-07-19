@@ -1,0 +1,271 @@
+# Document Corpus Report
+
+Total files: 249
+
+| Corpus type | Files |
+| --- | ---: |
+| docx | 4 |
+| pdf-text | 81 |
+| pdf-scan | 80 |
+| pdf-hybrid | 80 |
+| image | 4 |
+| json | 0 |
+| oml | 0 |
+
+| Subject | Files |
+| --- | ---: |
+| hoa | 3 |
+| khac | 4 |
+| ly | 117 |
+| toan | 125 |
+
+Missing golden results: 249
+- docx/khac/25 Câu
+- docx/khac/28 Câu
+- docx/khac/30 Câu
+- docx/khac/gzjgq7b000lu
+- images/toan/SPT_241
+- images/toan/SPT_242
+- images/toan/SPT_243
+- images/toan/SPT_251
+- pdf-hybrid/hoa/gzjgq7b000lu
+- pdf-hybrid/ly/katczx106naf
+- pdf-hybrid/ly/katdgko06i58
+- pdf-hybrid/ly/katelta06ju4
+- pdf-hybrid/ly/katexr606jxp
+- pdf-hybrid/ly/katfhz006i8q
+- pdf-hybrid/ly/katg72706k0k
+- pdf-hybrid/ly/katgivb06ib6
+- pdf-hybrid/ly/katgv6t06dmm
+- pdf-hybrid/ly/kath76k06k4j
+- pdf-hybrid/ly/kc83lu606txi
+- pdf-hybrid/ly/kc83zxv06n24
+- pdf-hybrid/ly/kggxy870dste
+- pdf-hybrid/ly/kj71iw1006nl
+- pdf-hybrid/ly/kj71v67006iq
+- pdf-hybrid/ly/kj72bhw006qc
+- pdf-hybrid/ly/kj72mnl006lj
+- pdf-hybrid/ly/kj7319o0067c
+- pdf-hybrid/ly/km4xmqn0049n
+- pdf-hybrid/ly/km4xy4v004em
+- pdf-hybrid/ly/km4ybr0004c1
+- pdf-hybrid/ly/kqia1xj01mtd
+- pdf-hybrid/ly/kqiadod01lyy
+- pdf-hybrid/ly/krkqbv5023fo
+- pdf-hybrid/ly/krkqpm6020ow
+- pdf-hybrid/ly/kvql54o05s72
+- pdf-hybrid/ly/kvqlirl05rg1
+- pdf-hybrid/ly/kvqlv4u05qcu
+- pdf-hybrid/ly/kvqm6gf05rpx
+- pdf-hybrid/ly/kvqm6gf05rpx (1)
+- pdf-hybrid/ly/l1poksq0c5sr
+- pdf-hybrid/ly/l1poksq0c5sr (1)
+- pdf-hybrid/ly/l1pp0bz05abq
+- pdf-hybrid/ly/l1ppji40c5v1
+- pdf-hybrid/ly/l1ppwl40c72r
+- pdf-hybrid/ly/l1pq91y0c5yt
+- pdf-hybrid/ly/l4tk4kc0i3yj
+- pdf-hybrid/ly/l4tkiih0i46m
+- pdf-hybrid/ly/l4tkwdp0b61o
+- pdf-hybrid/ly/la2ob7d081ie
+- pdf-hybrid/toan/75sdyoc01oy1
+- pdf-hybrid/toan/75sepic023hs
+- pdf-hybrid/toan/75sfpwr0228m
+- pdf-hybrid/toan/75sfpwr0228m copy
+- pdf-hybrid/toan/75sgtyp022by
+- pdf-hybrid/toan/75shbnk021se
+- pdf-hybrid/toan/75shrzx01tci
+- pdf-hybrid/toan/75sl7l901thg
+- pdf-hybrid/toan/75slwrc01uvm
+- pdf-hybrid/toan/75smdud021kh
+- pdf-hybrid/toan/75smuxt01uy2
+- pdf-hybrid/toan/75suiek01to5
+- pdf-hybrid/toan/75svvse01vzp
+- pdf-hybrid/toan/75sws9e021qf
+- pdf-hybrid/toan/75sxqlb01qy8
+- pdf-hybrid/toan/eox3cz8000ra
+- pdf-hybrid/toan/eoxr5ll000k9
+- pdf-hybrid/toan/eoxs57y000uh
+- pdf-hybrid/toan/eoxsi36000nl
+- pdf-hybrid/toan/fuxbjyj00yh6
+- pdf-hybrid/toan/fuxmr6z00zre
+- pdf-hybrid/toan/fuxo4bq01136
+- pdf-hybrid/toan/fuxq0pe011dt
+- pdf-hybrid/toan/fuxy4ck010fw
+- pdf-hybrid/toan/fuxzzmi0105x
+- pdf-hybrid/toan/fuy15pq011ry
+- pdf-hybrid/toan/fuy5dcp00z4x
+- pdf-hybrid/toan/fuyfdsh010pz
+- pdf-hybrid/toan/i3tkn6g01qzx
+- pdf-hybrid/toan/i3tlr8j006c0
+- pdf-hybrid/toan/i3tnmxe01s0n
+- pdf-hybrid/toan/i3ul29p01tea
+- pdf-hybrid/toan/i597end0212c
+- pdf-hybrid/toan/i59935j0201u
+- pdf-hybrid/toan/i59afb802043
+- pdf-hybrid/toan/i59dq3a022ri
+- pdf-hybrid/toan/i59gm6d00fki
+- pdf-hybrid/toan/i59ig43022xf
+- pdf-hybrid/toan/i59ji7l020fr
+- pdf-hybrid/toan/i59ke1g021do
+- pdf-scan/hoa/gzjgq7b000lu
+- pdf-scan/ly/katczx106naf
+- pdf-scan/ly/katdgko06i58
+- pdf-scan/ly/katelta06ju4
+- pdf-scan/ly/katexr606jxp
+- pdf-scan/ly/katfhz006i8q
+- pdf-scan/ly/katg72706k0k
+- pdf-scan/ly/katgivb06ib6
+- pdf-scan/ly/katgv6t06dmm
+- pdf-scan/ly/kath76k06k4j
+- pdf-scan/ly/kc83lu606txi
+- pdf-scan/ly/kc83zxv06n24
+- pdf-scan/ly/kggxy870dste
+- pdf-scan/ly/kj71iw1006nl
+- pdf-scan/ly/kj71v67006iq
+- pdf-scan/ly/kj72bhw006qc
+- pdf-scan/ly/kj72mnl006lj
+- pdf-scan/ly/kj7319o0067c
+- pdf-scan/ly/km4xmqn0049n
+- pdf-scan/ly/km4xy4v004em
+- pdf-scan/ly/km4ybr0004c1
+- pdf-scan/ly/kqia1xj01mtd
+- pdf-scan/ly/kqiadod01lyy
+- pdf-scan/ly/krkqbv5023fo
+- pdf-scan/ly/krkqpm6020ow
+- pdf-scan/ly/kvql54o05s72
+- pdf-scan/ly/kvqlirl05rg1
+- pdf-scan/ly/kvqlv4u05qcu
+- pdf-scan/ly/kvqm6gf05rpx
+- pdf-scan/ly/kvqm6gf05rpx (1)
+- pdf-scan/ly/l1poksq0c5sr
+- pdf-scan/ly/l1poksq0c5sr (1)
+- pdf-scan/ly/l1pp0bz05abq
+- pdf-scan/ly/l1ppji40c5v1
+- pdf-scan/ly/l1ppwl40c72r
+- pdf-scan/ly/l1pq91y0c5yt
+- pdf-scan/ly/l4tk4kc0i3yj
+- pdf-scan/ly/l4tkiih0i46m
+- pdf-scan/ly/l4tkwdp0b61o
+- pdf-scan/ly/la2ob7d081ie
+- pdf-scan/toan/75sdyoc01oy1
+- pdf-scan/toan/75sepic023hs
+- pdf-scan/toan/75sfpwr0228m
+- pdf-scan/toan/75sfpwr0228m copy
+- pdf-scan/toan/75sgtyp022by
+- pdf-scan/toan/75shbnk021se
+- pdf-scan/toan/75shrzx01tci
+- pdf-scan/toan/75sl7l901thg
+- pdf-scan/toan/75slwrc01uvm
+- pdf-scan/toan/75smdud021kh
+- pdf-scan/toan/75smuxt01uy2
+- pdf-scan/toan/75suiek01to5
+- pdf-scan/toan/75svvse01vzp
+- pdf-scan/toan/75sws9e021qf
+- pdf-scan/toan/75sxqlb01qy8
+- pdf-scan/toan/eox3cz8000ra
+- pdf-scan/toan/eoxr5ll000k9
+- pdf-scan/toan/eoxs57y000uh
+- pdf-scan/toan/eoxsi36000nl
+- pdf-scan/toan/fuxbjyj00yh6
+- pdf-scan/toan/fuxmr6z00zre
+- pdf-scan/toan/fuxo4bq01136
+- pdf-scan/toan/fuxq0pe011dt
+- pdf-scan/toan/fuxy4ck010fw
+- pdf-scan/toan/fuxzzmi0105x
+- pdf-scan/toan/fuy15pq011ry
+- pdf-scan/toan/fuy5dcp00z4x
+- pdf-scan/toan/fuyfdsh010pz
+- pdf-scan/toan/i3tkn6g01qzx
+- pdf-scan/toan/i3tlr8j006c0
+- pdf-scan/toan/i3tnmxe01s0n
+- pdf-scan/toan/i3ul29p01tea
+- pdf-scan/toan/i597end0212c
+- pdf-scan/toan/i59935j0201u
+- pdf-scan/toan/i59afb802043
+- pdf-scan/toan/i59dq3a022ri
+- pdf-scan/toan/i59gm6d00fki
+- pdf-scan/toan/i59ig43022xf
+- pdf-scan/toan/i59ji7l020fr
+- pdf-scan/toan/i59ke1g021do
+- pdf-text/hoa/gzjgq7b000lu
+- pdf-text/ly/katczx106naf
+- pdf-text/ly/katdgko06i58
+- pdf-text/ly/katelta06ju4
+- pdf-text/ly/katexr606jxp
+- pdf-text/ly/katfhz006i8q
+- pdf-text/ly/katg72706k0k
+- pdf-text/ly/katgivb06ib6
+- pdf-text/ly/katgv6t06dmm
+- pdf-text/ly/kath76k06k4j
+- pdf-text/ly/kc83lu606txi
+- pdf-text/ly/kc83zxv06n24
+- pdf-text/ly/kggxy870dste
+- pdf-text/ly/kj71iw1006nl
+- pdf-text/ly/kj71v67006iq
+- pdf-text/ly/kj72bhw006qc
+- pdf-text/ly/kj72mnl006lj
+- pdf-text/ly/kj7319o0067c
+- pdf-text/ly/km4xmqn0049n
+- pdf-text/ly/km4xy4v004em
+- pdf-text/ly/km4ybr0004c1
+- pdf-text/ly/kqia1xj01mtd
+- pdf-text/ly/kqiadod01lyy
+- pdf-text/ly/krkqbv5023fo
+- pdf-text/ly/krkqpm6020ow
+- pdf-text/ly/kvql54o05s72
+- pdf-text/ly/kvqlirl05rg1
+- pdf-text/ly/kvqlv4u05qcu
+- pdf-text/ly/kvqm6gf05rpx
+- pdf-text/ly/kvqm6gf05rpx (1)
+- pdf-text/ly/l1poksq0c5sr
+- pdf-text/ly/l1poksq0c5sr (1)
+- pdf-text/ly/l1pp0bz05abq
+- pdf-text/ly/l1ppji40c5v1
+- pdf-text/ly/l1ppwl40c72r
+- pdf-text/ly/l1pq91y0c5yt
+- pdf-text/ly/l4tk4kc0i3yj
+- pdf-text/ly/l4tkiih0i46m
+- pdf-text/ly/l4tkwdp0b61o
+- pdf-text/ly/la2ob7d081ie
+- pdf-text/toan/75sdyoc01oy1
+- pdf-text/toan/75sepic023hs
+- pdf-text/toan/75sfpwr0228m
+- pdf-text/toan/75sfpwr0228m copy
+- pdf-text/toan/75sgtyp022by
+- pdf-text/toan/75shbnk021se
+- pdf-text/toan/75shrzx01tci
+- pdf-text/toan/75sl7l901thg
+- pdf-text/toan/75slwrc01uvm
+- pdf-text/toan/75smdud021kh
+- pdf-text/toan/75smuxt01uy2
+- pdf-text/toan/75suiek01to5
+- pdf-text/toan/75svvse01vzp
+- pdf-text/toan/75sws9e021qf
+- pdf-text/toan/75sxqlb01qy8
+- pdf-text/toan/eox3cz8000ra
+- pdf-text/toan/eoxr5ll000k9
+- pdf-text/toan/eoxs57y000uh
+- pdf-text/toan/eoxsi36000nl
+- pdf-text/toan/fuxbjyj00yh6
+- pdf-text/toan/fuxmr6z00zre
+- pdf-text/toan/fuxo4bq01136
+- pdf-text/toan/fuxq0pe011dt
+- pdf-text/toan/fuxy4ck010fw
+- pdf-text/toan/fuxzzmi0105x
+- pdf-text/toan/fuy15pq011ry
+- pdf-text/toan/fuy5dcp00z4x
+- pdf-text/toan/fuyfdsh010pz
+- pdf-text/toan/i3tkn6g01qzx
+- pdf-text/toan/i3tlr8j006c0
+- pdf-text/toan/i3tnmxe01s0n
+- pdf-text/toan/i3ul29p01tea
+- pdf-text/toan/i597end0212c
+- pdf-text/toan/i59935j0201u
+- pdf-text/toan/i59afb802043
+- pdf-text/toan/i59dq3a022ri
+- pdf-text/toan/i59gm6d00fki
+- pdf-text/toan/i59ig43022xf
+- pdf-text/toan/i59ji7l020fr
+- pdf-text/toan/i59ke1g021do
+- pdf-text/toan/test

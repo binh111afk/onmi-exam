@@ -28,6 +28,7 @@ import { Blog } from './pages/Blog';
 import { Profile } from './pages/Profile';
 import { Teacher } from './pages/Teacher';
 import { AssessmentTest } from './pages/AssessmentTest';
+import { DocumentBenchmark } from './pages/DocumentBenchmark';
 import { NotFound } from './pages/NotFound';
 import { OnboardingModal } from './components/OnboardingModal';
 import { AlertProvider } from './components/common/Alert';
@@ -434,6 +435,7 @@ function AppShell() {
               />
               <Route path="/mbti" element={<AssessmentTest onBackToHome={() => navigate('/')} />} />
               <Route path="/assessment-test" element={<AssessmentTest onBackToHome={() => navigate('/')} />} />
+              <Route path="/admin/document-benchmark" element={<ProtectedRoute user={user}><DocumentBenchmark /></ProtectedRoute>} />
               <Route path="*" element={<NotFound onViewChange={navigateToView} />} />
             </Routes>
           </div>

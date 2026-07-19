@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:document": "node --experimental-strip-types tests/document/cli.ts document",
+    "test:benchmark": "node --experimental-strip-types tests/document/cli.ts benchmark",
+    "test:corpus": "node --experimental-strip-types tests/document/cli.ts corpus",
+    "test:parser": "node --experimental-strip-types tests/document/cli.ts parser"
   },
   "dependencies": {
     "@iconify/react": "^6.0.2",
