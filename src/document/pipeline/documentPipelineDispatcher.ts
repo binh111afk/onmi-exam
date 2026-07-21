@@ -13,6 +13,8 @@ import type { OcrRegion, RegionPlanMetrics } from './regionPlanner';
 import type { OcrRequestProfilerRecord } from '../../types/ocr-profiler';
 import type { OcrDiagnosticReport } from '../../types/ocr-diagnostics';
 import type { BenchmarkRunOptions } from '../ocr/ocrProvider';
+import { getPipelineDocumentStatus } from './pipelineMode';
+import type { PipelineDocumentStatus, PipelineMode } from './pipelineMode';
 
 const FULL_PAGE_BOUNDING_BOX = {
   x: 0,
@@ -43,6 +45,13 @@ export interface DocumentPipelineMetrics {
   retries: number;
   ocrProfiler: OcrRequestProfilerRecord[];
   ocrDiagnostics: OcrDiagnosticReport[];
+  mode: PipelineMode;
+  documentStatus: PipelineDocumentStatus;
+  totalPages: number;
+  passedPages: number[];
+  failedPages: number[];
+  passedRegions: string[];
+  failedRegions: Array<{ id: string; page: number; reason: string }>;
   steps: PipelineStepTiming[];
 }
 
@@ -50,12 +59,14 @@ export interface DocumentPipelineDispatcherOptions {
   regionConcurrency?: number;
   maxHeapBytes?: number;
   benchmarkRunOptions?: BenchmarkRunOptions;
+  mode?: PipelineMode;
 }
 
 export interface DocumentPipelineResult {
   document: QuestionDocument;
   route: 'direct-import' | 'targeted-ocr';
   trace: string[];
+  documentStatus: PipelineDocumentStatus;
   metrics: DocumentPipelineMetrics;
 }
 
@@ -69,11 +80,13 @@ export class DocumentPipelineDispatcher {
   private readonly mergeEngine = new MergeEngine();
   private readonly regionConcurrency: number;
   private readonly maxHeapBytes?: number;
+  private readonly mode: PipelineMode;
 
   constructor(options: DocumentPipelineDispatcherOptions = {}) {
     this.regionConcurrency = Math.max(1, options.regionConcurrency ?? 4);
     this.maxHeapBytes = options.maxHeapBytes;
-    this.worker = new OcrWorker(options.benchmarkRunOptions);
+    this.mode = options.mode ?? 'strict';
+    this.worker = new OcrWorker(options.benchmarkRunOptions, this.mode);
   }
 
   async dispatch(file: File, onProgress?: (statusText: string) => void): Promise<DocumentPipelineResult> {
@@ -111,6 +124,9 @@ export class DocumentPipelineDispatcher {
       `ocr-requirement:${rawDocument.ocrRequirement}`,
       `regions:total-${regionMetrics.totalRegions}:ocr-${regionMetrics.ocrRegions}:skip-${regionMetrics.skippedRegions}`,
     ];
+    const rawPages = [...rawDocument.nodes.map((node) => node.page), ...rawDocument.ocrCandidates.map((candidate) => candidate.page), ...ocrRegions.map((region) => region.page)]
+      .filter((page): page is number => page !== undefined);
+    const totalPages = rawPages.length === 0 ? 1 : Math.max(...rawPages);
 
     regionPlan.deferredNodeIds.forEach((nodeId) => trace.push(`review:geometry-or-confidence:${nodeId}`));
     if (fallbackRegions.length > 0) trace.push(`ocr:fallback-full-page:${fallbackRegions.length}`);
@@ -121,12 +137,13 @@ export class DocumentPipelineDispatcher {
         document,
         route: 'direct-import',
         trace,
-        metrics: { ...regionMetrics, regionStatistics, temporaryCanvasBytes: 0, peakMemoryBytes: telemetry.getPeakMemoryBytes(), memory: telemetry.getMemoryTelemetry(), networkRequestTimeMs: 0, retries: 0, ocrProfiler: [], ocrDiagnostics: [], ocrTimeMs: 0, skippedTimeMs: 0, steps: telemetry.getSteps() },
+        documentStatus: 'pass',
+        metrics: { ...regionMetrics, regionStatistics, temporaryCanvasBytes: 0, peakMemoryBytes: telemetry.getPeakMemoryBytes(), memory: telemetry.getMemoryTelemetry(), networkRequestTimeMs: 0, retries: 0, ocrProfiler: [], ocrDiagnostics: [], mode: this.mode, documentStatus: 'pass', totalPages, passedPages: rawPages, failedPages: [], passedRegions: [], failedRegions: [], ocrTimeMs: 0, skippedTimeMs: 0, steps: telemetry.getSteps() },
       };
     }
 
     let temporaryCanvasBytes = 0;
-    const results = [];
+    const results: import('./ocrWorker').OcrWorkerResult[] = [];
     const ocrProfiler: OcrRequestProfilerRecord[] = [];
     const ocrDiagnostics: OcrDiagnosticReport[] = [];
     for (let start = 0; start < ocrRegions.length; start += this.regionConcurrency) {
@@ -160,17 +177,27 @@ export class DocumentPipelineDispatcher {
       telemetry.record('ocr-worker', ocrStartedAt, performance.now());
       results.push(...batchResults);
     }
+    const completedResults = results.filter((result) => result.status === 'completed');
+    const failedResults = results.filter((result) => result.status === 'failed');
+    const failedPages = [...new Set([...failedResults.map((result) => result.task.region.page), ...ocrDiagnostics.flatMap((report) => report.failedPages ?? [])])].sort((first, second) => first - second);
+    if (completedResults.length === 0 && failedResults.length > 0) {
+      const error = new Error(`OCR không hoàn tất ở tất cả ${failedResults.length} vùng.`);
+      Object.assign(error, { ocrDiagnostics });
+      throw error;
+    }
     const ocrTimeMs = results.reduce((total, result) => total + result.processingTimeMs, 0);
     const mergedRawDocument = await telemetry.measure('merge', () => this.mergeEngine.merge(rawDocument, results));
     const layout = await telemetry.measure('layout', () => this.layoutAnalyzer.analyze(mergedRawDocument));
     const document = await telemetry.measure('parser', () => this.parser.parse(mergedRawDocument, layout));
-    trace.push(...results.map((result) => `ocr-worker:${result.status}:${result.task.region.id}:${Math.round(result.processingTimeMs)}ms`), 'route:targeted-ocr');
+    const documentStatus = getPipelineDocumentStatus(completedResults.length, failedResults.length);
+    trace.push(...results.map((result) => `ocr-worker:${result.status}:${result.task.region.id}:${Math.round(result.processingTimeMs)}ms`), `document-status:${documentStatus}`, 'route:targeted-ocr');
 
     return {
       document,
       route: 'targeted-ocr',
+      documentStatus,
       trace,
-      metrics: { ...regionMetrics, regionStatistics, temporaryCanvasBytes, peakMemoryBytes: telemetry.getPeakMemoryBytes(), memory: telemetry.getMemoryTelemetry(), networkRequestTimeMs: results.reduce((total, result) => total + (result.networkRequestTimeMs ?? 0), 0), retries: 0, ocrProfiler, ocrDiagnostics, ocrTimeMs, skippedTimeMs: 0, steps: telemetry.getSteps() },
+      metrics: { ...regionMetrics, regionStatistics, temporaryCanvasBytes, peakMemoryBytes: telemetry.getPeakMemoryBytes(), memory: telemetry.getMemoryTelemetry(), networkRequestTimeMs: results.reduce((total, result) => total + (result.networkRequestTimeMs ?? 0), 0), retries: 0, ocrProfiler, ocrDiagnostics, mode: this.mode, documentStatus, totalPages, passedPages: [...new Set(completedResults.map((result) => result.task.region.page))].sort((first, second) => first - second), failedPages, passedRegions: completedResults.map((result) => result.task.region.id), failedRegions: failedResults.map((result) => ({ id: result.task.region.id, page: result.task.region.page, reason: result.reason ?? 'OCR task failed' })), ocrTimeMs, skippedTimeMs: 0, steps: telemetry.getSteps() },
     };
   }
 

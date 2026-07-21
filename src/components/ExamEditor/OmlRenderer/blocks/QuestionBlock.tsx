@@ -20,8 +20,8 @@ export const QuestionBlock: React.FC<QuestionBlockProps> = ({
   // Validate required fields
   const missingFields: string[] = [];
   if (!block.question) missingFields.push('question (string)');
-  if (subType !== 'fill-blank' && !Array.isArray(block.options)) missingFields.push('options (array)');
-  if (!Array.isArray(block.answer)) missingFields.push('answer (array)');
+  if (subType !== 'fill-blank' && subType !== 'essay' && !Array.isArray(block.options)) missingFields.push('options (array)');
+  if (subType !== 'essay' && !Array.isArray(block.answer)) missingFields.push('answer (array)');
 
   if (missingFields.length > 0) {
     return (
@@ -43,6 +43,7 @@ export const QuestionBlock: React.FC<QuestionBlockProps> = ({
     choice: 'Trắc nghiệm',
     'true-false': 'Đúng/Sai',
     'fill-blank': 'Điền khuyết',
+    essay: 'Tự luận',
   };
   const questionText = subType === 'fill-blank'
     ? String(block.question).replace(/\[blank-\d+\]/g, '______________')

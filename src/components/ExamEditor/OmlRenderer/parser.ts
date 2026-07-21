@@ -104,7 +104,7 @@ const validateQuestionBlock = (block: any, path: string, errors: OmlValidationEr
   }
 
   const subType = block.subType ?? 'choice';
-  if (subType !== 'fill-blank') {
+  if (subType !== 'fill-blank' && subType !== 'essay') {
     if (!block.options || !Array.isArray(block.options)) {
       errors.push({
         type: 'schema',
@@ -114,12 +114,14 @@ const validateQuestionBlock = (block: any, path: string, errors: OmlValidationEr
     }
   }
 
-  if (!block.answer || !Array.isArray(block.answer)) {
-    errors.push({
-      type: 'schema',
-      message: `Câu hỏi số ${label} (ID: ${block.id || 'không rõ'}) thiếu đáp án "answer" (phải là một mảng).`,
-      path: `${path}.answer`,
-    });
+  if (subType !== 'essay') {
+    if (!block.answer || !Array.isArray(block.answer)) {
+      errors.push({
+        type: 'schema',
+        message: `Câu hỏi số ${label} (ID: ${block.id || 'không rõ'}) thiếu đáp án "answer" (phải là một mảng).`,
+        path: `${path}.answer`,
+      });
+    }
   }
 };
 

@@ -39,6 +39,7 @@ import { useExamViewportZoom } from './hooks/useExamViewportZoom';
 import { ExamConfigPanel } from './ExamConfigPanel';
 import { ExamQuickOcrStep } from './ExamQuickOcrStep';
 import { draftService } from '../../../services/draftService';
+import { DocumentImporterRegistry } from '../../../document/importers/documentImporterRegistry';
 
 const findQuestionLineIndex = (jsonText: string, questionId: number): number => {
   const lines = jsonText.split('\n');
@@ -49,6 +50,27 @@ const findQuestionLineIndex = (jsonText: string, questionId: number): number => 
     }
   }
   return -1;
+};
+
+const PDF_SCAN_REJECTION_ANALYTICS_KEY = 'onmi.document-upload.rejections';
+
+const isPdfUpload = (file: File) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+
+const recordPdfScanRejection = (file: File) => {
+  const event = {
+    documentRejectedReason: 'pdf-scan-not-supported',
+    fileName: file.name,
+    occurredAt: new Date().toISOString(),
+  };
+
+  try {
+    const storedEvents = localStorage.getItem(PDF_SCAN_REJECTION_ANALYTICS_KEY);
+    const events = storedEvents === null ? [] : JSON.parse(storedEvents);
+    const history = Array.isArray(events) ? events : [];
+    localStorage.setItem(PDF_SCAN_REJECTION_ANALYTICS_KEY, JSON.stringify([...history, event]));
+  } catch (error) {
+    console.error('Không thể lưu analytics cho PDF Scan bị từ chối:', error);
+  }
 };
 
 interface ExamEditorWorkspaceProps {
@@ -93,17 +115,40 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
   // Local OCR upload file state
   const [uploadedFile, setUploadedFile] = useState<{ name: string; size: string; file?: File } | null>(null);
+  const [showPdfScanDialog, setShowPdfScanDialog] = useState(false);
 
   const [creationMethod, setCreationMethod] = useState<'none' | 'code' | 'ocr' | 'bank'>('none');
   const [pendingCreationMethod, setPendingCreationMethod] = useState<'code' | 'ocr' | 'bank' | null>(null);
   const [isDraftResolved, setIsDraftResolved] = useState(false);
   const [ocrTempCode, setOcrTempCode] = useState('');
+  const initialOcrFileProcessedRef = useRef<File | undefined>(undefined);
+  const acceptOcrUpload = async (file: File): Promise<boolean> => {
+    if (isPdfUpload(file)) {
+      try {
+        const rawDocument = await new DocumentImporterRegistry().import(file);
+        if (rawDocument.ocrRequirement === 'required') {
+          recordPdfScanRejection(file);
+          setShowPdfScanDialog(true);
+          return false;
+        }
+      } catch (error) {
+        console.error('Không thể kiểm tra text layer của PDF trước khi OCR:', error);
+      }
+    }
+
+    setUploadedFile({ name: file.name, size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`, file });
+    return true;
+  };
   useEffect(() => {
-    if (!initialOcrFile) return;
-    setUploadedFile({ name: initialOcrFile.name, size: `${(initialOcrFile.size / (1024 * 1024)).toFixed(2)} MB`, file: initialOcrFile });
-    setCreationMethod('ocr');
-    setExamTab('quick');
-    setQuickStep(1);
+    if (!initialOcrFile || initialOcrFileProcessedRef.current === initialOcrFile) return;
+    initialOcrFileProcessedRef.current = initialOcrFile;
+    void acceptOcrUpload(initialOcrFile).then((accepted) => {
+      if (accepted) {
+        setCreationMethod('ocr');
+        setExamTab('quick');
+        setQuickStep(1);
+      }
+    });
   }, [initialOcrFile, setExamTab]);
   const handleApplyOcrCode = (ocrCode: string) => {
     applyOcrCodeToWorkspace(ocrCode);
@@ -732,15 +777,9 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   const counts = countContentElements();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      setUploadedFile({
-        name: file.name,
-        size: `${sizeMB} MB`,
-        file
-      });
-    }
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (file) void acceptOcrUpload(file);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -749,15 +788,8 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      setUploadedFile({
-        name: file.name,
-        size: `${sizeMB} MB`,
-        file
-      });
-    }
+    const file = e.dataTransfer.files?.[0];
+    if (file) void acceptOcrUpload(file);
   };
 
   const handleOcrJsonUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -772,6 +804,42 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-[#F8FAFC] flex overflow-hidden font-sans text-text-primary select-none animate-fadeIn min-h-0">
+      {showPdfScanDialog && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="pdf-scan-dialog-title">
+          <div className="w-full max-w-[520px] rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl">
+            <div className="space-y-4">
+              <div>
+                <h2 id="pdf-scan-dialog-title" className="text-base font-black text-text-primary">Phát hiện PDF Scan</h2>
+                <p className="mt-2 text-xs font-bold leading-relaxed text-slate-600">Tài liệu bạn vừa tải lên là PDF Scan (ảnh được đóng gói thành PDF).</p>
+              </div>
+              <div className="text-xs font-bold leading-relaxed text-slate-600">
+                <p>Hiện Omniexam chỉ hỗ trợ đầy đủ:</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  <li>PDF có thể chọn/bôi đen văn bản</li>
+                  <li>DOCX</li>
+                  <li>PPTX</li>
+                  <li>Ảnh (JPG, PNG)</li>
+                </ul>
+              </div>
+              <div className="text-xs font-bold leading-relaxed text-slate-600">
+                <p>PDF Scan hiện chưa được hỗ trợ chính thức để đảm bảo:</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  <li>tốc độ xử lý</li>
+                  <li>độ chính xác</li>
+                  <li>chất lượng đề thi</li>
+                </ul>
+              </div>
+              <div className="text-xs font-bold leading-relaxed text-slate-600">
+                <p>Bạn có thể chuyển PDF Scan sang PDF có text trước khi tải lên.</p>
+                <p className="mt-1">Hoặc sử dụng ảnh từng trang.</p>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button type="button" onClick={() => setShowPdfScanDialog(false)} className="rounded-xl bg-slate-100 px-5 py-2.5 text-xs font-black text-slate-700 transition hover:bg-slate-200 cursor-pointer">Đóng</button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* LEFT SIDEBAR */}
       <ExamSidebar
         examSubView={examSubView}

@@ -1,10 +1,12 @@
 import type { OcrResult } from './ocrProvider';
 
+type AdaptedGeminiResult = Omit<OcrResult, 'http' | 'responseMetadata' | 'adapter'>;
+
 type JsonRecord = Record<string, unknown>;
 const isRecord = (value: unknown): value is JsonRecord => typeof value === 'object' && value !== null;
 const numberOrNull = (value: unknown): number | null => typeof value === 'number' && Number.isFinite(value) ? value : null;
 
-export const adaptGeminiResponse = (rawResponse: string, model: string): OcrResult => {
+export const adaptGeminiResponse = (rawResponse: string, model: string): AdaptedGeminiResult => {
   const response: unknown = JSON.parse(rawResponse);
   if (!isRecord(response)) throw new Error('Gemini response không phải JSON object.');
   const candidate = Array.isArray(response.candidates) ? response.candidates[0] : undefined;

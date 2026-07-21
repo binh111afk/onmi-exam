@@ -35,10 +35,10 @@ const toQuestionObject = (question: OmlQuestionBlock): QuestionObject => {
     ? { kind: 'image' as const, ...question.image }
     : undefined;
 
-  if (question.subType === 'fill-blank') {
+  if (question.subType === 'essay') {
     return {
       kind: 'question',
-      questionType: 'fill-blank',
+      questionType: 'essay',
       id: question.id,
       question: question.question,
       points: question.points,
@@ -46,10 +46,6 @@ const toQuestionObject = (question: OmlQuestionBlock): QuestionObject => {
       tags: question.tags,
       image,
       explanation: question.explanation,
-      answer: question.answer,
-      unit: question.unit,
-      units: question.units,
-      showAnswer: question.showAnswer,
     };
   }
 
@@ -62,6 +58,63 @@ const toQuestionObject = (question: OmlQuestionBlock): QuestionObject => {
     difficulty: question.difficulty,
     tags: question.tags,
     image,
+    explanation: question.explanation,
+    options: (question as any).options ?? [],
+    answer: (question as any).answer ?? [],
+  };
+};
+
+const toOmlQuestion = (question: QuestionObject): OmlQuestionBlock => {
+  if (question.questionType === 'fill-blank') {
+    return {
+      type: 'question',
+      subType: 'fill-blank',
+      id: question.id ?? '',
+      question: question.question,
+      points: question.points,
+      difficulty: question.difficulty,
+      tags: question.tags,
+      image: question.image,
+      explanation: question.explanation,
+      answer: question.answer,
+      unit: question.unit,
+      units: question.units,
+      showAnswer: question.showAnswer,
+    };
+  }
+
+  if (question.questionType === 'essay') {
+    return {
+      type: 'question',
+      subType: 'essay',
+      id: question.id ?? '',
+      question: question.question,
+      points: question.points,
+      difficulty: question.difficulty,
+      tags: question.tags,
+      image: question.image,
+      explanation: question.explanation,
+    };
+  }
+
+  if (question.questionType === 'matching' || question.questionType === 'ordering') {
+    const unsupported = question as FutureQuestionObject;
+    throw new Error(`Question type "${unsupported.questionType}" does not have an OML v2 representation yet.`);
+  }
+
+  if (!('options' in question) || !('answer' in question)) {
+    throw new Error(`Question type "${question.questionType}" does not have an OML v2 representation yet.`);
+  }
+
+  return {
+    type: 'question',
+    subType: question.questionType,
+    id: question.id ?? '',
+    question: question.question,
+    points: question.points,
+    difficulty: question.difficulty,
+    tags: question.tags,
+    image: question.image,
     explanation: question.explanation,
     options: question.options,
     answer: question.answer,
@@ -125,49 +178,6 @@ export const omlToQuestionDocument = (document: OmlDocumentV2): QuestionDocument
   metadata: toMetadata(document.info),
   content: document.content.map(toDocumentNode),
 });
-
-const toOmlQuestion = (question: QuestionObject): OmlQuestionBlock => {
-  if (question.questionType === 'fill-blank') {
-    return {
-      type: 'question',
-      subType: 'fill-blank',
-      id: question.id ?? '',
-      question: question.question,
-      points: question.points,
-      difficulty: question.difficulty,
-      tags: question.tags,
-      image: question.image,
-      explanation: question.explanation,
-      answer: question.answer,
-      unit: question.unit,
-      units: question.units,
-      showAnswer: question.showAnswer,
-    };
-  }
-
-  if (question.questionType === 'essay' || question.questionType === 'matching' || question.questionType === 'ordering') {
-    const unsupported = question as FutureQuestionObject;
-    throw new Error(`Question type "${unsupported.questionType}" does not have an OML v2 representation yet.`);
-  }
-
-  if (!('options' in question) || !('answer' in question)) {
-    throw new Error(`Question type "${question.questionType}" does not have an OML v2 representation yet.`);
-  }
-
-  return {
-    type: 'question',
-    subType: question.questionType,
-    id: question.id ?? '',
-    question: question.question,
-    points: question.points,
-    difficulty: question.difficulty,
-    tags: question.tags,
-    image: question.image,
-    explanation: question.explanation,
-    options: question.options,
-    answer: question.answer,
-  };
-};
 
 const toOmlBlock = (node: DocumentContentNode): OmlContentBlock | OmlContentBlock[] => {
   switch (node.kind) {

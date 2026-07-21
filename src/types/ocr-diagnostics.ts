@@ -18,6 +18,61 @@ export interface OcrDiagnosticStage {
   success: boolean;
 }
 
+export interface OcrHttpDiagnostic {
+  provider: string;
+  model: string;
+  endpoint: string;
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
+  rawBody: string;
+  responseBytes: number;
+}
+
+export interface OcrProviderResponseDiagnostic {
+  provider: string;
+  model: string;
+  responseId: string | null;
+  modelVersion: string | null;
+  finishReason: string | null;
+  candidateCount: number;
+  partsCount: number;
+  blockReason: string | null;
+  safetyRatings: unknown;
+  promptFeedback: unknown;
+  usageMetadata: unknown;
+}
+
+export interface OcrAdapterDiagnostic {
+  provider: string;
+  input: string;
+  output: string | null;
+  exception?: string;
+}
+
+export interface OcrParseDiagnostic {
+  stage: 'provider-json' | 'ocr-json' | 'ocr-schema';
+  rawText: string;
+  error: string;
+  position: number | null;
+  rawBlockCount: number;
+  acceptedBlockCount: number;
+  rejectedBlockCount: number;
+}
+
+export interface OcrRequestDiagnostic {
+  provider: string;
+  model: string;
+  endpoint: string | null;
+  page: number | null;
+  regionId: string | null;
+  imageWidth: number | null;
+  imageHeight: number | null;
+  imageBytes: number | null;
+  base64Bytes: number;
+  mimeTypes: string[];
+}
+
 export interface OcrDiagnosticSummary {
   rawBlocks: number;
   normalizedBlocks: number;
@@ -48,5 +103,11 @@ export interface OcrDiagnosticReport {
   summary: OcrDiagnosticSummary;
   rejectedBlocks: OcrRejectedBlock[];
   rawResponses: string[];
+  requests: OcrRequestDiagnostic[];
+  http: OcrHttpDiagnostic[];
+  providerResponses: OcrProviderResponseDiagnostic[];
+  adapterDiagnostics: OcrAdapterDiagnostic[];
+  parseDiagnostics: OcrParseDiagnostic[];
+  failedPages?: number[];
   error?: string;
 }

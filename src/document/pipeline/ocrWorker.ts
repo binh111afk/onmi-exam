@@ -1,11 +1,13 @@
 import type { DocumentContentNode, QuestionDocument } from '../../types/question-object';
 import type { RawDocumentNode } from '../../types/raw-document';
-import { runLegacyOcrToQuestionDocument } from '../../services/ocrService';
+import { OcrDiagnosticError, runLegacyOcrToQuestionDocument } from '../../services/ocrService';
 import type { LegacyOcrMemoryTelemetry } from '../../services/ocrService';
 import type { OcrRegion } from './regionPlanner';
 import type { OcrCropProfilerData, OcrRequestProfilerRecord } from '../../types/ocr-profiler';
 import type { OcrDiagnosticReport } from '../../types/ocr-diagnostics';
 import type { BenchmarkRunOptions } from '../ocr/ocrProvider';
+import type { PipelineMode } from './pipelineMode';
+import { shouldAbortOnOcrFailure } from './pipelineMode';
 
 export interface OcrTask {
   file?: File;
@@ -15,11 +17,13 @@ export interface OcrTask {
 }
 
 export interface OcrWorkerResult {
-  status: 'completed' | 'deferred';
+  status: 'completed' | 'deferred' | 'failed';
   nodes: RawDocumentNode[];
   task: OcrTask;
   processingTimeMs: number;
   networkRequestTimeMs?: number;
+  reason?: string;
+  diagnostics?: OcrDiagnosticReport[];
 }
 
 const toRawNodes = (content: DocumentContentNode[], region: OcrRegion): RawDocumentNode[] => content.flatMap((node) => {
@@ -50,7 +54,10 @@ const toRawNodes = (content: DocumentContentNode[], region: OcrRegion): RawDocum
 });
 
 export class OcrWorker {
-  constructor(private readonly benchmarkRunOptions?: BenchmarkRunOptions) {}
+  constructor(
+    private readonly benchmarkRunOptions?: BenchmarkRunOptions,
+    private readonly pipelineMode: PipelineMode = 'strict',
+  ) {}
 
   async process(task: OcrTask, onProgress?: (statusText: string) => void, memoryTelemetry?: LegacyOcrMemoryTelemetry, onRequestProfile?: (record: OcrRequestProfilerRecord) => void, onDiagnostics?: (report: OcrDiagnosticReport) => void): Promise<OcrWorkerResult> {
     const startedAt = performance.now();
@@ -60,7 +67,8 @@ export class OcrWorker {
 
     const networkStartedAt = performance.now();
     const profileStartedAtMs = task.profiler?.startedAtMs ?? performance.now();
-    const document: QuestionDocument = await runLegacyOcrToQuestionDocument(task.file, onProgress, memoryTelemetry, (measurement) => {
+    try {
+      const document: QuestionDocument = await runLegacyOcrToQuestionDocument(task.file, onProgress, memoryTelemetry, (measurement) => {
       onRequestProfile?.({
         id: `ocr-${task.region.id}`,
         page: task.region.page,
@@ -76,13 +84,32 @@ export class OcrWorker {
         retryCount: 0,
         ...measurement,
       });
-    }, (report) => {
-      report.pages = [task.region.page];
-      report.regions = [task.region.id];
-      onDiagnostics?.(report);
-    }, this.benchmarkRunOptions);
-    const networkRequestTimeMs = performance.now() - networkStartedAt;
-    const processingTimeMs = performance.now() - startedAt;
-    return { status: 'completed', nodes: toRawNodes(document.content, task.region), task, processingTimeMs, networkRequestTimeMs };
+      }, (report) => {
+        report.pages = [task.region.page];
+        report.regions = [task.region.id];
+        report.requests.forEach((request) => {
+          request.page = task.region.page;
+          request.regionId = task.region.id;
+          request.imageWidth = task.profiler?.cropWidth ?? null;
+          request.imageHeight = task.profiler?.cropHeight ?? null;
+          request.imageBytes = task.profiler?.imageBytes ?? task.file?.size ?? null;
+        });
+        onDiagnostics?.(report);
+      }, this.benchmarkRunOptions, this.pipelineMode);
+      const networkRequestTimeMs = performance.now() - networkStartedAt;
+      const processingTimeMs = performance.now() - startedAt;
+      return { status: 'completed', nodes: toRawNodes(document.content, task.region), task, processingTimeMs, networkRequestTimeMs };
+    } catch (error) {
+      if (shouldAbortOnOcrFailure(this.pipelineMode, 1)) throw error;
+      return {
+        status: 'failed',
+        nodes: [],
+        task,
+        processingTimeMs: performance.now() - startedAt,
+        networkRequestTimeMs: performance.now() - networkStartedAt,
+        reason: error instanceof Error ? error.message : String(error),
+        diagnostics: error instanceof OcrDiagnosticError ? error.ocrDiagnostics : [],
+      };
+    }
   }
 }

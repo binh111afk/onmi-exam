@@ -11,8 +11,10 @@ import { omlToQuestionDocument, questionDocumentToOml } from '../document/adapte
 import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist';
 import type { QuestionDocument } from '../types/question-object';
 import type { OcrDiagnosticReport, OcrRejectedBlock } from '../types/ocr-diagnostics';
-import { OcrProviderFactory } from '../document/ocr/ocrProvider';
+import { OcrProviderAdapterError, OcrProviderFactory, OcrProviderHttpError } from '../document/ocr/ocrProvider';
 import type { BenchmarkRunOptions, OcrProviderId } from '../document/ocr/ocrProvider';
+import { shouldAbortOnOcrFailure } from '../document/pipeline/pipelineMode';
+import type { PipelineMode } from '../document/pipeline/pipelineMode';
 
 declare const process: {
   env: {
@@ -369,6 +371,7 @@ export const runLegacyOcrToQuestionDocument = async (
   onRequestMeasurement?: (measurement: LegacyOcrRequestMeasurement) => void,
   onDiagnostics?: LegacyOcrDiagnosticsSink,
   providerOptions?: BenchmarkRunOptions,
+  pipelineMode: PipelineMode = 'strict',
 ): Promise<QuestionDocument> => {
   const selectedProvider = OcrProviderFactory.create(providerOptions?.providerId === 'google' ? 'gemini' : providerOptions?.providerId === 'zhipu' ? 'zhipu' : 'gpt', providerOptions?.model);
   const aiApiUrl = import.meta.env.AZURE_QWEN_ENDPOINT;
@@ -384,6 +387,11 @@ export const runLegacyOcrToQuestionDocument = async (
     summary: { rawBlocks: 0, normalizedBlocks: 0, parsedBlocks: 0, filter1Before: 0, filter1After: 0, mergeBefore: 0, mergeAfter: 0, filter2Before: 0, filter2After: 0, mergedContentLength: 0, questionCount: 0, omlBlocks: 0, questionGroupsDetected: 0, questionGroupsAccepted: 0, questionGroupsRejected: 0, questionsKeptFromGroups: 0, questionsRemovedFromGroups: 0 },
     rejectedBlocks: [],
     rawResponses: [],
+    requests: [],
+    http: [],
+    providerResponses: [],
+    adapterDiagnostics: [],
+    parseDiagnostics: [],
   };
   let diagnosticsEmitted = false;
   const emitDiagnostics = (): void => {
@@ -395,6 +403,18 @@ export const runLegacyOcrToQuestionDocument = async (
     diagnostics.error = message;
     emitDiagnostics();
     throw new OcrDiagnosticError(message, diagnostics, cause);
+  };
+  const recordProviderFailure = (error: unknown): void => {
+    if (error instanceof OcrProviderHttpError) {
+      diagnostics.http.push(error.http);
+      diagnostics.providerResponses.push(error.responseMetadata);
+      return;
+    }
+    if (error instanceof OcrProviderAdapterError) {
+      diagnostics.http.push(error.http);
+      diagnostics.providerResponses.push(error.responseMetadata);
+      diagnostics.adapterDiagnostics.push(error.adapter);
+    }
   };
   const isDocx = file.name.toLowerCase().endsWith('.docx');
   let sourceFile: Blob = file;
@@ -577,14 +597,24 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
   const parseOcrPage = (rawText: string, pageIndex: number): ParsedOcrPage => {
     const parseStartedAt = performance.now();
     const cleanJson = rawText.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
-    const parsed: unknown = JSON.parse(cleanJson);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(cleanJson);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const position = Number.parseInt(message.match(/position\s+(\d+)/i)?.[1] ?? '', 10);
+      diagnostics.parseDiagnostics.push({ stage: 'ocr-json', rawText, error: message, position: Number.isFinite(position) ? position : null, rawBlockCount: 0, acceptedBlockCount: 0, rejectedBlockCount: 0 });
+      throw error;
+    }
 
     if (
       typeof parsed !== 'object'
       || parsed === null
       || !Array.isArray((parsed as { content?: unknown }).content)
     ) {
-      throw new Error(`AI trả về cấu trúc OML không hợp lệ tại trang ${pageIndex + 1}.`);
+      const error = new Error(`AI trả về cấu trúc OML không hợp lệ tại trang ${pageIndex + 1}.`);
+      diagnostics.parseDiagnostics.push({ stage: 'ocr-schema', rawText, error: error.message, position: null, rawBlockCount: 0, acceptedBlockCount: 0, rejectedBlockCount: 0 });
+      throw error;
     }
 
     const rawContent = (parsed as { content: unknown[] }).content;
@@ -615,6 +645,7 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
     diagnostics.summary.questionsKeptFromGroups += filterResult.questionGroups.questionsKept;
     diagnostics.summary.questionsRemovedFromGroups += filterResult.questionGroups.questionsRemoved;
     diagnostics.rejectedBlocks.push(...rejected);
+    diagnostics.parseDiagnostics.push({ stage: 'ocr-schema', rawText, error: '', position: null, rawBlockCount: rawContent.length, acceptedBlockCount: filteredContent.length, rejectedBlockCount: rejected.length });
     diagnostics.stages.push(
       { stage: 'Normalize', input: rawContent, output: rawContent, durationMs: 0, success: true },
       { stage: 'Parse', input: cleanJson, output: rawContent, durationMs: performance.now() - parseStartedAt, success: true },
@@ -630,6 +661,8 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
   };
 
   const ocrWholeDocument = async (pages: OcrPageData[], base64EncodeTimeMs: number | null): Promise<ParsedOcrPage> => {
+    const requestBase64Bytes = pages.reduce((total, page) => total + page.base64Data.length, 0);
+    diagnostics.requests.push({ provider: selectedProvider.id, model: selectedProvider.id === 'gemini' ? (providerOptions?.model ?? 'gemini-3.5-flash') : (aiModel ?? selectedProvider.id), endpoint: selectedProvider.id === 'gemini' ? `https://generativelanguage.googleapis.com/v1beta/models/${providerOptions?.model ?? 'gemini-3.5-flash'}:generateContent` : aiApiUrl, page: null, regionId: null, imageWidth: null, imageHeight: null, imageBytes: null, base64Bytes: requestBase64Bytes, mimeTypes: pages.map((page) => page.mimeType) });
     if (selectedProvider.id === 'gemini' || selectedProvider.id === 'zhipu') {
       const uploadStart = performance.timeOrigin + performance.now();
       const requestStartedAt = performance.now();
@@ -637,12 +670,16 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
         const result = await selectedProvider.process({ prompt, images: pages });
         diagnostics.requestCount += 1;
         diagnostics.rawResponses.push(result.rawResponse);
+        diagnostics.http.push(result.http);
+        diagnostics.providerResponses.push(result.responseMetadata);
+        diagnostics.adapterDiagnostics.push(result.adapter);
         diagnostics.stages.push({ stage: 'OCR Response', input: { provider: result.provider, model: result.model, imageCount: pages.length }, output: result.rawResponse, durationMs: performance.now() - requestStartedAt, success: true });
         const parseStartedAt = performance.now();
         const parsed = parseOcrPage(result.text, 0);
         onRequestMeasurement?.({ base64Bytes: pages.reduce((total, page) => total + page.base64Data.length, 0), base64EncodeTimeMs, uploadStart, uploadEnd: null, uploadDurationMs: null, providerStart: null, providerEnd: null, providerDurationMs: null, downloadDurationMs: null, responseParseTimeMs: performance.now() - parseStartedAt, success: true, responseHeadersAt: performance.timeOrigin + performance.now(), timeToFirstByteMs: null });
         return parsed;
       } catch (error) {
+        recordProviderFailure(error);
         onRequestMeasurement?.({ base64Bytes: pages.reduce((total, page) => total + page.base64Data.length, 0), base64EncodeTimeMs, uploadStart, uploadEnd: null, uploadDurationMs: null, providerStart: null, providerEnd: null, providerDurationMs: null, downloadDurationMs: null, responseParseTimeMs: null, success: false, responseHeadersAt: null, timeToFirstByteMs: null });
         failWithDiagnostics(error instanceof Error ? error.message : String(error), error);
       }
@@ -663,6 +700,7 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
     const uploadStart = performance.timeOrigin + performance.now();
     const requestStartedAt = performance.now();
     let responseHeadersAt: number | null = null;
+    let legacyHttpRecorded = false;
     try {
       const response = await fetch(aiApiUrl, {
       method: 'POST',
@@ -685,15 +723,30 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
       const downloadDurationMs = performance.now() - responseTextStartedAt;
       diagnostics.requestCount += 1;
       diagnostics.rawResponses.push(responseText);
+      const responseHeaders = Object.fromEntries(response.headers.entries());
+      diagnostics.http.push({ provider: selectedProvider.id, model: aiModel ?? selectedProvider.id, endpoint: aiApiUrl, status: response.status, statusText: response.statusText, headers: responseHeaders, rawBody: responseText, responseBytes: new TextEncoder().encode(responseText).byteLength });
+      legacyHttpRecorded = true;
       diagnostics.stages.push({ stage: 'OCR Response', input: { imageCount: pages.length }, output: responseText, durationMs: performance.now() - requestStartedAt, success: response.ok });
       if (!response.ok) throw new Error(`Azure Qwen error: ${response.status} ${response.statusText} - ${responseText}`);
 
       const parseStartedAt = performance.now();
-      const responseBody = JSON.parse(responseText) as {
-      choices?: Array<{ message?: { content?: string } }>;
-      output_text?: string;
-      output?: Array<{ content?: Array<{ text?: string }> }>;
+      let responseBody: {
+        choices?: Array<{ message?: { content?: string } }>;
+        output_text?: string;
+        output?: Array<{ content?: Array<{ text?: string }> }>;
+        usage?: unknown;
+        id?: unknown;
+        model?: unknown;
       };
+      try {
+        responseBody = JSON.parse(responseText) as typeof responseBody;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const position = Number.parseInt(message.match(/position\s+(\d+)/i)?.[1] ?? '', 10);
+        diagnostics.parseDiagnostics.push({ stage: 'provider-json', rawText: responseText, error: message, position: Number.isFinite(position) ? position : null, rawBlockCount: 0, acceptedBlockCount: 0, rejectedBlockCount: 0 });
+        throw error;
+      }
+      diagnostics.providerResponses.push({ provider: selectedProvider.id, model: aiModel ?? selectedProvider.id, responseId: typeof responseBody.id === 'string' ? responseBody.id : null, modelVersion: typeof responseBody.model === 'string' ? responseBody.model : null, finishReason: null, candidateCount: Array.isArray(responseBody.choices) ? responseBody.choices.length : 0, partsCount: Array.isArray(responseBody.output) ? responseBody.output.reduce((count, item) => count + (item.content?.length ?? 0), 0) : 0, blockReason: null, safetyRatings: null, promptFeedback: null, usageMetadata: responseBody.usage ?? null });
       const rawText = responseBody.output_text
       || responseBody.output?.flatMap((item) => item.content || []).map((item) => item.text || '').join('')
       || responseBody.choices?.[0]?.message?.content
@@ -716,6 +769,10 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
       });
       return parsed;
     } catch (error) {
+      if (!legacyHttpRecorded) {
+        const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+        diagnostics.http.push({ provider: selectedProvider.id, model: aiModel ?? selectedProvider.id, endpoint: aiApiUrl, status: 0, statusText: message, headers: {}, rawBody: '', responseBytes: 0 });
+      }
       onRequestMeasurement?.({ base64Bytes: pages.reduce((total, page) => total + page.base64Data.length, 0), base64EncodeTimeMs, uploadStart, uploadEnd: null, uploadDurationMs: null, providerStart: null, providerEnd: null, providerDurationMs: null, downloadDurationMs: null, responseParseTimeMs: null, success: false, responseHeadersAt, timeToFirstByteMs: responseHeadersAt === null ? null : responseHeadersAt - uploadStart });
       if (error instanceof OcrDiagnosticError) throw error;
       failWithDiagnostics(error instanceof Error ? error.message : String(error), error);
@@ -788,10 +845,13 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
 
   if (failedPages.length > 0) {
     const failedPageNumbers = failedPages.map((result) => result.pageIndex + 1).join(', ');
-    failWithDiagnostics(
-      `Azure Qwen không thể xử lý một hoặc nhiều trang. Không tạo đề thi thiếu câu. Các trang lỗi: ${failedPageNumbers}.`,
-      failedPages[0].error,
-    );
+    diagnostics.failedPages = failedPages.map((result) => result.pageIndex + 1);
+    if (shouldAbortOnOcrFailure(pipelineMode, failedPages.length)) {
+      failWithDiagnostics(
+        `Azure Qwen không thể xử lý một hoặc nhiều trang. Không tạo đề thi thiếu câu. Các trang lỗi: ${failedPageNumbers}.`,
+        failedPages[0].error,
+      );
+    }
   }
 
   if (successfulPages.length === 0) {

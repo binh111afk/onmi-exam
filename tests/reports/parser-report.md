@@ -1,26 +1,13 @@
-# Document Corpus Report
+# Document Parser Golden Report
 
 Total files: 252
+Pass: 0
+Fail: 0
+Missing Golden: 252
 
-| Corpus type | Files |
-| --- | ---: |
-| docx | 4 |
-| pdf-text | 83 |
-| pdf-scan | 81 |
-| pdf-hybrid | 80 |
-| image | 4 |
-| json | 0 |
-| oml | 0 |
+## Golden consistency failures
 
-| Subject | Files |
-| --- | ---: |
-| anh | 1 |
-| hoa | 3 |
-| khac | 6 |
-| ly | 117 |
-| toan | 125 |
-
-Missing golden results: 252
+## Missing Golden
 - docx/khac/25 Câu
 - docx/khac/28 Câu
 - docx/khac/30 Câu

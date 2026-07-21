@@ -139,14 +139,21 @@ export const omlFillBlankQuestionBlockSchema = omlQuestionBaseSchema.extend({
   showAnswer: z.boolean().optional(),
 });
 
+export const omlEssayQuestionBlockSchema = omlQuestionBaseSchema.extend({
+  subType: z.literal('essay'),
+  options: z.array(omlQuestionOptionSchema).optional(),
+  answer: z.array(z.union([omlIdSchema, z.string().min(1)])).optional(),
+});
+
 export const omlQuestionBySubTypeSchema = z.discriminatedUnion('subType', [
   omlChoiceQuestionBlockSchema,
   omlTrueFalseQuestionBlockSchema,
   omlFillBlankQuestionBlockSchema,
+  omlEssayQuestionBlockSchema,
 ]);
 
 const omlQuestionBlockRawSchema = omlQuestionBaseSchema.extend({
-  subType: z.enum(['choice', 'true-false', 'fill-blank']).default('choice'),
+  subType: z.enum(['choice', 'true-false', 'fill-blank', 'essay']).default('choice'),
   options: z.array(omlQuestionOptionSchema).default([]),
   answer: z.array(z.union([omlIdSchema, z.string().min(1)])).default([]),
 });

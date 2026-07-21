@@ -2,7 +2,7 @@ export type OmlId = string | number;
 
 export type OmlImageSize = 'small' | 'medium' | 'full';
 
-export type OmlQuestionSubType = 'choice' | 'true-false' | 'fill-blank';
+export type OmlQuestionSubType = 'choice' | 'true-false' | 'fill-blank' | 'essay' | 'matching' | 'unknown';
 
 export type OmlDifficulty = 'easy' | 'medium' | 'hard';
 
@@ -135,10 +135,17 @@ export interface OmlFillBlankQuestionBlock extends OmlQuestionBaseBlock {
   showAnswer?: boolean;
 }
 
+export interface OmlEssayQuestionBlock extends OmlQuestionBaseBlock {
+  subType: 'essay';
+  options?: OmlQuestionOption[];
+  answer?: OmlId[];
+}
+
 export type OmlQuestionBlock =
   | OmlChoiceQuestionBlock
   | OmlTrueFalseQuestionBlock
-  | OmlFillBlankQuestionBlock;
+  | OmlFillBlankQuestionBlock
+  | OmlEssayQuestionBlock;
 
 export type OmlContextBlock =
   | OmlHeadingBlock

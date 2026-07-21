@@ -1,4 +1,5 @@
 import { adaptGeminiResponse } from './geminiResponseAdapter';
+import type { OcrAdapterDiagnostic, OcrHttpDiagnostic, OcrProviderResponseDiagnostic } from '../../types/ocr-diagnostics';
 
 export type OcrProviderId = 'azure-qwen' | 'glm' | 'gpt' | 'gemini' | 'zhipu' | 'auto';
 
@@ -20,6 +21,9 @@ export interface OcrResult {
   requestTokens: number | null;
   responseTokens: number | null;
   costEstimate: number | null;
+  http: OcrHttpDiagnostic;
+  responseMetadata: OcrProviderResponseDiagnostic;
+  adapter: OcrAdapterDiagnostic;
 }
 
 export interface OcrProvider {
@@ -29,16 +33,108 @@ export interface OcrProvider {
 }
 
 type JsonRecord = Record<string, unknown>;
+interface HttpResponseData {
+  rawResponse: string;
+  body: unknown;
+  parseError: string | null;
+  http: OcrHttpDiagnostic;
+}
+
+export class OcrProviderHttpError extends Error {
+  constructor(
+    message: string,
+    readonly http: OcrHttpDiagnostic,
+    readonly responseMetadata: OcrProviderResponseDiagnostic,
+  ) {
+    super(message);
+    this.name = 'OcrProviderHttpError';
+  }
+}
+
+export class OcrProviderAdapterError extends Error {
+  constructor(
+    message: string,
+    readonly http: OcrHttpDiagnostic,
+    readonly responseMetadata: OcrProviderResponseDiagnostic,
+    readonly adapter: OcrAdapterDiagnostic,
+  ) {
+    super(message);
+    this.name = 'OcrProviderAdapterError';
+  }
+}
+
 const isRecord = (value: unknown): value is JsonRecord => typeof value === 'object' && value !== null;
 const asNumber = (value: unknown): number | null => typeof value === 'number' && Number.isFinite(value) ? value : null;
+const asStringOrNull = (value: unknown): string | null => typeof value === 'string' ? value : null;
 
-const readJson = async (response: Response): Promise<{ rawResponse: string; body: JsonRecord }> => {
+const readHttpResponse = async (response: Response, provider: string, model: string, endpoint: string): Promise<HttpResponseData> => {
   const rawResponse = await response.text();
-  let value: unknown;
-  try { value = JSON.parse(rawResponse); } catch { throw new Error(`Provider trả JSON không hợp lệ: ${rawResponse}`); }
-  if (!isRecord(value)) throw new Error('Provider trả response không phải JSON object.');
-  if (!response.ok) throw new Error(`Provider error ${response.status}: ${rawResponse}`);
-  return { rawResponse, body: value };
+  let body: unknown = null;
+  let parseError: string | null = null;
+  try {
+    body = JSON.parse(rawResponse);
+  } catch (error) {
+    parseError = error instanceof Error ? error.message : String(error);
+  }
+  return {
+    rawResponse,
+    body,
+    parseError,
+    http: {
+      provider,
+      model,
+      endpoint,
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries()),
+      rawBody: rawResponse,
+      responseBytes: new TextEncoder().encode(rawResponse).byteLength,
+    },
+  };
+};
+
+const metadataFromResponse = (provider: string, model: string, body: unknown): OcrProviderResponseDiagnostic => {
+  const record = isRecord(body) ? body : {};
+  const candidates = Array.isArray(record.candidates) ? record.candidates : [];
+  const candidate = isRecord(candidates[0]) ? candidates[0] : {};
+  const content = isRecord(candidate.content) ? candidate.content : {};
+  const parts = Array.isArray(content.parts) ? content.parts : [];
+  const promptFeedback = record.promptFeedback;
+  const promptFeedbackRecord = isRecord(promptFeedback) ? promptFeedback : {};
+  return {
+    provider,
+    model,
+    responseId: asStringOrNull(record.responseId ?? record.id),
+    modelVersion: asStringOrNull(record.modelVersion ?? record.model),
+    finishReason: asStringOrNull(candidate.finishReason ?? record.finish_reason),
+    candidateCount: candidates.length,
+    partsCount: parts.length,
+    blockReason: asStringOrNull(promptFeedbackRecord.blockReason ?? candidate.blockReason),
+    safetyRatings: candidate.safetyRatings ?? record.safetyRatings ?? null,
+    promptFeedback: promptFeedback ?? null,
+    usageMetadata: record.usageMetadata ?? record.usage ?? null,
+  };
+};
+
+const requireSuccessfulJson = (data: HttpResponseData, provider: string, model: string): JsonRecord => {
+  const metadata = metadataFromResponse(provider, model, data.body);
+  if (data.http.status !== 200) {
+    throw new OcrProviderHttpError(`Provider HTTP ${data.http.status} ${data.http.statusText}`, data.http, metadata);
+  }
+  if (data.parseError !== null || !isRecord(data.body)) {
+    throw new OcrProviderHttpError(`Provider response JSON không hợp lệ: ${data.parseError ?? 'response is not an object'}`, data.http, metadata);
+  }
+  return data.body;
+};
+
+const fetchWithDiagnostics = async (endpoint: string, init: RequestInit, provider: string, model: string): Promise<Response> => {
+  try {
+    return await fetch(endpoint, init);
+  } catch (error) {
+    const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    const http: OcrHttpDiagnostic = { provider, model, endpoint, status: 0, statusText: message, headers: {}, rawBody: '', responseBytes: 0 };
+    throw new OcrProviderHttpError(`Provider transport error: ${message}`, http, metadataFromResponse(provider, model, null));
+  }
 };
 
 const openAiText = (body: JsonRecord): string => {
@@ -62,10 +158,12 @@ export class GptVisionProvider implements OcrProvider {
 
   async process(request: OcrRequest): Promise<OcrResult> {
     if (!this.endpoint || !this.apiKey) throw new Error('GPT provider chưa được cấu hình AZURE_QWEN_ENDPOINT/AZURE_QWEN_KEY.');
-    const response = await fetch(this.endpoint, { method: 'POST', headers: { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: this.model, input: [{ role: 'user', content: [{ type: 'input_text', text: request.prompt }, ...request.images.map((image) => ({ type: 'input_image', image_url: `data:${image.mimeType};base64,${image.base64Data}` }))] }], text: { format: { type: 'json_object' } } }) });
-    const { rawResponse, body } = await readJson(response);
+    const response = await fetchWithDiagnostics(this.endpoint, { method: 'POST', headers: { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: this.model, input: [{ role: 'user', content: [{ type: 'input_text', text: request.prompt }, ...request.images.map((image) => ({ type: 'input_image', image_url: `data:${image.mimeType};base64,${image.base64Data}` }))] }], text: { format: { type: 'json_object' } } }) }, this.id, this.model);
+    const data = await readHttpResponse(response, this.id, this.model, this.endpoint);
+    const body = requireSuccessfulJson(data, this.id, this.model);
     const usage = isRecord(body.usage) ? body.usage : {};
-    return { provider: this.id, model: this.model, rawResponse, text: openAiText(body), requestTokens: asNumber(usage.input_tokens ?? usage.prompt_tokens), responseTokens: asNumber(usage.output_tokens ?? usage.completion_tokens), costEstimate: null };
+    const text = openAiText(body);
+    return { provider: this.id, model: this.model, rawResponse: data.rawResponse, text, requestTokens: asNumber(usage.input_tokens ?? usage.prompt_tokens), responseTokens: asNumber(usage.output_tokens ?? usage.completion_tokens), costEstimate: null, http: data.http, responseMetadata: metadataFromResponse(this.id, this.model, body), adapter: { provider: this.id, input: data.rawResponse, output: text } };
   }
 }
 
@@ -80,9 +178,17 @@ export class GeminiFlashProvider implements OcrProvider {
   async process(request: OcrRequest): Promise<OcrResult> {
     if (!this.apiKey) throw new Error('Gemini provider chưa được cấu hình VITE_GEMINI_API_KEY.');
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent`;
-    const response = await fetch(endpoint, { method: 'POST', headers: { 'x-goog-api-key': this.apiKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: request.prompt }, ...request.images.map((image) => ({ inlineData: { mimeType: image.mimeType, data: image.base64Data } }))] }], generationConfig: { responseMimeType: 'application/json' } }) });
-    const { rawResponse, body } = await readJson(response);
-    return adaptGeminiResponse(rawResponse, this.model);
+    const response = await fetchWithDiagnostics(endpoint, { method: 'POST', headers: { 'x-goog-api-key': this.apiKey, 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: request.prompt }, ...request.images.map((image) => ({ inlineData: { mimeType: image.mimeType, data: image.base64Data } }))] }], generationConfig: { responseMimeType: 'application/json' } }) }, this.id, this.model);
+    const data = await readHttpResponse(response, this.id, this.model, endpoint);
+    requireSuccessfulJson(data, this.id, this.model);
+    const metadata = metadataFromResponse(this.id, this.model, data.body);
+    try {
+      const adapted = adaptGeminiResponse(data.rawResponse, this.model);
+      return { ...adapted, http: data.http, responseMetadata: metadata, adapter: { provider: this.id, input: data.rawResponse, output: adapted.text } };
+    } catch (error) {
+      const adapter = { provider: this.id, input: data.rawResponse, output: null, exception: error instanceof Error ? `${error.name}: ${error.message}` : String(error) };
+      throw new OcrProviderAdapterError(adapter.exception, data.http, metadata, adapter);
+    }
   }
 }
 
@@ -97,10 +203,12 @@ export class ZhipuVisionProvider implements OcrProvider {
 
   async process(request: OcrRequest): Promise<OcrResult> {
     if (!this.apiKey || !this.endpoint) throw new Error('GLM provider chưa được cấu hình VITE_GLM_API_KEY/VITE_GLM_API_URL.');
-    const response = await fetch(this.endpoint, { method: 'POST', headers: { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: this.model, messages: [{ role: 'user', content: [{ type: 'text', text: request.prompt }, ...request.images.map((image) => ({ type: 'image_url', image_url: { url: image.base64Data } }))] }], response_format: { type: 'json_object' } }) });
-    const { rawResponse, body } = await readJson(response);
+    const response = await fetchWithDiagnostics(this.endpoint, { method: 'POST', headers: { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: this.model, messages: [{ role: 'user', content: [{ type: 'text', text: request.prompt }, ...request.images.map((image) => ({ type: 'image_url', image_url: { url: image.base64Data } }))] }], response_format: { type: 'json_object' } }) }, this.id, this.model);
+    const data = await readHttpResponse(response, this.id, this.model, this.endpoint);
+    const body = requireSuccessfulJson(data, this.id, this.model);
     const usage = isRecord(body.usage) ? body.usage : {};
-    return { provider: this.id, model: this.model, rawResponse, text: openAiText(body), requestTokens: asNumber(usage.prompt_tokens), responseTokens: asNumber(usage.completion_tokens), costEstimate: null };
+    const text = openAiText(body);
+    return { provider: this.id, model: this.model, rawResponse: data.rawResponse, text, requestTokens: asNumber(usage.prompt_tokens), responseTokens: asNumber(usage.completion_tokens), costEstimate: null, http: data.http, responseMetadata: metadataFromResponse(this.id, this.model, body), adapter: { provider: this.id, input: data.rawResponse, output: text } };
   }
 }
 

@@ -1,5 +1,6 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
+import '../../config/pdfjsWorker';
 import type { DocumentImporter } from '../contracts';
 import type { RawDocument, RawTextNode } from '../../types/raw-document';
 
@@ -11,6 +12,7 @@ interface PdfTextToken {
   y: number;
   width: number;
   height: number;
+  fontName?: string;
 }
 
 const getTextToken = (item: unknown): PdfTextToken | null => {
@@ -24,18 +26,136 @@ const getTextToken = (item: unknown): PdfTextToken | null => {
     : transform && typeof transform[0] === 'number'
       ? Math.abs(transform[0])
       : 1;
-  return item.str.trim() ? { text: item.str, x, y, width, height } : null;
+  const fontName = 'fontName' in item && typeof item.fontName === 'string' ? item.fontName : undefined;
+  return item.str.trim() ? { text: item.str, x, y, width, height, fontName } : null;
 };
 
-const groupTokensIntoLines = (tokens: PdfTextToken[]): PdfTextToken[][] => {
-  const lines = new Map<number, PdfTextToken[]>();
-  tokens.forEach((token) => {
-    const key = Math.round(token.y / Math.max(token.height, 1)) * Math.max(token.height, 1);
-    const line = lines.get(key) ?? [];
-    line.push(token);
-    lines.set(key, line);
-  });
-  return [...lines.entries()].sort(([first], [second]) => second - first).map(([, line]) => line.sort((first, second) => first.x - second.x));
+/**
+ * Baseline Y-Clustering Engine:
+ * Groups tokens on the same logical line using a font-height tolerant baseline.
+ * Handles subscripts (log₂), superscripts (a³), and fractions cleanly without line breaks.
+ */
+const groupTokensIntoBaselineLines = (tokens: PdfTextToken[]): PdfTextToken[][] => {
+  // Sort tokens by Y descending (top to bottom of page)
+  const sortedByY = [...tokens].sort((a, b) => b.y - a.y);
+  const lines: { baseY: number; avgHeight: number; tokens: PdfTextToken[] }[] = [];
+
+  for (const token of sortedByY) {
+    const existingLine = lines.find((line) => {
+      const tolerance = Math.max(line.avgHeight, token.height) * 0.65;
+      return Math.abs(token.y - line.baseY) <= tolerance;
+    });
+
+    if (existingLine) {
+      existingLine.tokens.push(token);
+      // Recalculate line parameters
+      const totalH = existingLine.tokens.reduce((acc, t) => acc + t.height, 0);
+      existingLine.avgHeight = totalH / existingLine.tokens.length;
+    } else {
+      lines.push({
+        baseY: token.y,
+        avgHeight: token.height,
+        tokens: [token],
+      });
+    }
+  }
+
+  // Sort each line horizontally by X ascending
+  return lines.map((line) => line.tokens.sort((a, b) => a.x - b.x));
+};
+
+interface MergedTextSegment {
+  text: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Geometry-Aware Token Merging:
+ * Uses exact horizontal gaps to decide:
+ * - Micro gap (gap <= avgH * 0.32) -> Concatenate WITHOUT space ("GIÁO D" + "ỤC" -> "GIÁO DỤC")
+ * - Word gap (avgH * 0.32 < gap <= avgH * 2.8) -> Single space ("GIÁO" + "VIÊN" -> "GIÁO VIÊN")
+ * - Option/Column gap (gap > avgH * 2.8 AND option marker) -> Split into separate RawTextNodes!
+ */
+const mergeLineTokensWithGeometry = (line: PdfTextToken[]): MergedTextSegment[] => {
+  if (line.length === 0) return [];
+
+  const segments: MergedTextSegment[] = [];
+  let currentSegmentTokens: PdfTextToken[] = [line[0]];
+
+  for (let i = 1; i < line.length; i += 1) {
+    const prev = currentSegmentTokens[currentSegmentTokens.length - 1];
+    const curr = line[i];
+
+    const prevRight = prev.x + prev.width;
+    const gap = curr.x - prevRight;
+    const avgH = (prev.height + curr.height) / 2;
+
+    const optionGapThreshold = Math.max(25, avgH * 2.8);
+
+    // Option boundary detection: if horizontal gap is large AND curr is an option label (e.g. B., C., D.)
+    const isOptionStart = /^\s*(?:[A-Da-d]\s*[.:)]|[①②③④])\s*$/u.test(curr.text.trim()) ||
+                          /^\s*[B-D]\s*\.\s*/u.test(curr.text.trim());
+
+    if (gap > optionGapThreshold && isOptionStart) {
+      // Flush current segment
+      segments.push(buildSegmentFromTokens(currentSegmentTokens));
+      currentSegmentTokens = [curr];
+    } else {
+      currentSegmentTokens.push(curr);
+    }
+  }
+
+  if (currentSegmentTokens.length > 0) {
+    segments.push(buildSegmentFromTokens(currentSegmentTokens));
+  }
+
+  return segments;
+};
+
+const buildSegmentFromTokens = (tokens: PdfTextToken[]): MergedTextSegment => {
+  if (tokens.length === 1) {
+    return {
+      text: tokens[0].text.trim(),
+      x: tokens[0].x,
+      y: tokens[0].y - tokens[0].height,
+      width: tokens[0].width,
+      height: tokens[0].height,
+    };
+  }
+
+  let textAcc = tokens[0].text;
+  for (let i = 1; i < tokens.length; i += 1) {
+    const prev = tokens[i - 1];
+    const curr = tokens[i];
+    const prevRight = prev.x + prev.width;
+    const gap = curr.x - prevRight;
+    const avgH = (prev.height + curr.height) / 2;
+    const microGapThreshold = Math.max(3.8, avgH * 0.32);
+
+    if (gap <= microGapThreshold) {
+      // Micro-gap: concatenate WITHOUT space
+      textAcc = `${textAcc}${curr.text}`;
+    } else {
+      // Normal word gap: concatenate WITH space
+      textAcc = `${textAcc} ${curr.text}`;
+    }
+  }
+
+  const minX = Math.min(...tokens.map((t) => t.x));
+  const minY = Math.min(...tokens.map((t) => t.y - t.height));
+  const maxX = Math.max(...tokens.map((t) => t.x + t.width));
+  const maxY = Math.max(...tokens.map((t) => t.y));
+
+  return {
+    text: textAcc.replace(/\s+/g, ' ').trim(),
+    x: minX,
+    y: minY,
+    width: Math.max(1, maxX - minX),
+    height: Math.max(1, maxY - minY),
+  };
 };
 
 export class PdfImporter implements DocumentImporter<File> {
@@ -58,17 +178,20 @@ export class PdfImporter implements DocumentImporter<File> {
 
           if (textLength >= MIN_PAGE_TEXT_LENGTH) {
             pagesWithText += 1;
-            groupTokensIntoLines(tokens).forEach((line) => {
-              const x = Math.min(...line.map((token) => token.x));
-              const y = Math.min(...line.map((token) => token.y - token.height));
-              const right = Math.max(...line.map((token) => token.x + token.width));
-              const bottom = Math.max(...line.map((token) => token.y));
-              nodes.push({
-                kind: 'text',
-                text: line.map((token) => token.text).join(' ').replace(/\s+/g, ' ').trim(),
-                page: pageNumber,
-                boundingBox: [x, y, Math.max(1, right - x), Math.max(1, bottom - y)],
-                confidence: 1,
+            const baselineLines = groupTokensIntoBaselineLines(tokens);
+
+            baselineLines.forEach((line) => {
+              const segments = mergeLineTokensWithGeometry(line);
+              segments.forEach((seg) => {
+                if (seg.text.length > 0) {
+                  nodes.push({
+                    kind: 'text',
+                    text: seg.text,
+                    page: pageNumber,
+                    boundingBox: [seg.x, seg.y, seg.width, seg.height],
+                    confidence: 1,
+                  });
+                }
               });
             });
           } else {

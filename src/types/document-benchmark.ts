@@ -2,7 +2,7 @@ import type { DocumentPipelineMetrics, DocumentPipelineResult } from '../documen
 import type { OcrDiagnosticReport } from './ocr-diagnostics';
 
 export type BenchmarkFileCategory = 'docx' | 'pdf-text' | 'pdf-scan' | 'pdf-hybrid' | 'image' | 'json' | 'oml' | 'unknown';
-export type BenchmarkFileStatus = 'pending' | 'running' | 'passed' | 'failed' | 'skipped';
+export type BenchmarkFileStatus = 'pending' | 'running' | 'passed' | 'partial-success' | 'failed' | 'skipped';
 
 export interface BenchmarkErrorDetails {
   name: string;
@@ -33,11 +33,15 @@ export interface BenchmarkDocumentCounts {
   review: number;
 }
 
+import type { OmlDocumentV2 } from './oml';
+
 export interface BenchmarkPipelineSummary {
   route: DocumentPipelineResult['route'];
+  documentStatus: DocumentPipelineResult['documentStatus'];
   trace: string[];
   metrics: DocumentPipelineMetrics;
   documentCounts: BenchmarkDocumentCounts;
+  omlDocument?: OmlDocumentV2;
 }
 
 export interface BenchmarkFileResult extends BenchmarkFileSource {
