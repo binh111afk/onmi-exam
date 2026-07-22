@@ -11,7 +11,7 @@ import { omlToQuestionDocument, questionDocumentToOml } from '../document/adapte
 import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist';
 import type { QuestionDocument } from '../types/question-object';
 import type { OcrDiagnosticReport, OcrRejectedBlock } from '../types/ocr-diagnostics';
-import { OcrProviderAdapterError, OcrProviderFactory, OcrProviderHttpError } from '../document/ocr/ocrProvider';
+import { OcrProviderAdapterError, OcrProviderFactory, OcrProviderHttpError, parseFileWithGlmOcr } from '../document/ocr/ocrProvider';
 import type { BenchmarkRunOptions, OcrProviderId } from '../document/ocr/ocrProvider';
 import { shouldAbortOnOcrFailure } from '../document/pipeline/pipelineMode';
 import type { PipelineMode } from '../document/pipeline/pipelineMode';
@@ -927,6 +927,24 @@ export const parseFileToOml = async (
   file: File,
   onProgress?: (statusText: string) => void,
 ): Promise<string> => {
+  const extension = file.name.split('.').pop()?.toLowerCase();
+  const isGlmOcrFile = extension === 'pdf'
+    || extension === 'png'
+    || extension === 'jpg'
+    || extension === 'jpeg'
+    || file.type === 'application/pdf'
+    || file.type === 'image/png'
+    || file.type === 'image/jpeg';
+
+  if (isGlmOcrFile) {
+    onProgress?.('Đang nhận diện tài liệu bằng GLM OCR...');
+    const omlJson = await parseFileWithGlmOcr(
+      file,
+      () => onProgress?.('Đang chuyển Markdown sang OML...'),
+    );
+    return omlJson;
+  }
+
   const { DocumentPipelineDispatcher } = await import('../document/pipeline/documentPipelineDispatcher');
   const result = await new DocumentPipelineDispatcher().dispatch(file, onProgress);
   return JSON.stringify(questionDocumentToOml(result.document), null, 2);

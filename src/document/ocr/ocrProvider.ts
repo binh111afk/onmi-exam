@@ -1,3 +1,4 @@
+import { extractGlmText, markdownToOmlJson } from './glmResponseAdapter.ts';
 import { adaptGeminiResponse } from './geminiResponseAdapter';
 import type { OcrAdapterDiagnostic, OcrHttpDiagnostic, OcrProviderResponseDiagnostic } from '../../types/ocr-diagnostics';
 
@@ -119,7 +120,14 @@ const metadataFromResponse = (provider: string, model: string, body: unknown): O
 const requireSuccessfulJson = (data: HttpResponseData, provider: string, model: string): JsonRecord => {
   const metadata = metadataFromResponse(provider, model, data.body);
   if (data.http.status !== 200) {
-    throw new OcrProviderHttpError(`Provider HTTP ${data.http.status} ${data.http.statusText}`, data.http, metadata);
+    const responseBody = isRecord(data.body) ? data.body : {};
+    const responseError = isRecord(responseBody.error) ? responseBody.error : {};
+    const apiMessage = asStringOrNull(responseError.message ?? responseBody.message);
+    throw new OcrProviderHttpError(
+      `GLM OCR HTTP ${data.http.status} ${data.http.statusText}${apiMessage ? `: ${apiMessage}` : ''}`,
+      data.http,
+      metadata,
+    );
   }
   if (data.parseError !== null || !isRecord(data.body)) {
     throw new OcrProviderHttpError(`Provider response JSON không hợp lệ: ${data.parseError ?? 'response is not an object'}`, data.http, metadata);
@@ -147,6 +155,48 @@ const openAiText = (body: JsonRecord): string => {
   return isRecord(choice) && isRecord(choice.message) && typeof choice.message.content === 'string' ? choice.message.content : '';
 };
 
+const fileToBase64 = async (file: File): Promise<string> => {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const chunkSize = 0x8000;
+  let binary = '';
+
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+
+  return btoa(binary);
+};
+
+export const parseFileWithGlmOcr = async (
+  file: File,
+  onMarkdownReady?: () => void,
+): Promise<string> => {
+  const endpoint = '/api/glm-ocr';
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'glm-ocr',
+      file: await fileToBase64(file),
+      return_crop_images: false,
+      need_layout_visualization: false,
+    }),
+  });
+  const data = await readHttpResponse(response, 'glm-ocr', 'glm-ocr', endpoint);
+  const body = requireSuccessfulJson(data, 'glm-ocr', 'glm-ocr');
+  const markdown = extractGlmText(body);
+  if (!markdown.trim()) {
+    const apiMessage = typeof body.message === 'string' ? ` ${body.message}` : '';
+    throw new Error(`GLM OCR không trả về md_results.${apiMessage}`);
+  }
+
+  onMarkdownReady?.();
+  return markdownToOmlJson(markdown);
+};
+
 export class GptVisionProvider implements OcrProvider {
   readonly id = 'gpt' as const;
   readonly displayName = 'GPT-5-mini';
@@ -162,7 +212,17 @@ export class GptVisionProvider implements OcrProvider {
     const data = await readHttpResponse(response, this.id, this.model, this.endpoint);
     const body = requireSuccessfulJson(data, this.id, this.model);
     const usage = isRecord(body.usage) ? body.usage : {};
-    const text = openAiText(body);
+    const rawText = openAiText(body);
+    let text = rawText;
+    try {
+      const clean = rawText.replace(/^\`\`\`json\s*/i, '').replace(/\`\`\`\s*$/, '').trim();
+      const parsed = JSON.parse(clean);
+      if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.content)) {
+        text = markdownToOmlJson(rawText);
+      }
+    } catch {
+      text = markdownToOmlJson(rawText);
+    }
     return { provider: this.id, model: this.model, rawResponse: data.rawResponse, text, requestTokens: asNumber(usage.input_tokens ?? usage.prompt_tokens), responseTokens: asNumber(usage.output_tokens ?? usage.completion_tokens), costEstimate: null, http: data.http, responseMetadata: metadataFromResponse(this.id, this.model, body), adapter: { provider: this.id, input: data.rawResponse, output: text } };
   }
 }

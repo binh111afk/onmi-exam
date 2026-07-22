@@ -15,7 +15,8 @@ import {
   RefreshCw,
   AlignLeft,
   Upload,
-  CheckCircle2
+  CheckCircle2,
+  CircleAlert
 } from 'lucide-react';
 
 interface ExamQuickOcrStepProps {
@@ -27,7 +28,6 @@ interface ExamQuickOcrStepProps {
   setUploadedFile: React.Dispatch<React.SetStateAction<{ name: string; size: string; file?: File } | null>>;
   examJsonCode: string;
   setExamJsonCode: (code: string) => void;
-  isJsonInvalid: boolean;
   showLeftSidebar: boolean;
   setShowLeftSidebar: React.Dispatch<React.SetStateAction<boolean>>;
   showLivePreview: boolean;
@@ -82,7 +82,6 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
   setUploadedFile,
   examJsonCode,
   setExamJsonCode,
-  isJsonInvalid,
   showLeftSidebar,
   setShowLeftSidebar,
   showLivePreview,
@@ -124,6 +123,20 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
     setIsTempOcrMode(true);
   };
 
+  const localOmlResult = React.useMemo(() => parseOML(localJsonCode), [localJsonCode]);
+
+  const handleApplyOcrCode = () => {
+    if (!localOmlResult.success || !localOmlResult.data) {
+      setOcrError(localOmlResult.errors[0]?.message ?? 'Dữ liệu OCR chưa phải OML hợp lệ.');
+      return;
+    }
+    if (localOmlResult.metadata.questionCount === 0) {
+      setOcrError('Kết quả OCR chưa nhận diện được câu hỏi nào để áp dụng vào đề thi.');
+      return;
+    }
+    onApplyOcrCode(localJsonCode);
+  };
+
   const runOcrParsing = async (fileToParse?: File): Promise<boolean> => {
     setIsOcrLoading(true);
     setOcrError(null);
@@ -132,6 +145,13 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
       if (fileToParse) {
         const omlJson = await parseFileToOml(fileToParse, setOcrProgress);
         if (omlJson) {
+          const parsed = parseOML(omlJson);
+          if (!parsed.success || !parsed.data) {
+            throw new Error(parsed.errors[0]?.message ?? 'Kết quả OCR không tạo được OML hợp lệ.');
+          }
+          if (parsed.metadata.questionCount === 0) {
+            throw new Error('Kết quả OCR chưa nhận diện được câu hỏi nào.');
+          }
           handleOcrSuccess(omlJson);
           return true;
         }
@@ -164,10 +184,9 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
   }, [localJsonCode]);
 
   const ocrQuestionStats = React.useMemo(() => {
-    const parsed = parseOML(localJsonCode);
     const questions: OmlQuestionBlock[] = [];
 
-    for (const block of parsed.data?.content ?? []) {
+    for (const block of localOmlResult.data?.content ?? []) {
       if (isOmlQuestionBlock(block)) {
         questions.push(block);
       } else if (block.type === 'question-group' && 'questions' in block && Array.isArray(block.questions)) {
@@ -183,7 +202,7 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
       multipleChoice: multipleChoiceCount,
       essay: questions.length - multipleChoiceCount,
     };
-  }, [localJsonCode]);
+  }, [localOmlResult.data]);
 
   const handleQuickHorizontalScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
     if (quickPreRef.current) {
@@ -225,7 +244,7 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
                   Lỗi nhận diện OCR
                 </h3>
                 <p className="text-[11px] text-slate-500 font-bold leading-relaxed">
-                  Đã xảy ra lỗi trong quá trình gửi yêu cầu nhận diện đến Gemini API.
+                  Đã xảy ra lỗi trong quá trình gửi yêu cầu nhận diện đến GLM OCR.
                 </p>
                 <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-left font-mono text-[9px] text-red-650 max-h-[120px] overflow-y-auto mt-2">
                   {ocrError}
@@ -417,7 +436,7 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
                 Lỗi nhận diện OCR
               </h3>
               <p className="text-[11px] text-slate-500 font-bold leading-relaxed">
-                Đã xảy ra lỗi trong quá trình gửi yêu cầu nhận diện đến Gemini API.
+                Đã xảy ra lỗi trong quá trình gửi yêu cầu nhận diện đến GLM OCR.
               </p>
               <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-left font-mono text-[9px] text-red-650 max-h-[120px] overflow-y-auto mt-2">
                 {ocrError}
@@ -651,14 +670,15 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
 
         {/* Footer message */}
         <div className="h-8 border-t border-slate-150 shrink-0 flex items-center justify-between text-[9px] font-bold px-4 bg-slate-50/20">
-          {isJsonInvalid ? (
-            <span className="text-red-500 font-black">🔴 JSON đang có lỗi cú pháp</span>
+          {!localOmlResult.success ? (
+            <span className="text-red-500 font-black flex items-center gap-1"><CircleAlert size={11} /> JSON đang có lỗi cú pháp hoặc cấu trúc OML</span>
           ) : (
-            <span className="text-emerald-500 font-black">🟢 OML hợp lệ. Tự động lưu bản nháp.</span>
+            <span className="text-emerald-500 font-black flex items-center gap-1"><CheckCircle2 size={11} /> OML hợp lệ. Sẵn sàng áp dụng.</span>
           )}
           <button
-            onClick={() => onApplyOcrCode(localJsonCode)}
-            className="px-3 py-1.5 bg-primary hover:bg-primary-hover text-white text-[9px] font-black rounded-lg transition cursor-pointer shadow-sm"
+            onClick={handleApplyOcrCode}
+            disabled={!localOmlResult.success || localOmlResult.metadata.questionCount === 0}
+            className="px-3 py-1.5 bg-primary hover:bg-primary-hover disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-[9px] font-black rounded-lg transition cursor-pointer shadow-sm"
           >
             Hoàn tất và Áp dụng vào đề thi
           </button>

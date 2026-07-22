@@ -246,7 +246,6 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
     lastValidOml,
     lastValidMetadata,
     validationErrors,
-    isJsonInvalid,
     compileStatus,
     validationDialog,
     setValidationDialog,
@@ -1158,7 +1157,6 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
             setUploadedFile={setUploadedFile}
             examJsonCode={ocrTempCode}
             setExamJsonCode={setOcrTempCode}
-            isJsonInvalid={isJsonInvalid}
             showLeftSidebar={showLeftSidebar}
             setShowLeftSidebar={setShowLeftSidebar}
             showLivePreview={showLivePreview}
