@@ -175,7 +175,15 @@ export class QuestionGraphBuilder {
           break;
 
         case 'table':
-          nodes.push({ kind: 'table', text: block.text, page: block.page });
+          commitGroup();
+          nodes.push({
+            kind: 'table',
+            text: block.text,
+            page: block.page,
+            caption: (block as any).caption,
+            headers: (block as any).headers,
+            rows: (block as any).rows,
+          } as any);
           break;
 
         case 'question': {

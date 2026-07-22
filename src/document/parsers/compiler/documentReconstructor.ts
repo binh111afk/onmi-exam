@@ -155,17 +155,20 @@ export class DocumentReconstructor {
             }
             idx += 1; // Skip next node
           } else if (
-            !/[.:?!;]\s*$/u.test(currentText.trim()) &&
+            !/[.:?!;…]\s*$/u.test(currentText.trim()) &&
             currentType !== 'heading' &&
             currentType !== 'table' &&
             currentType !== 'formula' &&
+            currentType !== 'question-candidate' &&
             nextLayout.type !== 'heading' &&
             nextLayout.type !== 'table' &&
             nextLayout.type !== 'formula' &&
+            nextLayout.type !== 'question-candidate' &&
             !isQuestionStart(nextText) &&
             !isOptionStart(nextText) &&
             !isSectionHeading(nextText) &&
-            !isReadingTrigger(nextText)
+            !isReadingTrigger(nextText) &&
+            !isNoise(nextText)
           ) {
             currentText = `${currentText.trim()} ${nextText.trim()}`;
             paragraphMergedCount += 1;

@@ -154,7 +154,8 @@ const validateQuestion = (
     errors.push({ code: 'MISSING_STEM', message: `Question ${question.id} has no stem` });
   }
 
-  const isChoiceQuestion = question.subType === 'choice' || question.subType === 'true-false' || (question.options && question.options.length >= 2);
+  const isFillBlankOrEssay = question.subType === 'fill-blank' || question.subType === 'essay';
+  const isChoiceQuestion = !isFillBlankOrEssay && (question.subType === 'choice' || question.subType === 'true-false' || (question.options && question.options.length >= 2));
 
   if (isChoiceQuestion) {
     if (question.options.length < 2) {
@@ -162,7 +163,7 @@ const validateQuestion = (
       return { valid: false, errors, strategy: 'rollback-to-paragraph', question, recovered: false };
     }
 
-    const ids = question.options.map((o) => o.id);
+    const ids = question.options.map((o) => o.id.toUpperCase());
     const expectedSlice = VALID_OPTION_SEQUENCE.slice(0, ids.length);
     if (ids.some((id, i) => id !== expectedSlice[i])) {
       errors.push({ code: 'BAD_OPTION_ORDER', message: `Question ${question.id} options not in A-B-C-D order: ${ids.join(',')}` });

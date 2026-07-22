@@ -1,9 +1,9 @@
 # Document Parser Golden Report
 
-Total files: 252
+Total files: 253
 Pass: 0
 Fail: 0
-Missing Golden: 252
+Missing Golden: 253
 
 ## Golden consistency failures
 
@@ -260,3 +260,4 @@ Missing Golden: 252
 - pdf-text/toan/i59ji7l020fr
 - pdf-text/toan/i59ke1g021do
 - pdf-text/toan/test
+- pdf-text/van/g4du39a02jtb

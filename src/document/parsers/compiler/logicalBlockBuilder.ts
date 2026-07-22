@@ -150,12 +150,39 @@ export class LogicalBlockBuilder {
         }
 
         case 'OPTION_MARKER': {
-          if (current === null) {
-            // Option outside a question — treat as paragraph
-            const para = newBlock('Paragraph', token.page, token.text, token.confidence);
-            output.push(para);
+          const optId = (token.meta.optionId ?? '').toLowerCase();
+          const currentOpts = current !== null && current.kind === 'QuestionCandidate' ? current.options.length : 0;
+
+          if (
+            current === null ||
+            (current.kind === 'QuestionCandidate' && currentOpts >= 4 && (optId === 'a' || optId === 'a.')) ||
+            (current.kind === 'QuestionCandidate' && currentOpts >= 4 && optId === 'a')
+          ) {
+            commit();
+            current = newBlock('QuestionCandidate', token.page, '', token.confidence);
+
+            // Pull unassigned paragraph blocks as question stem
+            const contextLines: string[] = [];
+            while (
+              output.length > 0 &&
+              output[output.length - 1].kind === 'Paragraph'
+            ) {
+              const prev = output.pop() as LogicalParagraphBlock;
+              contextLines.unshift(prev.text);
+            }
+            if (contextLines.length > 0) {
+              current.stemLines.push(...contextLines);
+            }
+
+            current.options.push({
+              id: token.meta.optionId ?? 'a',
+              lines: token.text ? [token.text] : [],
+              confidence: token.confidence,
+              isFuzzy: token.meta.isFuzzy,
+            });
             break;
           }
+
           if (current.kind === 'Reading') {
             // Option inside a reading — close reading, start orphan
             commit();

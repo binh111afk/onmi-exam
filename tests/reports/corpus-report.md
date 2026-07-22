@@ -1,11 +1,11 @@
 # Document Corpus Report
 
-Total files: 252
+Total files: 253
 
 | Corpus type | Files |
 | --- | ---: |
 | docx | 4 |
-| pdf-text | 83 |
+| pdf-text | 84 |
 | pdf-scan | 81 |
 | pdf-hybrid | 80 |
 | image | 4 |
@@ -19,8 +19,9 @@ Total files: 252
 | khac | 6 |
 | ly | 117 |
 | toan | 125 |
+| van | 1 |
 
-Missing golden results: 252
+Missing golden results: 253
 - docx/khac/25 Câu
 - docx/khac/28 Câu
 - docx/khac/30 Câu
@@ -273,3 +274,4 @@ Missing golden results: 252
 - pdf-text/toan/i59ji7l020fr
 - pdf-text/toan/i59ke1g021do
 - pdf-text/toan/test
+- pdf-text/van/g4du39a02jtb

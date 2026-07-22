@@ -65,21 +65,20 @@ const toQuestionObject = (question: OmlQuestionBlock): QuestionObject => {
 };
 
 const toOmlQuestion = (question: QuestionObject): OmlQuestionBlock => {
+  const validId = typeof question.id === 'number' && !isNaN(question.id) && question.id > 0
+    ? question.id
+    : (parseInt(String(question.id), 10) || 1);
+
   if (question.questionType === 'fill-blank') {
     return {
       type: 'question',
       subType: 'fill-blank',
-      id: question.id ?? '',
-      question: question.question,
-      points: question.points,
-      difficulty: question.difficulty,
-      tags: question.tags,
-      image: question.image,
-      explanation: question.explanation,
-      answer: question.answer,
-      unit: question.unit,
-      units: question.units,
-      showAnswer: question.showAnswer,
+      id: validId,
+      question: question.question || (question as any).stem,
+      points: (question as any).points ?? 0.5,
+      difficulty: (question as any).difficulty ?? 'medium',
+      tags: (question as any).tags ?? ['Toán Học'],
+      answer: (question as any).answerKey ? [(question as any).answerKey] : [],
     };
   }
 
@@ -87,13 +86,12 @@ const toOmlQuestion = (question: QuestionObject): OmlQuestionBlock => {
     return {
       type: 'question',
       subType: 'essay',
-      id: question.id ?? '',
-      question: question.question,
-      points: question.points,
-      difficulty: question.difficulty,
-      tags: question.tags,
-      image: question.image,
-      explanation: question.explanation,
+      id: validId,
+      question: question.question || (question as any).stem,
+      points: (question as any).points ?? 1.0,
+      difficulty: (question as any).difficulty ?? 'medium',
+      tags: (question as any).tags ?? ['Toán Học'],
+      answer: (question as any).answerKey ? [(question as any).answerKey] : [],
     };
   }
 
@@ -188,7 +186,7 @@ const toOmlBlock = (node: DocumentContentNode): OmlContentBlock | OmlContentBloc
     case 'callout': return { type: 'callout', variant: node.variant, title: node.title, content: node.content };
     case 'image': return { type: 'image', src: node.src, alt: node.alt, caption: node.caption, size: node.size };
     case 'formula': return { type: 'formula', latex: node.latex, display: node.display };
-    case 'table': return { type: 'table', caption: node.caption, headers: node.headers, rows: node.rows };
+    case 'table': return { type: 'table', caption: (node as any).caption, headers: (node as any).headers ?? [], rows: (node as any).rows ?? [] };
     case 'list': return { type: 'list', ordered: node.ordered, items: node.items };
     case 'question': return toOmlQuestion(node);
     case 'question-group': {

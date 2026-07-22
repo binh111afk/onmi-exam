@@ -57,8 +57,8 @@ const RE_SECTION_HEADING =
  * "Question 31. Select the correct answer." must NOT become INSTRUCTION.
  * Only "31-35 Choose the correct answer." qualifies.
  */
-const RE_QUESTION_VI = /^\s*C[\s-]*â[\s-]*u\s*(\d{1,3})\s*[:.)-]?\s*(.*)/isu;
-const RE_QUESTION_EN = /^\s*Question\s*(\d{1,3})\s*[:.)-]?\s*(.*)/isu;
+const RE_QUESTION_VI = /^\s*C[\s-]*â[\s-]*u\s*(\d{1,3})\s*(?:\([^)]+\))?\s*[:.)-]?\s*(.*)/isu;
+const RE_QUESTION_EN = /^\s*Question\s*(\d{1,3})\s*(?:\([^)]+\))?\s*[:.)-]?\s*(.*)/isu;
 
 const RE_INSTRUCTION_RANGE =
   /^\s*(?:câu|question|câu\s+hỏi)?\s*(\d{1,3})\s*[-–đến\s]+\s*(\d{1,3})\b/iu;
@@ -80,7 +80,7 @@ const RE_QUESTIONS_RANGE_HEADER =
 const RE_QUESTION_BARE = /^\s*(\d{1,3})\s*[.)]\s+(\S.*)/su;
 
 /** Fuzzy question pattern — e.g. "Cau 1", "Câ u1", "Q.1", "Câu19:" */
-const RE_QUESTION_FUZZY = /^\s*(?:câu|question|cau|câ\s*u|q)\s*\.?\s*(\d{1,3})\s*[:.)-]?\s*(.*)/isu;
+const RE_QUESTION_FUZZY = /^\s*(?:câu|question|cau|câ\s*u|q)\s*\.?\s*(\d{1,3})\s*(?:\([^)]+\))?\s*[:.)-]?\s*(.*)/isu;
 
 /** Option markers A–D, a–d, or circled digits ①②③④ */
 const RE_OPTION_LETTER = /^\s*([A-Da-d])\s*[.)]\s*/u;
@@ -97,6 +97,14 @@ const CIRCLED_MAP: Record<string, string> = { '①': 'A', '②': 'B', '③': 'C'
 const isNoiseText = (text: string): boolean => {
   const trimmed = text.trim();
   if (RE_PAGE_NUMBER.test(trimmed) || RE_NOISE.test(trimmed) || RE_ANSWER_KEY_ROW.test(trimmed)) {
+    return true;
+  }
+  // Geometry/Diagram noise: "S.ABCD S.ABCD..." or repeated shape labels
+  if (/^(?:S\.?[A-Z]{3,4}\s*){2,}$/iu.test(trimmed) || /^(?:[A-Z]{3,4}\s*){3,}$/u.test(trimmed)) {
+    return true;
+  }
+  // Column or isolated digit page numbers like "2 4", "4 4", "1 4"
+  if (/^\s*\d{1,2}\s+\d{1,2}\s*$/u.test(trimmed)) {
     return true;
   }
   // Diagram labels: single-character sequences separated by spaces (e.g. S V U T Q RP DN A C M B)
@@ -147,14 +155,15 @@ const detectReadingTrigger = (text: string): boolean => {
 const detectQuestionMarker = (
   text: string,
 ): { id: number; stem: string; confidence: number; isFuzzy?: boolean } | null => {
+  const cleanStem = (raw: string) => raw.replace(/^[:.)\s-]+/, '').trim();
   let m = RE_QUESTION_VI.exec(text);
-  if (m) return { id: parseInt(m[1], 10), stem: m[2].trim(), confidence: 0.99 };
+  if (m) return { id: parseInt(m[1], 10), stem: cleanStem(m[2]), confidence: 0.99 };
   m = RE_QUESTION_EN.exec(text);
-  if (m) return { id: parseInt(m[1], 10), stem: m[2].trim(), confidence: 0.99 };
+  if (m) return { id: parseInt(m[1], 10), stem: cleanStem(m[2]), confidence: 0.99 };
   m = RE_QUESTION_BARE.exec(text);
-  if (m) return { id: parseInt(m[1], 10), stem: m[2].trim(), confidence: 0.90 };
+  if (m) return { id: parseInt(m[1], 10), stem: cleanStem(m[2]), confidence: 0.90 };
   m = RE_QUESTION_FUZZY.exec(text);
-  if (m) return { id: parseInt(m[1], 10), stem: m[2].trim(), confidence: 0.75, isFuzzy: true };
+  if (m) return { id: parseInt(m[1], 10), stem: cleanStem(m[2]), confidence: 0.75, isFuzzy: true };
   return null;
 };
 

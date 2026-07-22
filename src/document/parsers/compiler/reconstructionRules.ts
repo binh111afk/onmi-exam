@@ -19,7 +19,7 @@ const SUBSCRIPT_MAP: Record<string, string> = {
 };
 
 // Structural Regex Patterns
-const RE_QUESTION_START = /^\s*(?:câu|question|cau|câ\s*u|q)\s*\.?\s*\d{1,3}\s*[:.)-]?\s*/iu;
+const RE_QUESTION_START = /^\s*(?:câu|question|cau|câ\s*u|q)\s*\.?\s*\d{1,3}\s*(?:\([^)]+\))?\s*[:.)-]?\s*/iu;
 const RE_QUESTION_BARE = /^\s*\d{1,3}\s*[.)]\s+/u;
 const RE_OPTION_START = /^\s*(?:[A-Da-d]\s*[.:),;-]|[①②③④])\s*/u;
 const RE_LONE_OPTION_LABEL = /^\s*([A-Da-d]\s*[.:)]|[①②③④])\s*$/u;
@@ -27,7 +27,7 @@ const RE_SECTION_HEADING = /^\s*(?:PHẦN|CHƯƠNG|BÀI|SECTION|PART|MODULE)\s+(
 const RE_READING_TRIGGER = /^\s*(?:read\s+the\s+(?:following\s+)?(?:passage|text|extract)|based\s+on\s+the\s+(?:following\s+)?(?:passage|information|text)|đọc\s+(?:đoạn\s+)?(?:văn\s+)?(?:sau|sau\s+đây|dưới\s+đây)|dựa\s+vào\s+(?:(?:các\s+)?thông\s+tin|đoạn\s+văn)|cho\s+(?:đoạn\s+)?(?:văn\s+)?(?:sau|dưới|bảng|hình|biểu\s+đồ))/iu;
 
 const RE_PAGE_NUMBER = /^\s*(?:trang|page)\s*\d{1,4}\s*(?:[/|trên]\s*\d{1,4})?\s*$/iu;
-const RE_NOISE = /^\s*(?:compat=|marker\b|generated\s+by\b|https?:\/\/|www\.|mã\s+đề|code:|đề\s+số\b)/iu;
+const RE_NOISE = /^\s*(?:compat=|marker\b|generated\s+by\b|https?:\/\/|www\.|mã\s+đề|code:|đề\s+số\b|---*\s*hết\s*---*|hết\b|bảng\s+đáp\s+án)/iu;
 
 /**
  * 1. Whitespace Recovery: Merges split single-character letters.
@@ -37,12 +37,16 @@ export function recoverWhitespace(text: string): { text: string; mergedCount: nu
   let result = text;
   let mergedCount = 0;
 
-  // Single-character letter sequence merging: finds sequences of single letters separated by space
-  // Guard: Lookahead requires a space or end of string so we don't merge option labels like "A B."
-  const regex = /(?<=^|[\s"'(])(\p{L}(?:\s+\p{L})+)(?=[\s"']|$)/gu;
+  // Single-character letter sequence merging (e.g. "S Ở" -> "SỞ", "D Ụ C" -> "DỤC", "T Ạ O" -> "TẠO", "T Ổ" -> "TỔ")
+  // Uses \p{L} (single char) without + to avoid matching multi-character words
+  const regex = /(?<=^|\s)(\p{L}(?:\s+\p{L})+)(?=\s|$)/gu;
 
   result = result.replace(regex, (match) => {
     const tokens = match.split(/\s+/);
+    // Guard against merging standalone choice lists like "A B C D"
+    if (tokens.length >= 4 && tokens.every((t) => /^[A-D]$/.test(t))) {
+      return match;
+    }
     if (tokens.every((tok) => tok.length === 1)) {
       mergedCount += tokens.length - 1;
       return tokens.join('');
@@ -57,7 +61,12 @@ export function recoverWhitespace(text: string): { text: string; mergedCount: nu
  * 2. Boundary Checks
  */
 export function isQuestionStart(text: string): boolean {
-  return RE_QUESTION_START.test(text) || RE_QUESTION_BARE.test(text);
+  if (RE_QUESTION_START.test(text)) return true;
+  if (RE_QUESTION_BARE.test(text)) return true;
+  if (/^\s*(?:cho\s+hàm\s+số|cho\s+cấp\s+số|cho\s+khối\s+chóp|cho\s+hình\s+chóp|cho\s+hai\s+biến\s+cố|cho\s+đồ\s+thị|trong\s+không\s+gian|giá\s+trị\s+lớn\s+nhất|giá\s+trị\s+nhỏ\s+nhất|họ\s+tất\s+cả|khảo\s+sát|một\s+cơ\s+sở|sân\s+vận\s+động|để\s+chuẩn\s+bị|để\s+xây\s+dựng)\b/iu.test(text)) {
+    return true;
+  }
+  return false;
 }
 
 export function isOptionStart(text: string): boolean {

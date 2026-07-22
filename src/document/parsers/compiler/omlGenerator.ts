@@ -150,7 +150,15 @@ export class OmlGenerator {
         return [{ kind: 'image', src: '', alt: node.text || 'image', source: { page: node.page } }];
 
       case 'table':
-        return [{ kind: 'table', rows: [], source: { page: node.page } }];
+        return [
+          {
+            kind: 'table',
+            caption: (node as any).caption,
+            headers: (node as any).headers ?? [],
+            rows: (node as any).rows ?? [],
+            source: { page: node.page },
+          } as any,
+        ];
 
       case 'question':
         return [toQuestion(node)];
