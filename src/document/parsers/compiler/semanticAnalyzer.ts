@@ -11,6 +11,7 @@
  * - A Reading block always stays as Reading passage context
  * - A SECTION_HEADING always stays as section (never becomes question)
  */
+import { normalizeMathAndText } from './documentNormalizer.ts';
 import type { LogicalBlock, LogicalOption } from './logicalBlockBuilder.ts';
 
 // ---------------------------------------------------------------------------
@@ -148,7 +149,7 @@ export class SemanticAnalyzer {
       if (block.kind === 'Heading') {
         currentSectionHeading = block.text;
       }
-      const semantic = this.analyzeBlock(block, seenIds, blocks, index, currentSectionHeading);
+      const semantic = this.analyzeBlock(block, seenIds, blocks, index, output, currentSectionHeading);
       if (semantic !== null) output.push(semantic);
     }
 
@@ -160,6 +161,7 @@ export class SemanticAnalyzer {
     seenIds: Set<number>,
     _allBlocks: LogicalBlock[],
     _index: number,
+    output: SemanticBlock[],
     currentSectionHeading?: string,
   ): SemanticBlock | null {
     const blockConf = block.confidence ?? 1.0;
@@ -234,13 +236,35 @@ export class SemanticAnalyzer {
         const subType = detectQuestionSubtype(block, currentSectionHeading);
         let stemText = joinLines(block.stemLines).replace(/^\s*\[MAP(?:STUDY)?\]\s*/gi, '').trim();
 
-        if (subType === 'fill-blank' && !/\[blank-\d+\]/i.test(stemText)) {
-          stemText = `${stemText} [blank-1]`;
+        // Merge preceding unassigned paragraph blocks for True-False & Fill-Blank
+        if (subType === 'true-false' || subType === 'fill-blank') {
+          const contextParas: string[] = [];
+          while (
+            output.length > 0 &&
+            output[output.length - 1].role === 'paragraph' &&
+            !/^\s*(?:câu|question|cau)\s+\d+\b/iu.test(output[output.length - 1].text) &&
+            !/^\s*[a-d][.)]/iu.test(output[output.length - 1].text)
+          ) {
+            const prev = output.pop()!;
+            contextParas.unshift(prev.text);
+          }
+          if (contextParas.length > 0) {
+            stemText = `${contextParas.join('\n\n')}\n\n${stemText}`;
+          }
+        }
+
+        stemText = normalizeMathAndText(stemText);
+
+        if (subType === 'fill-blank') {
+          const blankCount = (stemText.match(/\[blank-\d+\]|___|\[\.\.\.\]/gi) ?? []).length;
+          if (blankCount === 0) {
+            stemText = `${stemText} [blank-1]`;
+          }
         }
 
         const options = block.options.map((opt) => ({
           id: opt.id,
-          content: optionContent(opt),
+          content: normalizeMathAndText(optionContent(opt)),
           confidence: opt.confidence ?? 0.95,
           isFuzzy: opt.isFuzzy,
         }));

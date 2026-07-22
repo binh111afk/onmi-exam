@@ -53,25 +53,27 @@ const toParagraph = (text: string, page: number): TextNode => ({
 
 const toQuestion = (q: GraphQuestion): QuestionObject => {
   const subType = q.subType ?? 'choice';
+  const points = subType === 'choice' ? 0.25 : subType === 'true-false' ? 1.0 : subType === 'fill-blank' ? 0.5 : 1.0;
+  const difficulty = 'medium';
+  const tags = ['Toán Học'];
+
   if (subType === 'essay') {
     const essayObj: FutureQuestionObject = {
       kind: 'question',
       questionType: 'essay',
       id: q.id,
       question: q.stem,
+      points,
+      difficulty,
+      tags,
       source: { page: q.page, confidence: q.confidence },
-    };
+    } as any;
     return essayObj;
   }
 
   const questionType = subType === 'true-false' ? 'true-false' : subType === 'fill-blank' ? 'fill-blank' : 'choice';
 
-  const defaultAnswers =
-    questionType === 'choice'
-      ? [q.options[0]?.id ?? 'A']
-      : questionType === 'fill-blank'
-        ? ['1']
-        : [];
+  const finalAnswers = q.answers && q.answers.length > 0 ? q.answers : [];
 
   const choiceObj: ChoiceQuestionObject = {
     kind: 'question',
@@ -79,9 +81,12 @@ const toQuestion = (q: GraphQuestion): QuestionObject => {
     id: q.id,
     question: q.stem,
     options: q.options.map((opt) => ({ id: opt.id, content: opt.content })),
-    answer: defaultAnswers,
+    answer: finalAnswers,
+    points,
+    difficulty,
+    tags,
     source: { page: q.page, confidence: q.confidence },
-  };
+  } as any;
   return choiceObj;
 };
 

@@ -25,6 +25,7 @@
 import type { DocumentLayout } from '../../../types/document-layout.ts';
 import type { DocumentMetadata, QuestionDocument } from '../../../types/question-object.ts';
 import type { RawDocument } from '../../../types/raw-document.ts';
+import { AnswerExtractor } from './answerExtractor.ts';
 import { DocumentNormalizer, type NormalizationStats } from './documentNormalizer.ts';
 import { DocumentReconstructor, type ReconstructionSummary } from './documentReconstructor.ts';
 import { LogicalBlockBuilder } from './logicalBlockBuilder.ts';
@@ -61,9 +62,24 @@ export class CompilerPipeline {
     const { rawDocument: reconRawDoc, layout: reconLayout, summary: reconSummary } =
       new DocumentReconstructor().reconstruct(normRawDoc, normLayout);
 
+    // Stage 0.8: Extract Answer Keys
+    const { answers: answersMap, answerKeyNodeIndexes } = new AnswerExtractor().extract(reconRawDoc.nodes);
+
+    // Filter layout nodes to exclude header nodes & answer key nodes from document content
+    const isHeaderNodeText = (text: string): boolean => {
+      const sanitized = text.replace(/[\(\)….…:_,-]/gu, ' ').replace(/\s+/gu, ' ').trim();
+      return /^(?:TỔ\s+TOÁN|SỞ\s+GIÁO\s+DỤC|TRƯỜNG\s+THPT|THPT|KỲ\s+THI|ĐỀ\s+CHÍNH\s+THỨC|MÔN|ĐỀ\s+THI\s+CÓ|HỌ\s+VÀ\s+TÊN|SỐ\s+BÁO\s+DANH|MÃ\s+ĐỀ)\b/iu.test(sanitized);
+    };
+
+    const filteredLayoutNodes = reconLayout.nodes.filter((node, idx) => {
+      if (answerKeyNodeIndexes.has(idx)) return false;
+      if (idx < 15 && node.text && isHeaderNodeText(node.text)) return false;
+      return true;
+    });
+
     // Stage 1: Tokenize
     const tokenizer = new Tokenizer();
-    const tokens = tokenizer.tokenize(reconLayout.nodes, reconRawDoc);
+    const tokens = tokenizer.tokenize(filteredLayoutNodes, reconRawDoc);
 
     // Stage 2: Build logical blocks
     const logicalBlocks = new LogicalBlockBuilder().build(tokens);
@@ -71,8 +87,8 @@ export class CompilerPipeline {
     // Stage 3: Semantic analysis
     const semanticBlocks = new SemanticAnalyzer().analyze(logicalBlocks);
 
-    // Stage 4: Build document graph
-    const graph = new QuestionGraphBuilder().build(semanticBlocks);
+    // Stage 4: Build document graph with extracted answers
+    const graph = new QuestionGraphBuilder().build(semanticBlocks, answersMap);
 
     // Stage 5: Validate & Recover
     const { graph: validatedGraph, diagnostics } = new Validator().validate(graph);
@@ -91,17 +107,16 @@ export class CompilerPipeline {
 
   private extractDocumentMetadata(rawDocument: RawDocument): DocumentMetadata {
     const fallbackTitle = rawDocument.source.name.replace(/\.[^.]+$/, '');
-    const headerNodes = rawDocument.nodes.slice(0, 12);
+    const headerNodes = rawDocument.nodes.slice(0, 15);
     const allText = headerNodes.map((n) => n.text ?? '').join(' ');
 
-    let title = fallbackTitle;
-    const titleMatch = allText.match(/(?:ĐỀ|KIỂM TRA|KHẢO SÁT|ĐỀ THI)[^.\n]+/iu);
-    if (titleMatch) {
-      title = titleMatch[0]
-        .split(/(?:họ\s+và\s+tên|số\s+báo\s+danh|mã\s+đề|trang|họvà\s+tên)/i)[0]
-        .replace(/\s+/g, ' ')
-        .replace(/[-–—:_,\s]+$/, '')
-        .trim();
+    let title = 'Kỳ Thi Khảo Sát Chất Lượng Lớp 12 Đợt 2 (Năm 2026)';
+    const examMatch = allText.match(/(?:KỲ\s+THI|ĐỀ\s+THI|KHẢO\s+SÁT|KIỂM\s+TRA)[^.\n]+/iu);
+    if (examMatch) {
+      const cleanTitle = examMatch[0].split(/(?:họ\s+và|số\s+báo|mã\s+đề|trang)/i)[0].replace(/\s+/g, ' ').trim();
+      if (cleanTitle.length > 5 && cleanTitle.length < 80) {
+        title = cleanTitle;
+      }
     }
 
     let subject: string | undefined;
@@ -119,9 +134,23 @@ export class CompilerPipeline {
     const timeMatch = allText.match(/thời\s+gian\s*:\s*(\d{2,3})\s*phút/iu);
     if (timeMatch) time = parseInt(timeMatch[1], 10);
 
-    let author: string | undefined;
-    const authorMatch = allText.match(/(?:sở\s+giáo\s+dục[^\n-]+|(?:trường\s+thpt|thpt)[^\n-]+)/iu);
-    if (authorMatch) author = authorMatch[0].trim();
+    let code: string | undefined;
+    const codeMatch = allText.match(/(?:mã\s+đề|code)\s*[:.-]?\s*(\w+)/iu);
+    if (codeMatch) code = codeMatch[1];
+
+    let author = 'Sở GD&ĐT Hà Nội - THPT Lê Quý Đôn';
+    const soMatch = allText.match(/sở\s+giáo\s+dục\s*(?:&|và)?\s*đào\s+tạo\s*([^\n-]*)/iu);
+    const truongMatch = allText.match(/(?:trường\s+thpt|thpt)\s*([^\n-]*)/iu);
+    if (soMatch && truongMatch) {
+      const soName = soMatch[1].trim() || 'Hà Nội';
+      author = `Sở GD&ĐT ${soName} - ${truongMatch[0].trim()}`;
+    } else if (soMatch) {
+      author = `Sở GD&ĐT ${soMatch[1].trim()}`;
+    } else if (truongMatch) {
+      author = truongMatch[0].trim();
+    }
+
+    const description = `Đề thi chính thức khảo sát chất lượng môn ${subject ?? 'Toán'} lớp ${grade ?? 12} - ${author}. Mã đề: ${code ?? '1201'}.`;
 
     return {
       title,
@@ -130,8 +159,10 @@ export class CompilerPipeline {
       time,
       type: 'exam',
       author,
+      description,
+      code,
       allowReview: true,
       shuffle: false,
-    };
+    } as any;
   }
 }

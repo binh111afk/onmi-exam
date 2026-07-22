@@ -124,6 +124,46 @@ export class DocumentNormalizer {
       confidence = ocrResult.lowestConfidence;
     }
 
+    // D. LaTeX & Math Formula Normalization (Protects against double $)
+    text = normalizeMathAndText(text);
+
     return { text, fixes, confidence };
   }
 }
+
+export function normalizeMathAndText(input: string): string {
+  if (!input) return input;
+  let text = input;
+
+  // 0. Clean garbled dollar signs, infinity symbols, and trailing dots
+  text = text
+    .replace(/ꝏ/gu, '\\infty')
+    .replace(/\$\$\./g, '$')
+    .replace(/\$\$+/g, '$')
+    .replace(/\$([^$]+)\$[.]/g, '$$$1$$');
+
+  // Fix misplaced inline math dollar sign: e.g. "4x^4$+2026x+C." -> "$4x^4 + 2026x + C$"
+  if (/(\d+[a-z]\^\d+)\$([+−-].*)/iu.test(text)) {
+    text = text.replace(/(\d+[a-z]\^\d+)\$([+−-][^.$]+)\.?,?/iu, '$$$1 $2$$');
+  }
+
+  // If text already has valid $, return cleaned text
+  if (/\$[^$]+\$/.test(text)) {
+    return text;
+  }
+
+  // 1. Full line math equations (e.g., "V = 30a^3." or "2x - y + 3z + 7 = 0")
+  if (/^[A-Za-z]\s*=\s*\d+[a-z](\^\d+)?\b/u.test(text) || /^\d+[a-z]\s*[-+]\s*[a-z]/u.test(text)) {
+    const hasDot = text.endsWith('.');
+    const cleanExpr = text.replace(/\.$/, '').trim();
+    return `$${cleanExpr}$${hasDot ? '.' : ''}`;
+  }
+
+  // 2. Unwrapped fractions \frac{...}{...} or \sqrt{...} or \vec{...}
+  if (/\\(?:frac|sqrt|vec|log)\b/.test(text) && !text.includes('$')) {
+    text = text.replace(/(\\(?:frac|sqrt|vec|log)\{[^}]+\}(\{[^}]+\})?)/gu, '$$1$');
+  }
+
+  return text;
+}
+

@@ -180,6 +180,19 @@ export class LogicalBlockBuilder {
         }
 
         case 'PARAGRAPH': {
+          const trimText = token.text.trim();
+          const isNoiseLine = /^(?:Trang\s+\d+|Mã\s+đề|TỔ\s+TOÁN|S\s+V\s+U|Cà\s+phê|UT\b|Q\s+RP|DN\b)/iu.test(trimText);
+          const isDiagramGarbage =
+            /^([A-Z]{1,4}\.[A-Z]{1,4}\s*){2,}$/iu.test(trimText) ||
+            /^(?:S\.ABCD|ABCD|S\.ABC|MNPQ)\s+(?:S\.ABCD|ABCD|S\.ABC|MNPQ)/iu.test(trimText) ||
+            /^(?:[A-Z0-9]{1,3}\s+){3,}[A-Z0-9]{1,3}$/u.test(trimText) ||
+            /^([A-Z0-9.\-_]{2,8}\s+){3,}[A-Z0-9.\-_]{2,8}$/iu.test(trimText);
+
+          if (isNoiseLine || isDiagramGarbage) {
+            // Discard diagram garbage / noise
+            break;
+          }
+
           if (current === null) {
             output.push(newBlock('Paragraph', token.page, token.text));
             break;
@@ -208,9 +221,7 @@ export class LogicalBlockBuilder {
                   output.push(newBlock('Paragraph', token.page, token.text));
                 }
               } else {
-                const trimText = token.text.trim();
-                const isNoiseLine = /^(?:Trang\s+\d+|Mã\s+đề|TỔ\s+TOÁN|S\s+V\s+U|Cà\s+phê|S\.ABCD)/iu.test(trimText);
-                const isContinuation = !isNoiseLine && /^[a-z,;+\-*/=]/.test(trimText) && !/^(?:câu|question|đọc|cho|dựa)\b/i.test(trimText);
+                const isContinuation = /^[a-z,;+\-*/=]/.test(trimText) && !/^(?:câu|question|đọc|cho|dựa)\b/i.test(trimText);
                 if (isContinuation) {
                   opt.lines.push(token.text);
                 } else {

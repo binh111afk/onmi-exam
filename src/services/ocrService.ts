@@ -703,18 +703,18 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
     let legacyHttpRecorded = false;
     try {
       const response = await fetch(aiApiUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${aiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: aiModel,
-        ...(isResponsesApi ? { input: [{ role: 'user', content: requestContent }] } : { messages: [{ role: 'user', content: requestContent }] }),
-        ...(isResponsesApi
-          ? { text: { format: { type: 'json_object' } } }
-          : { response_format: { type: 'json_object' } }),
-      }),
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${aiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: aiModel,
+          ...(isResponsesApi ? { input: [{ role: 'user', content: requestContent }] } : { messages: [{ role: 'user', content: requestContent }] }),
+          ...(isResponsesApi
+            ? { text: { format: { type: 'json_object' } } }
+            : { response_format: { type: 'json_object' } }),
+        }),
       });
       responseHeadersAt = performance.timeOrigin + performance.now();
 
@@ -748,9 +748,9 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
       }
       diagnostics.providerResponses.push({ provider: selectedProvider.id, model: aiModel ?? selectedProvider.id, responseId: typeof responseBody.id === 'string' ? responseBody.id : null, modelVersion: typeof responseBody.model === 'string' ? responseBody.model : null, finishReason: null, candidateCount: Array.isArray(responseBody.choices) ? responseBody.choices.length : 0, partsCount: Array.isArray(responseBody.output) ? responseBody.output.reduce((count, item) => count + (item.content?.length ?? 0), 0) : 0, blockReason: null, safetyRatings: null, promptFeedback: null, usageMetadata: responseBody.usage ?? null });
       const rawText = responseBody.output_text
-      || responseBody.output?.flatMap((item) => item.content || []).map((item) => item.text || '').join('')
-      || responseBody.choices?.[0]?.message?.content
-      || '';
+        || responseBody.output?.flatMap((item) => item.content || []).map((item) => item.text || '').join('')
+        || responseBody.choices?.[0]?.message?.content
+        || '';
       const parsed = parseOcrPage(rawText, 0);
       onRequestMeasurement?.({
         base64Bytes: pages.reduce((total, page) => total + page.base64Data.length, 0),

@@ -57,8 +57,8 @@ const RE_SECTION_HEADING =
  * "Question 31. Select the correct answer." must NOT become INSTRUCTION.
  * Only "31-35 Choose the correct answer." qualifies.
  */
-const RE_QUESTION_VI = /^\s*Câu\s+(\d{1,3})\s*[.:)]\s*(.*)/isu;
-const RE_QUESTION_EN = /^\s*Question\s+(\d{1,3})\s*[.:)]\s*(.*)/isu;
+const RE_QUESTION_VI = /^\s*C[\s-]*â[\s-]*u\s*(\d{1,3})\s*[:.)-]?\s*(.*)/isu;
+const RE_QUESTION_EN = /^\s*Question\s*(\d{1,3})\s*[:.)-]?\s*(.*)/isu;
 
 const RE_INSTRUCTION_RANGE =
   /^\s*(?:câu|question|câu\s+hỏi)?\s*(\d{1,3})\s*[-–đến\s]+\s*(\d{1,3})\b/iu;
@@ -79,7 +79,7 @@ const RE_QUESTIONS_RANGE_HEADER =
 /** Bare numbered question "N. stem text" — only if stem is non-empty */
 const RE_QUESTION_BARE = /^\s*(\d{1,3})\s*[.)]\s+(\S.*)/su;
 
-/** Fuzzy question pattern — e.g. "Cau 1", "Câ u1", "Q.1" */
+/** Fuzzy question pattern — e.g. "Cau 1", "Câ u1", "Q.1", "Câu19:" */
 const RE_QUESTION_FUZZY = /^\s*(?:câu|question|cau|câ\s*u|q)\s*\.?\s*(\d{1,3})\s*[:.)-]?\s*(.*)/isu;
 
 /** Option markers A–D, a–d, or circled digits ①②③④ */
@@ -277,12 +277,29 @@ export class Tokenizer {
     // ── 4. Section heading by text pattern ───────────────────────────────
     if (isSectionHeadingText(text)) return single('SECTION_HEADING', text, {}, 1.0);
 
-    // ── 5. Reading trigger (explicit candidate hint or text pattern) ────────
+    // ── 5. Question marker (takes precedence over instructions & reading triggers) ──
+    const qMarker = detectQuestionMarker(text);
+    if (qMarker) {
+      // Check if inline options are attached to stem
+      const inlineOpts = splitInlineOptions(qMarker.stem);
+      if (inlineOpts && inlineOpts.length >= 2) {
+        const firstOptIndex = qMarker.stem.search(/(?:^|(?<=\s))[A-Da-d]\s*[.:,;-]\s*/u);
+        const stemOnly = firstOptIndex >= 0 ? qMarker.stem.slice(0, firstOptIndex).trim() : qMarker.stem;
+        const qToken = t('QUESTION_MARKER', stemOnly, { questionId: qMarker.id }, qMarker.confidence);
+        const optTokens = inlineOpts.map((opt) =>
+          t('OPTION_MARKER', opt.content, { optionId: opt.id, isFuzzy: opt.isFuzzy }, opt.confidence),
+        );
+        return [qToken, ...optTokens];
+      }
+      return single('QUESTION_MARKER', qMarker.stem, { questionId: qMarker.id }, qMarker.confidence);
+    }
+
+    // ── 6. Reading trigger (explicit candidate hint or text pattern) ────────
     if (node.type === 'reading-candidate' || detectReadingTrigger(text)) {
       return single('READING_TRIGGER', text, {}, 0.95);
     }
 
-    // ── 6. Instruction (range N-M + directive) ────────────────────────────
+    // ── 7. Instruction (range N-M + directive) ────────────────────────────
     const instr = detectInstruction(text);
     if (instr) {
       return single('INSTRUCTION', text, {
@@ -306,18 +323,7 @@ export class Tokenizer {
       return single('FORMULA', text, {}, 0.90);
     }
 
-    // ── 8. Question marker ───────────────────────────────────────────────
-    if (!RE_BARE_INTEGER.test(text)) {
-      const question = detectQuestionMarker(text);
-      if (question) {
-        return single('QUESTION_MARKER', question.stem, {
-          questionId: question.id,
-          isFuzzy: question.isFuzzy,
-        }, question.confidence);
-      }
-    }
-
-    // ── 9. Option markers (with inline multi-option splitting) ─────────────
+    // ── 8. Option markers (with inline multi-option splitting) ─────────────
     const inlineOpts = splitInlineOptions(text);
     if (inlineOpts !== null) {
       return inlineOpts.map((opt): Token =>

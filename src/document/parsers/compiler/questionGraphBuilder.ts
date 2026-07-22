@@ -23,6 +23,7 @@ export interface GraphQuestion {
   subType?: QuestionSubtype;
   stem: string;
   options: SemanticOption[];
+  answers: string[];
   formulas: string[];
   /** If set, this question belongs to the reading passage with this id */
   readingGroupId?: string;
@@ -96,7 +97,7 @@ export interface DocumentGraph {
 // ---------------------------------------------------------------------------
 
 export class QuestionGraphBuilder {
-  build(semanticBlocks: SemanticBlock[]): DocumentGraph {
+  build(semanticBlocks: SemanticBlock[], answersMap?: Map<number, string[]>): DocumentGraph {
     const nodes: GraphNode[] = [];
     let pendingReading: {
       paragraphs: string[];
@@ -179,12 +180,14 @@ export class QuestionGraphBuilder {
 
         case 'question': {
           if (block.questionId === undefined) break;
+          const extractedAns = answersMap?.get(block.questionId) ?? [];
           const question: GraphQuestion = {
             kind: 'question',
             id: block.questionId,
             subType: block.subType ?? 'choice',
             stem: block.stem ?? '',
             options: block.options ?? [],
+            answers: extractedAns,
             formulas: block.formulas ?? [],
             page: block.page,
             confidence: block.confidence ?? 1.0,
