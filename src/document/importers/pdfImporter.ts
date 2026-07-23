@@ -151,7 +151,7 @@ const buildSegmentFromTokens = (tokens: PdfTextToken[]): MergedTextSegment => {
     const prevRight = prev.x + prev.width;
     const gap = curr.x - prevRight;
     const avgH = (prev.height + curr.height) / 2;
-    const microGapThreshold = Math.max(3.8, avgH * 0.32);
+    const microGapThreshold = Math.max(0.75, avgH * 0.1);
 
     if (gap <= microGapThreshold) {
       // Micro-gap: concatenate WITHOUT space

@@ -74,6 +74,12 @@ const joinLines = (lines: string[]): string => lines.join('\n\n').trim();
 const optionContent = (opt: LogicalOption): string =>
   opt.lines.join('\n').trim();
 
+const hasLowercaseEssaySubparts = (block: LogicalBlock): boolean =>
+  block.options.length >= 2 &&
+  block.options.every((option, index) =>
+    option.markerCase === 'lower' && option.id === ['A', 'B', 'C', 'D'][index],
+  );
+
 /**
  * Detects the question subtype (choice, true-false, fill-blank, essay).
  */
@@ -101,6 +107,10 @@ export const detectQuestionSubtype = (
     if (block.options.length < 2) {
       return 'essay';
     }
+  }
+
+  if (hasLowercaseEssaySubparts(block)) {
+    return 'essay';
   }
 
   // 2. Options structural check
@@ -212,37 +222,6 @@ export class SemanticAnalyzer {
         return { role: 'paragraph', page: block.page, text: block.text, confidence: blockConf };
 
       case 'QuestionCandidate': {
-        const rawStem = joinLines(block.stemLines);
-        const tableBlocks: any[] = [];
-
-        if ((block.questionId === 4 && (!currentSectionHeading || currentSectionHeading.includes('PHẦN I'))) || rawStem.includes('Khảo sát thưởng tết Bính Ngọ')) {
-          tableBlocks.push({
-            role: 'table',
-            page: block.page,
-            text: 'Bảng thống kê mức thưởng Tết Bính Ngọ 2026',
-            caption: 'Bảng thống kê mức thưởng Tết Bính Ngọ 2026',
-            headers: ['Mức thưởng (triệu đồng)', '[5; 8)', '[8; 11)', '[11; 14)', '[14; 17)', '[17; 20)'],
-            rows: [
-              ['Số người', '30', '55', '45', '30', '20']
-            ],
-            confidence: 1.0,
-          });
-          block.stemLines = ['Dựa vào bảng thống kê trên, hãy tính mức thưởng trung bình của người lao động ở công ty X (làm tròn đến hàng phần trăm).'];
-        } else if ((block.questionId === 8 && (!currentSectionHeading || currentSectionHeading.includes('PHẦN I'))) || (rawStem.includes('bảng biến thiên') && (rawStem.includes("f'(x)") || rawStem.includes("f\'")))) {
-          tableBlocks.push({
-            role: 'table',
-            page: block.page,
-            text: 'Bảng biến thiên hàm số y = f(x)',
-            caption: 'Bảng biến thiên hàm số y = f(x)',
-            headers: ['x', '-\infty', '', '0', '', '1', '', '+\infty'],
-            rows: [
-              ["f'(x)", '', '+', '0', '-', '0', '+', ''],
-              ['f(x)', '-\infty', '\nearrow', '-2', '\searrow', '-3', '\nearrow', '+\infty']
-            ],
-            confidence: 1.0,
-          });
-          block.stemLines = ['Cho hàm số $y = f(x)$ liên tục trên $\mathbb{R}$ và có bảng biến thiên ở trên. Hàm số đạt cực đại tại điểm'];
-        }
         if (!isViableQuestion(block)) {
           const validQId = typeof block.questionId === 'number' && !isNaN(block.questionId) && block.questionId > 0;
           const text = [
@@ -274,6 +253,13 @@ export class SemanticAnalyzer {
 
         const subType = detectQuestionSubtype(block, currentSectionHeading);
         let stemText = joinLines(block.stemLines).replace(/^\s*\[MAP(?:STUDY)?\]\s*/gi, '').trim();
+        const essaySubparts = subType === 'essay' && hasLowercaseEssaySubparts(block)
+          ? block.options.map((option) => `${option.id.toLowerCase()}) ${optionContent(option)}`)
+          : [];
+
+        if (essaySubparts.length > 0) {
+          stemText = [stemText, ...essaySubparts].filter(Boolean).join('\n\n');
+        }
 
         // Merge preceding unassigned paragraph blocks for True-False & Fill-Blank
         if (subType === 'true-false' || subType === 'fill-blank') {
@@ -311,7 +297,7 @@ export class SemanticAnalyzer {
           }
         }
 
-        const options = block.options.map((opt, optIdx) => {
+        const options = essaySubparts.length > 0 ? [] : block.options.map((opt, optIdx) => {
           let content = normalizeMathAndText(optionContent(opt));
           if (subType === 'true-false') {
             const cutIndex = content.search(/\n?\s*(?:Cho\s+hàm\s+số|Cho\s+cấp\s+số|Cho\s+khối\s+chóp|Trong\s+không\s+gian|Khảo\s+sát|Câu\s+\d+|PHẦN)\b/i);

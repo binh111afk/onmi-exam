@@ -631,4 +631,44 @@ test('P28: pendingReading at end of document is NOT discarded', () => {
   assert.ok(hasReadingText, 'Reading passage without subsequent questions must be preserved as text paragraphs');
 });
 
+test('P29: lowercase a-d subparts remain within an essay question and university metadata is extracted', () => {
+  const doc = parse(
+    [
+      'TRƯỜNG ĐẠI HỌC SƯ PHẠM THÀNH PHỐ HỒ CHÍ MINH',
+      'KHOA CÔNG NGHỆ THÔNG TIN',
+      'ĐỀ THI KẾT THÚC HỌC PHẦN',
+      'Tên HP: XÁC SUẤT THỐNG KÊ VÀ ỨNG DỤNG TRONG GIÁO DỤC',
+      'Mã HP: COMP1827',
+      'Học kỳ: II',
+      'Thời gian làm bài: 90 phút',
+      'Câu 2. Một công ty có 9% hóa đơn sai sót.',
+      'a) Tính xác suất có 15 hóa đơn mắc sai sót.',
+      'b) Tính xác suất có nhiều nhất 15 hóa đơn mắc sai sót.',
+      'c) Tính xác suất có ít nhất 16 hóa đơn mắc sai sót.',
+      'd) Tính số hóa đơn mắc sai sót tối đa.',
+    ],
+    ['paragraph', 'paragraph', 'paragraph', 'paragraph', 'paragraph', 'paragraph', 'paragraph', 'question-candidate', 'option-candidate', 'option-candidate', 'option-candidate', 'option-candidate'],
+  );
+  const questions = getQuestions(doc);
 
+  assert.equal(doc.metadata.title, 'Đề thi kết thúc học phần - XÁC SUẤT THỐNG KÊ VÀ ỨNG DỤNG TRONG GIÁO DỤC');
+  assert.equal(doc.metadata.subject, 'XÁC SUẤT THỐNG KÊ VÀ ỨNG DỤNG TRONG GIÁO DỤC');
+  assert.equal(doc.metadata.grade, 'Đại học');
+  assert.equal(doc.metadata.time, 90);
+  assert.equal(questions.length, 1);
+  assert.equal(questions[0].questionType, 'essay');
+  assert.ok(questions[0].question.includes('a) Tính xác suất'));
+  assert.ok(!('options' in questions[0]));
+});
+
+test('P30: question four content is preserved without injected fixture data', () => {
+  const doc = parse(
+    ['Câu 4. Chiều cao trung bình của nữ sinh năm nhất là 162.5 cm.'],
+    ['question-candidate'],
+  );
+  const questions = getQuestions(doc);
+
+  assert.equal(questions.length, 1);
+  assert.ok(questions[0].question.includes('Chiều cao trung bình của nữ sinh năm nhất'));
+  assert.equal(doc.content.some((node) => node.kind === 'table'), false);
+});

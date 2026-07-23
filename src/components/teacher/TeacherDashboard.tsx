@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { Select } from '../Select';
 import { 
-  BookOpen, 
-  FileText, 
   ChevronRight, 
   Search, 
   ChevronDown, 
@@ -12,8 +10,7 @@ import {
   MoreVertical, 
   ChevronLeft, 
   HelpCircle, 
-  Filter, 
-  Upload 
+  Filter
 } from 'lucide-react';
 
 interface TeacherDashboardProps {
@@ -33,6 +30,30 @@ interface ExamHistoryItem {
   difficulty: 'easy' | 'medium' | 'hard';
   lastUpdated: string;
 }
+
+const DocumentComposeIcon: React.FC = () => (
+  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
+    <path opacity="0.5" d="M3 10C3 6.22876 3 4.34315 4.17157 3.17157C5.34315 2 7.22876 2 11 2H13C16.7712 2 18.6569 2 19.8284 3.17157C21 4.34315 21 6.22876 21 10V14C21 17.7712 21 19.6569 19.8284 20.8284C18.6569 22 16.7712 22 13 22H11C7.22876 22 5.34315 22 4.17157 20.8284C3 19.6569 3 17.7712 3 14V10Z" fill="currentColor" />
+    <path d="M16.5189 16.5013C16.6939 16.3648 16.8526 16.2061 17.1701 15.8886L21.1275 11.9312C21.2231 11.8356 21.1793 11.6708 21.0515 11.6264C20.5844 11.4644 19.9767 11.1601 19.4083 10.5917C18.8399 10.0233 18.5356 9.41561 18.3736 8.94849C18.3292 8.82066 18.1644 8.77687 18.0688 8.87254L14.1114 12.8299C13.7939 13.1474 13.6352 13.3061 13.4987 13.4811C13.3377 13.6876 13.1996 13.9109 13.087 14.1473C12.9915 14.3476 12.9205 14.5606 12.7786 14.9865L12.5951 15.5368L12.3034 16.4118L12.0299 17.2323C11.9601 17.4419 12.0146 17.6729 12.1708 17.8292C12.3271 17.9854 12.5581 18.0399 12.7677 17.9701L13.5882 17.6966L14.4632 17.4049L15.0135 17.2214L15.0136 17.2214C15.4394 17.0795 15.6524 17.0085 15.8527 16.913C16.0891 16.8004 16.3124 16.6623 16.5189 16.5013Z" fill="currentColor" />
+    <path d="M22.3665 10.6922C23.2112 9.84754 23.2112 8.47812 22.3665 7.63348C21.5219 6.78884 20.1525 6.78884 19.3078 7.63348L19.1806 7.76071C19.0578 7.88348 19.0022 8.05496 19.0329 8.22586C19.0522 8.33336 19.0879 8.49053 19.153 8.67807C19.2831 9.05314 19.5288 9.54549 19.9917 10.0083C20.4545 10.4712 20.9469 10.7169 21.3219 10.847C21.5095 10.9121 21.6666 10.9478 21.7741 10.9671C21.945 10.9978 22.1165 10.9422 22.2393 10.8194L22.3665 10.6922Z" fill="currentColor" />
+    <path fillRule="evenodd" clipRule="evenodd" d="M7.25 9C7.25 8.58579 7.58579 8.25 8 8.25H14.5C14.9142 8.25 15.25 8.58579 15.25 9C15.25 9.41421 14.9142 9.75 14.5 9.75H8C7.58579 9.75 7.25 9.41421 7.25 9ZM7.25 13C7.25 12.5858 7.58579 12.25 8 12.25H11C11.4142 12.25 11.75 12.5858 11.75 13C11.75 13.4142 11.4142 13.75 11 13.75H8C7.58579 13.75 7.25 13.4142 7.25 13ZM7.25 17C7.25 16.5858 7.58579 16.25 8 16.25H9.5C9.91421 16.25 10.25 16.5858 10.25 17C10.25 17.4142 9.91421 17.75 9.5 17.75H8C7.58579 17.75 7.25 17.4142 7.25 17Z" fill="currentColor" />
+  </svg>
+);
+
+const ExamComposeIcon: React.FC = () => (
+  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
+    <path opacity="0.5" d="M3 10C3 6.22876 3 4.34315 4.17157 3.17157C5.34315 2 7.22876 2 11 2H13C16.7712 2 18.6569 2 19.8284 3.17157C21 4.34315 21 6.22876 21 10V14C21 17.7712 21 19.6569 19.8284 20.8284C18.6569 22 16.7712 22 13 22H11C7.22876 22 5.34315 22 4.17157 20.8284C3 19.6569 3 17.7712 3 14V10Z" fill="currentColor" />
+    <path fillRule="evenodd" clipRule="evenodd" d="M7.25 12C7.25 11.5858 7.58579 11.25 8 11.25H16C16.4142 11.25 16.75 11.5858 16.75 12C16.75 12.4142 16.4142 12.75 16 12.75H8C7.58579 12.75 7.25 12.4142 7.25 12ZM7.25 8C7.25 7.58579 7.58579 7.25 8 7.25H16C16.4142 7.25 16.75 7.58579 16.75 8C16.75 8.41421 16.4142 8.75 16 8.75H8C7.58579 8.75 7.25 8.41421 7.25 8ZM7.25 16C7.25 15.5858 7.58579 15.25 8 15.25H13C13.4142 15.25 13.75 15.5858 13.75 16C13.75 16.4142 13.4142 16.75 13 16.75H8C7.58579 16.75 7.25 16.4142 7.25 16Z" fill="currentColor" />
+  </svg>
+);
+
+const UploadDocumentIcon: React.FC = () => (
+  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" className="h-5 w-5">
+    <path opacity="0.5" d="M2 12C2 7.28595 2 4.92893 3.46447 3.46447C4.92893 2 7.28595 2 12 2C16.714 2 19.0711 2 20.5355 3.46447C22 4.92893 22 7.28595 22 12C22 16.714 22 19.0711 20.5355 20.5355C19.0711 22 16.714 22 12 22C7.28595 22 4.92893 22 3.46447 20.5355C2 19.0711 2 16.714 2 12Z" fill="currentColor" />
+    <path d="M8 7.75C7.58579 7.75 7.25 7.41421 7.25 7C7.25 6.58579 7.58579 6.25 8 6.25H16C16.4142 6.25 16.75 6.58579 16.75 7C16.75 7.41421 16.4142 7.75 16 7.75H8Z" fill="currentColor" />
+    <path d="M12.75 17C12.75 17.4142 12.4142 17.75 12 17.75C11.5858 17.75 11.25 17.4142 11.25 17L11.25 11.8107L9.53033 13.5303C9.23744 13.8232 8.76256 13.8232 8.46967 13.5303C8.17678 13.2374 8.17678 12.7626 8.46967 12.4697L11.4697 9.46967C11.6103 9.32902 11.8011 9.25 12 9.25C12.1989 9.25 12.3897 9.32902 12.5303 9.46967L15.5303 12.4697C15.8232 12.7626 15.8232 13.2374 15.5303 13.5303C15.2374 13.8232 14.7626 13.8232 14.4697 13.5303L12.75 11.8107V17Z" fill="currentColor" />
+  </svg>
+);
 
 const initialHistory: ExamHistoryItem[] = [
   {
@@ -304,8 +325,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           className="bg-white border border-slate-100 hover:border-indigo-200 rounded-3xl p-6 shadow-sm hover:shadow-md hover:-translate-y-[2px] transition-all duration-205 flex flex-col justify-between cursor-pointer group relative overflow-hidden h-full"
         >
           <div className="space-y-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm shrink-0 transition-transform duration-300 group-hover:scale-105">
-              <BookOpen size={20} className="stroke-[2.5]" />
+            <div className="w-12 h-12 rounded-xl bg-primary-light text-primary flex items-center justify-center shadow-sm shrink-0 transition-transform duration-300 group-hover:scale-105 [&>svg]:h-7 [&>svg]:w-7">
+              <DocumentComposeIcon />
             </div>
             
             <div className="space-y-1.5">
@@ -343,8 +364,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             accept=".pdf,.docx,.doc,.pptx"
           />
           <div className="space-y-4">
-            <div className="w-12 h-12 rounded-xl bg-indigo-50 text-primary flex items-center justify-center shadow-sm shrink-0 transition-transform duration-300 group-hover:scale-105">
-              <Upload size={20} className="stroke-[2.5]" />
+            <div className="w-12 h-12 rounded-xl bg-primary-light text-primary flex items-center justify-center shadow-sm shrink-0 transition-transform duration-300 group-hover:scale-105 [&>svg]:h-7 [&>svg]:w-7">
+              <UploadDocumentIcon />
             </div>
             
             <div className="space-y-1.5">
@@ -372,8 +393,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           className="bg-white border border-slate-100 hover:border-indigo-200 rounded-3xl p-6 shadow-sm hover:shadow-md hover:-translate-y-[2px] transition-all duration-205 flex flex-col justify-between cursor-pointer group relative overflow-hidden h-full"
         >
           <div className="space-y-4">
-            <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-650 flex items-center justify-center shadow-sm shrink-0 transition-transform duration-300 group-hover:scale-105">
-              <FileText size={20} className="stroke-[2.5]" />
+            <div className="w-12 h-12 rounded-xl bg-primary-light text-primary flex items-center justify-center shadow-sm shrink-0 transition-transform duration-300 group-hover:scale-105 [&>svg]:h-7 [&>svg]:w-7">
+              <ExamComposeIcon />
             </div>
             
             <div className="space-y-1.5">
@@ -470,8 +491,8 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                   <tr key={item.id} className="border-b border-slate-100/60 hover:bg-slate-50/20 transition duration-150">
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-purple-50 text-[#6C5DD3] flex items-center justify-center shrink-0 select-none">
-                          <FileText size={14} />
+                        <div className="text-primary shrink-0 select-none [&>svg]:h-6 [&>svg]:w-6">
+                          <ExamComposeIcon />
                         </div>
                         <div>
                           <h4 className="text-xs font-black text-slate-800 leading-tight">

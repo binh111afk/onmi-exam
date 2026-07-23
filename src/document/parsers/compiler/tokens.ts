@@ -22,6 +22,8 @@ export interface TokenMeta {
   questionId?: number;
   /** Extracted option letter for OPTION_MARKER */
   optionId?: string;
+  /** Original letter case for OPTION_MARKER, used to distinguish essay subparts from choices */
+  optionLabelCase?: 'upper' | 'lower';
   /** For INSTRUCTION: first question in the range */
   rangeStart?: number;
   /** For INSTRUCTION: last question in the range */

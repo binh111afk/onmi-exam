@@ -1,5 +1,6 @@
 import React from 'react';
-import { ChevronLeft, Edit, Settings, FileCheck2, Search, GripVertical } from 'lucide-react';
+import { ChevronLeft, Search, GripVertical } from 'lucide-react';
+import { QuickComposeIcon, SettingsIcon, ViewPublishIcon } from './ExamEditorIcons';
 
 interface ExamSidebarProps {
   examSubView: 'edit' | 'config' | 'publish';
@@ -43,7 +44,7 @@ export const ExamSidebar: React.FC<ExamSidebarProps> = ({
                 : 'text-text-secondary hover:bg-slate-50 hover:text-text-primary'
               }`}
           >
-            <Edit size={16} />
+            <QuickComposeIcon size={16} />
             <span>Soạn đề</span>
           </button>
           <button
@@ -53,7 +54,7 @@ export const ExamSidebar: React.FC<ExamSidebarProps> = ({
                 : 'text-text-secondary hover:bg-slate-50 hover:text-text-primary'
               }`}
           >
-            <Settings size={16} />
+            <SettingsIcon size={16} />
             <span>Cấu hình đề thi</span>
           </button>
           <button
@@ -63,7 +64,7 @@ export const ExamSidebar: React.FC<ExamSidebarProps> = ({
                 : 'text-text-secondary hover:bg-slate-50 hover:text-text-primary'
               }`}
           >
-            <FileCheck2 size={16} />
+            <ViewPublishIcon size={16} />
             <span>Xem và xuất bản</span>
           </button>
         </div>

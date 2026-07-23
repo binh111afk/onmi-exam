@@ -179,14 +179,14 @@ const detectQuestionMarker = (
  */
 const splitInlineOptions = (
   text: string,
-): Array<{ id: string; content: string; confidence: number; isFuzzy?: boolean }> | null => {
+): Array<{ id: string; content: string; confidence: number; isFuzzy?: boolean; optionLabelCase: 'upper' | 'lower' }> | null => {
   if (!RE_OPTION_LETTER.test(text) && !RE_OPTION_CIRCLED.test(text) && !RE_OPTION_LETTER_FUZZY.test(text)) return null;
 
   // Match every occurrence of (^|\s)([A-D])[.)], capturing the start index
   const matches = [...text.matchAll(/(?:^|(?<=\s))([A-Da-d])\s*[.:,;-]\s*/gu)];
   if (matches.length < 2) return null;
 
-  const result: Array<{ id: string; content: string; confidence: number; isFuzzy?: boolean }> = [];
+  const result: Array<{ id: string; content: string; confidence: number; isFuzzy?: boolean; optionLabelCase: 'upper' | 'lower' }> = [];
   for (let i = 0; i < matches.length; i += 1) {
     const match = matches[i];
     const contentStart = (match.index ?? 0) + match[0].length;
@@ -196,7 +196,13 @@ const splitInlineOptions = (
     const content = text.slice(contentStart, contentEnd).trim();
     const isFuzzy = match[0].includes(',') || match[0].includes(':') || match[0].includes(';');
     if (content.length > 0) {
-      result.push({ id, content, confidence: isFuzzy ? 0.75 : 0.97, isFuzzy });
+      result.push({
+        id,
+        content,
+        confidence: isFuzzy ? 0.75 : 0.97,
+        isFuzzy,
+        optionLabelCase: match[1] === match[1].toLowerCase() ? 'lower' : 'upper',
+      });
     }
   }
   return result.length >= 2 ? result : null;
@@ -204,16 +210,27 @@ const splitInlineOptions = (
 
 const detectSingleOption = (
   text: string,
-): { id: string; content: string; confidence: number; isFuzzy?: boolean } | null => {
+): { id: string; content: string; confidence: number; isFuzzy?: boolean; optionLabelCase?: 'upper' | 'lower' } | null => {
   let m = RE_OPTION_LETTER.exec(text);
-  if (m) return { id: m[1].toUpperCase(), content: text.slice(m[0].length).trim(), confidence: 0.97 };
+  if (m) return {
+    id: m[1].toUpperCase(),
+    content: text.slice(m[0].length).trim(),
+    confidence: 0.97,
+    optionLabelCase: m[1] === m[1].toLowerCase() ? 'lower' : 'upper',
+  };
   m = RE_OPTION_CIRCLED.exec(text);
   if (m) {
     const id = CIRCLED_MAP[m[1]] ?? 'A';
     return { id, content: text.slice(m[0].length).trim(), confidence: 0.85 };
   }
   m = RE_OPTION_LETTER_FUZZY.exec(text);
-  if (m) return { id: m[1].toUpperCase(), content: text.slice(m[0].length).trim(), confidence: 0.75, isFuzzy: true };
+  if (m) return {
+    id: m[1].toUpperCase(),
+    content: text.slice(m[0].length).trim(),
+    confidence: 0.75,
+    isFuzzy: true,
+    optionLabelCase: m[1] === m[1].toLowerCase() ? 'lower' : 'upper',
+  };
   return null;
 };
 
@@ -300,7 +317,7 @@ export class Tokenizer {
         const stemOnly = firstOptIndex >= 0 ? qMarker.stem.slice(0, firstOptIndex).trim() : qMarker.stem;
         const qToken = t('QUESTION_MARKER', stemOnly, { questionId: qMarker.id }, qMarker.confidence);
         const optTokens = inlineOpts.map((opt) =>
-          t('OPTION_MARKER', opt.content, { optionId: opt.id, isFuzzy: opt.isFuzzy }, opt.confidence),
+          t('OPTION_MARKER', opt.content, { optionId: opt.id, isFuzzy: opt.isFuzzy, optionLabelCase: opt.optionLabelCase }, opt.confidence),
         );
         return [qToken, ...optTokens];
       }
@@ -340,13 +357,17 @@ export class Tokenizer {
     const inlineOpts = splitInlineOptions(text);
     if (inlineOpts !== null) {
       return inlineOpts.map((opt): Token =>
-        t('OPTION_MARKER', opt.content, { optionId: opt.id, isFuzzy: opt.isFuzzy }, opt.confidence),
+        t('OPTION_MARKER', opt.content, { optionId: opt.id, isFuzzy: opt.isFuzzy, optionLabelCase: opt.optionLabelCase }, opt.confidence),
       );
     }
 
     const singleOpt = detectSingleOption(text);
     if (singleOpt) {
-      return single('OPTION_MARKER', singleOpt.content, { optionId: singleOpt.id, isFuzzy: singleOpt.isFuzzy }, singleOpt.confidence);
+      return single('OPTION_MARKER', singleOpt.content, {
+        optionId: singleOpt.id,
+        isFuzzy: singleOpt.isFuzzy,
+        optionLabelCase: singleOpt.optionLabelCase,
+      }, singleOpt.confidence);
     }
 
     // ── 10. Paragraph ────────────────────────────────────────────────────

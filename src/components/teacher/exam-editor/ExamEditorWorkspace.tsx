@@ -1,13 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  Edit,
-  Save,
-  Eye,
-  Code,
-  Database,
   Check,
-  HelpCircle,
-  File,
   CheckCircle2,
   X,
   ChevronRight,
@@ -30,6 +23,8 @@ import { ExamSidebar } from './ExamSidebar';
 import { QuestionBankWorkspace } from './QuestionBankWorkspace';
 import { OmlPreviewPaper } from '../../ExamEditor/OmlRenderer/OmlPreviewPaper';
 import { OmlGuideModal } from './OmlGuideModal';
+import { PreviewIcon, NewExamIcon, OmlCodeIcon, QuickComposeIcon, QuestionBankIcon } from './ExamEditorIcons';
+import { GuideIcon, SaveIcon } from '../doc-editor/DocEditorHeader';
 import { useAlert } from '../../common/Alert';
 
 // Hooks & Sub-components
@@ -890,15 +885,15 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
               <button
                 onClick={handleCreateNewExamClick}
-                className="px-3.5 py-1.5 border border-red-200 text-red-555 hover:bg-red-50 text-[10px] font-bold rounded-xl flex items-center gap-1.5 transition cursor-pointer font-sans bg-white shadow-sm"
+                className="px-3.5 py-1.5 border border-slate-200 text-slate-650 hover:bg-slate-50 text-[10px] font-bold rounded-xl flex items-center gap-1.5 transition cursor-pointer font-sans bg-white shadow-sm"
               >
-                <File size={12} /> Tạo đề mới
+                <NewExamIcon size={12} className="text-primary" /> Tạo đề mới
               </button>
               <button
                 onClick={handleSaveExam}
                 className="px-3.5 py-1.5 border border-slate-200 text-slate-650 hover:bg-slate-55 text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer font-sans bg-white shadow-sm"
               >
-                <Save size={12} /> Lưu
+                <SaveIcon /> Lưu
               </button>
               <button
                 onClick={() => setShowLivePreview(!showLivePreview)}
@@ -907,7 +902,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                   : 'border-slate-200 text-slate-650 hover:bg-slate-50'
                   }`}
               >
-                <Eye size={12} /> Xem thử đề
+                <PreviewIcon size={12} className="text-primary" /> Xem thử đề
               </button>
             </div>
           </header>
@@ -934,17 +929,17 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
               </div>
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 <button onClick={() => handleSelectCreationMethod('code')} className="group rounded-[24px] border border-slate-100 bg-white p-8 text-left shadow-sm transition hover:-translate-y-1 hover:border-primary/20 hover:shadow-md cursor-pointer">
-                  <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-light text-primary"><Code size={30} className="stroke-[2.5]" /></div>
+                  <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-light text-primary"><OmlCodeIcon size={36} /></div>
                   <h3 className="text-lg font-black text-text-primary">Soạn bằng mã OML</h3>
                   <p className="mt-3 text-sm font-medium leading-relaxed text-text-secondary">Soạn trực tiếp mã nguồn OML và xem trước đề thi theo thời gian thực.</p>
                 </button>
                 <button onClick={() => handleSelectCreationMethod('ocr')} className="group rounded-[24px] border border-slate-100 bg-white p-8 text-left shadow-sm transition hover:-translate-y-1 hover:border-primary/20 hover:shadow-md cursor-pointer">
-                  <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 text-primary"><Edit size={30} className="stroke-[2.5]" /></div>
+                  <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-light text-primary"><QuickComposeIcon size={36} /></div>
                   <h3 className="text-lg font-black text-text-primary">Soạn nhanh</h3>
                   <p className="mt-3 text-sm font-medium leading-relaxed text-text-secondary">Tải file PDF hoặc ảnh để AI nhận diện OCR, sau đó kiểm tra và hiệu chỉnh.</p>
                 </button>
                 <button onClick={() => handleSelectCreationMethod('bank')} className="group rounded-[24px] border border-slate-100 bg-white p-8 text-left shadow-sm transition hover:-translate-y-1 hover:border-primary/20 hover:shadow-md cursor-pointer">
-                  <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600"><Database size={30} className="stroke-[2.5]" /></div>
+                  <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-light text-primary"><QuestionBankIcon size={36} /></div>
                   <h3 className="text-lg font-black text-text-primary">Ngân hàng câu hỏi</h3>
                   <p className="mt-3 text-sm font-medium leading-relaxed text-text-secondary">Chọn và tổ chức các câu hỏi có sẵn từ ngân hàng của hệ thống.</p>
                 </button>
@@ -987,7 +982,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                   onClick={() => setShowGuideModal(true)}
                   className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1 transition cursor-pointer"
                 >
-                  <HelpCircle size={12} /> Hướng dẫn
+                  <GuideIcon /> Hướng dẫn
                 </button>
               </div>
 

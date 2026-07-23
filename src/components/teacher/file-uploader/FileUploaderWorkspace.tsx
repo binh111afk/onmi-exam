@@ -1,4 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
+import * as pdfjsLib from 'pdfjs-dist';
+import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
+import '../../../config/pdfjsWorker';
 import {
   Upload,
   File,
@@ -56,6 +59,111 @@ const getFileIconUrl = (fileName: string) => {
   return '/doc.png';
 };
 
+interface PdfPreviewProps {
+  file: File;
+  page: number;
+  zoom: number;
+  onPageCountChange: (pageCount: number) => void;
+}
+
+const PdfPreview: React.FC<PdfPreviewProps> = ({ file, page, zoom, onPageCountChange }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [documentProxy, setDocumentProxy] = useState<PDFDocumentProxy | null>(null);
+  const [previewStatus, setPreviewStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+
+  useEffect(() => {
+    let isCancelled = false;
+    let loadingTask: ReturnType<typeof pdfjsLib.getDocument> | null = null;
+
+    setDocumentProxy(null);
+    setPreviewStatus('loading');
+
+    const loadDocument = async () => {
+      const data = await file.arrayBuffer();
+      if (isCancelled) return;
+
+      loadingTask = pdfjsLib.getDocument({ data });
+      const document = await loadingTask.promise;
+      if (isCancelled) {
+        return;
+      }
+      setDocumentProxy(document);
+      onPageCountChange(document.numPages);
+    };
+
+    void loadDocument().catch((error: unknown) => {
+      if (!isCancelled) {
+        console.error('Không thể tải bản xem trước PDF.', error);
+        setPreviewStatus('error');
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+      void loadingTask?.destroy();
+    };
+  }, [file, onPageCountChange]);
+
+  useEffect(() => {
+    if (!documentProxy || !canvasRef.current) return;
+
+    let isCancelled = false;
+    let renderTask: RenderTask | null = null;
+
+    const renderPage = async () => {
+      try {
+        setPreviewStatus('loading');
+        const pdfPage = await documentProxy.getPage(page);
+        if (isCancelled) {
+          return;
+        }
+        if (!canvasRef.current) return;
+
+        const viewport = pdfPage.getViewport({ scale: (zoom / 100) * 0.9 });
+        const canvas = canvasRef.current;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Không thể khởi tạo vùng vẽ PDF.');
+
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+        renderTask = pdfPage.render({ canvas, canvasContext: context, viewport });
+        await renderTask.promise;
+        if (!isCancelled) setPreviewStatus('ready');
+      } catch (error: unknown) {
+        if (!isCancelled && !(error instanceof pdfjsLib.RenderingCancelledException)) {
+          console.error('Không thể render bản xem trước PDF.', error);
+          setPreviewStatus('error');
+        }
+      }
+    };
+
+    void renderPage();
+
+    return () => {
+      isCancelled = true;
+      renderTask?.cancel();
+    };
+  }, [documentProxy, page, zoom]);
+
+  return (
+    <div className="relative flex-1 min-h-0 overflow-auto bg-slate-100 p-5 [scrollbar-color:theme(colors.primary)_theme(colors.slate.200)] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-primary/60 [&::-webkit-scrollbar-track]:bg-slate-200/70">
+      <div className="flex min-h-full min-w-full items-start justify-center">
+        <canvas ref={canvasRef} className="shrink-0 bg-white shadow-md" />
+      </div>
+      {previewStatus === 'loading' && (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-100/75 text-xs font-bold text-text-secondary">
+          Đang tải bản xem trước PDF...
+        </div>
+      )}
+      {previewStatus === 'error' && (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-100 p-6 text-center text-xs font-bold text-danger">
+          Không thể hiển thị bản xem trước của file PDF này.
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
   setMode,
   initialFile
@@ -85,6 +193,7 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
   const [previewPage, setPreviewPage] = useState(1);
   const [previewZoom, setPreviewZoom] = useState(100);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [pdfPageCount, setPdfPageCount] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileExtension = uploadedFile?.name.split('.').pop()?.toLowerCase() ?? '';
@@ -97,10 +206,7 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
   const officePreviewSrc = publicPreviewUrl && isOfficeFile
     ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(publicPreviewUrl)}`
     : null;
-  // state=100 tương ứng với zoom=60 trong URL (fit-width thực tế)
-  const filePreviewSrc = previewUrl && isPdfFile
-    ? `${previewUrl}#toolbar=0&page=${previewPage}&zoom=${Math.round(previewZoom * 0.6)}`
-    : previewUrl;
+  const filePreviewSrc = previewUrl;
 
   useEffect(() => {
     if (initialFile) {
@@ -112,6 +218,7 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
       setUploadedFile(createUploadedFileInfo(initialFile));
       setPreviewPage(1);
       setPreviewZoom(100);
+      setPdfPageCount(0);
     }
   }, [initialFile]);
 
@@ -134,6 +241,7 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
     setUploadedFile(createUploadedFileInfo(file));
     setPreviewPage(1);
     setPreviewZoom(100);
+    setPdfPageCount(0);
     if (docTitle === '' || docTitle === 'Đề cương ôn tập Sinh học 10 học kỳ 2') {
       setDocTitle(file.name.replace(/\.[^/.]+$/, ""));
     }
@@ -162,6 +270,7 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
     setUploadedFile(null);
     setPreviewPage(1);
     setPreviewZoom(100);
+    setPdfPageCount(0);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -392,10 +501,10 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
 
         {/* CỘT PHẢI — 50%, overflow-hidden ngăn tràn */}
         <div className="w-[50%] h-full flex flex-col min-h-0 min-w-0 overflow-hidden shrink-0">
-          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 flex flex-col h-full min-h-0">
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm px-6 py-4 flex flex-col h-full min-h-0">
 
             {/* Card header: tiêu đề + tải xuống */}
-            <div className="flex items-center justify-between mb-4 shrink-0">
+            <div className="flex items-center justify-between mb-3 shrink-0">
               <div className="flex items-center gap-2 min-w-0">
                 {uploadedFile ? (
                   <div className="w-7 h-7 rounded-lg overflow-hidden flex items-center justify-center shrink-0">
@@ -431,15 +540,15 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
 
             {/* Viewport */}
             {uploadedFile ? (
-              <div className="flex-1 relative overflow-hidden rounded-2xl border border-slate-200 min-h-0 bg-slate-100">
+              <div className="flex-1 relative overflow-hidden rounded-2xl border border-slate-200 min-h-0 bg-slate-200 flex flex-col">
 
-                {/* Floating dark pill toolbar — PDF only */}
+                {/* Thanh toolbar PDF — dạng thanh vuông, nằm trong luồng (không đè lên nội dung PDF) */}
                 {isPdfFile && (
-                  <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-3 bg-slate-800/80 backdrop-blur-md text-white px-4 py-2 rounded-full shadow-lg select-none">
+                  <div className="shrink-0 z-10 flex items-center justify-center gap-3 bg-slate-200 text-slate-700 px-4 py-2 rounded-t-2xl shadow-sm select-none border-b border-slate-300">
                     <button
                       onClick={() => setPreviewPage(p => Math.max(1, p - 1))}
                       disabled={previewPage <= 1}
-                      className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 text-slate-200 hover:text-white disabled:opacity-30 transition cursor-pointer"
+                      className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-slate-300/70 text-slate-500 hover:text-slate-800 disabled:opacity-30 transition cursor-pointer"
                     >
                       <ChevronLeft size={14} className="stroke-[2.5]" />
                     </button>
@@ -451,47 +560,48 @@ export const FileUploaderWorkspace: React.FC<FileUploaderWorkspaceProps> = ({
                         value={previewPage}
                         onChange={(e) => {
                           const v = parseInt(e.target.value);
-                          if (!isNaN(v) && v >= 1) setPreviewPage(v);
+                          if (!isNaN(v) && v >= 1) setPreviewPage(Math.min(v, pdfPageCount || v));
                         }}
-                        className="w-10 text-center bg-slate-900/50 border border-slate-600 rounded text-xs py-0.5 focus:outline-none focus:border-indigo-400 text-white font-black"
+                        className="w-10 text-center bg-white border border-slate-300 rounded-md text-xs py-0.5 focus:outline-none focus:border-indigo-400 text-slate-700 font-black"
                       />
-                      <span className="text-slate-400 text-[10px]">trang</span>
+                      <span className="text-slate-500 text-[10px]">trang</span>
                     </div>
 
                     <button
-                      onClick={() => setPreviewPage(p => p + 1)}
-                      className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 text-slate-200 hover:text-white transition cursor-pointer"
+                      onClick={() => setPreviewPage(p => Math.min(pdfPageCount || p, p + 1))}
+                      disabled={pdfPageCount > 0 && previewPage >= pdfPageCount}
+                      className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-slate-300/70 text-slate-500 hover:text-slate-800 disabled:opacity-30 transition cursor-pointer"
                     >
                       <ChevronRight size={14} className="stroke-[2.5]" />
                     </button>
 
-                    <div className="w-px h-4 bg-slate-600" />
+                    <div className="w-px h-4 bg-slate-300" />
 
                     <button
                       onClick={() => setPreviewZoom(z => Math.max(10, z - 10))}
-                      className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 text-slate-200 hover:text-white font-black text-sm transition cursor-pointer"
+                      className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-slate-300/70 text-slate-500 hover:text-slate-800 font-black text-sm transition cursor-pointer"
                     >
                       -
                     </button>
-                    <span className="text-[10px] font-black text-slate-300 min-w-[30px] text-center">
+                    <span className="text-[10px] font-black text-slate-600 min-w-[30px] text-center">
                       {previewZoom}%
                     </span>
                     <button
                       onClick={() => setPreviewZoom(z => Math.min(300, z + 10))}
-                      className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/10 text-slate-200 hover:text-white font-black text-sm transition cursor-pointer"
+                      className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-slate-300/70 text-slate-500 hover:text-slate-800 font-black text-sm transition cursor-pointer"
                     >
                       +
                     </button>
                   </div>
                 )}
 
-                {/* PDF iframe */}
-                {isPdfFile && filePreviewSrc && (
-                  <iframe
-                    key={`${previewPage}-${previewZoom}-${uploadedFile.name}`}
-                    title={`Xem trước ${uploadedFile.name}`}
-                    src={filePreviewSrc}
-                    className="w-full h-full border-0 bg-white"
+                {isPdfFile && (
+                  <PdfPreview
+                    key={uploadedFile.name}
+                    file={uploadedFile.file}
+                    page={previewPage}
+                    zoom={previewZoom}
+                    onPageCountChange={setPdfPageCount}
                   />
                 )}
 

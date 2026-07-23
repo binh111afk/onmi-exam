@@ -36,6 +36,7 @@ export interface LogicalOption {
   lines: string[];
   confidence: number;
   isFuzzy?: boolean;
+  markerCase?: 'upper' | 'lower';
 }
 
 export interface LogicalBlock {
@@ -179,6 +180,7 @@ export class LogicalBlockBuilder {
               lines: token.text ? [token.text] : [],
               confidence: token.confidence,
               isFuzzy: token.meta.isFuzzy,
+              markerCase: token.meta.optionLabelCase,
             });
             break;
           }
@@ -197,6 +199,7 @@ export class LogicalBlockBuilder {
               lines: token.text ? [token.text] : [],
               confidence: token.confidence,
               isFuzzy: token.meta.isFuzzy,
+              markerCase: token.meta.optionLabelCase,
             });
           } else {
             // Unexpected option in another context — treat as paragraph

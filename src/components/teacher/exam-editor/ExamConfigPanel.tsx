@@ -2,7 +2,6 @@ import React from 'react';
 import { Select } from '../../Select';
 import {
   CheckCircle2,
-  Send,
   FileText,
   ChevronDown,
   Sliders,
@@ -19,6 +18,7 @@ import {
   Calculator,
   ShieldCheck,
 } from 'lucide-react';
+import { NextIcon } from '../doc-editor/DocEditorHeader';
 
 interface ToggleProps {
   id: string;
@@ -146,8 +146,8 @@ export const ExamConfigPanel: React.FC<ExamConfigPanelProps> = ({
             onClick={handlePublishExam}
             className="px-5 py-2 bg-[#6C5DD3] hover:bg-[#5C4DB3] text-white text-[10px] font-black rounded-xl flex items-center gap-2 transition cursor-pointer font-sans shadow-md shadow-indigo-150"
           >
-            <Send size={13} className="stroke-[2.5]" />
-            Xuất bản đề thi
+            <NextIcon />
+            Tiếp theo
           </button>
         </div>
       </header>
