@@ -3,6 +3,7 @@ import type { DocumentLayout, DocumentLayoutNode, LayoutBoundingBox, OcrPlanActi
 export interface OcrRegion {
   id: string;
   layoutNodeId: string;
+  rawNodeIndex?: number;
   page: number;
   boundingBox: LayoutBoundingBox;
   readingOrder: number;
@@ -61,6 +62,7 @@ export class RegionPlanner {
     return {
       id: `region-${node.id}`,
       layoutNodeId: node.id,
+      rawNodeIndex: node.rawNodeIndex,
       page: node.page,
       boundingBox: node.boundingBox,
       readingOrder: node.readingOrder,

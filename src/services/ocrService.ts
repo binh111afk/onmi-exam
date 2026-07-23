@@ -11,8 +11,8 @@ import { omlToQuestionDocument, questionDocumentToOml } from '../document/adapte
 import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist';
 import type { QuestionDocument } from '../types/question-object';
 import type { OcrDiagnosticReport, OcrRejectedBlock } from '../types/ocr-diagnostics';
-import { OcrProviderAdapterError, OcrProviderFactory, OcrProviderHttpError, parseFileWithGlmOcr } from '../document/ocr/ocrProvider';
-import type { BenchmarkRunOptions, OcrProviderId } from '../document/ocr/ocrProvider';
+import { OcrProviderAdapterError, OcrProviderFactory, OcrProviderHttpError } from '../document/ocr/ocrProvider';
+import type { BenchmarkRunOptions } from '../document/ocr/ocrProvider';
 import { shouldAbortOnOcrFailure } from '../document/pipeline/pipelineMode';
 import type { PipelineMode } from '../document/pipeline/pipelineMode';
 
@@ -373,7 +373,7 @@ export const runLegacyOcrToQuestionDocument = async (
   providerOptions?: BenchmarkRunOptions,
   pipelineMode: PipelineMode = 'strict',
 ): Promise<QuestionDocument> => {
-  const selectedProvider = OcrProviderFactory.create(providerOptions?.providerId === 'google' ? 'gemini' : providerOptions?.providerId === 'zhipu' ? 'zhipu' : 'gpt', providerOptions?.model);
+  const selectedProvider = OcrProviderFactory.create(providerOptions?.providerId === 'google' ? 'gemini' : 'gpt', providerOptions?.model);
   const aiApiUrl = import.meta.env.AZURE_QWEN_ENDPOINT;
   const aiModel = import.meta.env.AZURE_QWEN_MODEL;
   const aiApiKey = import.meta.env.AZURE_QWEN_KEY;
@@ -663,7 +663,7 @@ Các khối (blocks) được phép nằm trong mảng "content" (chỉ dùng kh
   const ocrWholeDocument = async (pages: OcrPageData[], base64EncodeTimeMs: number | null): Promise<ParsedOcrPage> => {
     const requestBase64Bytes = pages.reduce((total, page) => total + page.base64Data.length, 0);
     diagnostics.requests.push({ provider: selectedProvider.id, model: selectedProvider.id === 'gemini' ? (providerOptions?.model ?? 'gemini-3.5-flash') : (aiModel ?? selectedProvider.id), endpoint: selectedProvider.id === 'gemini' ? `https://generativelanguage.googleapis.com/v1beta/models/${providerOptions?.model ?? 'gemini-3.5-flash'}:generateContent` : aiApiUrl, page: null, regionId: null, imageWidth: null, imageHeight: null, imageBytes: null, base64Bytes: requestBase64Bytes, mimeTypes: pages.map((page) => page.mimeType) });
-    if (selectedProvider.id === 'gemini' || selectedProvider.id === 'zhipu') {
+    if (selectedProvider.id === 'gemini') {
       const uploadStart = performance.timeOrigin + performance.now();
       const requestStartedAt = performance.now();
       try {
@@ -927,24 +927,6 @@ export const parseFileToOml = async (
   file: File,
   onProgress?: (statusText: string) => void,
 ): Promise<string> => {
-  const extension = file.name.split('.').pop()?.toLowerCase();
-  const isGlmOcrFile = extension === 'pdf'
-    || extension === 'png'
-    || extension === 'jpg'
-    || extension === 'jpeg'
-    || file.type === 'application/pdf'
-    || file.type === 'image/png'
-    || file.type === 'image/jpeg';
-
-  if (isGlmOcrFile) {
-    onProgress?.('Đang nhận diện tài liệu bằng GLM OCR...');
-    const omlJson = await parseFileWithGlmOcr(
-      file,
-      () => onProgress?.('Đang chuyển Markdown sang OML...'),
-    );
-    return omlJson;
-  }
-
   const { DocumentPipelineDispatcher } = await import('../document/pipeline/documentPipelineDispatcher');
   const result = await new DocumentPipelineDispatcher().dispatch(file, onProgress);
   return JSON.stringify(questionDocumentToOml(result.document), null, 2);

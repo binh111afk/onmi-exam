@@ -6,10 +6,14 @@ export class MergeEngine {
     const completed = results.filter((result) => result.status === 'completed').sort((first, second) => (
       first.task.region.page - second.task.region.page || first.task.region.readingOrder - second.task.region.readingOrder
     ));
+    const replacedRawNodeIndexes = new Set(completed
+      .filter((result) => result.task.region.action === 'math-ocr')
+      .map((result) => result.task.region.rawNodeIndex)
+      .filter((index): index is number => index !== undefined));
     const regionNodes = completed.flatMap((result) => result.nodes.map((node) => this.withRegionSource(node, result)));
     return {
       ...document,
-      nodes: [...document.nodes, ...regionNodes],
+      nodes: [...document.nodes.filter((_, index) => !replacedRawNodeIndexes.has(index)), ...regionNodes],
       ocrCandidates: document.ocrCandidates.filter((candidate) => !completed.some((result) => result.task.region.page === (candidate.page ?? 1))),
       reviewMarkers: document.reviewMarkers.filter((marker) => marker.reason !== 'ocr-required' || !completed.some((result) => result.task.region.page === (marker.page ?? 1))),
       ocrRequirement: completed.length > 0 && document.ocrCandidates.length === completed.length ? 'not-required' : document.ocrRequirement,

@@ -29,6 +29,7 @@ export interface RawNodeBase {
 export interface RawTextNode extends RawNodeBase {
   kind: 'text';
   text: string;
+  mathConfidence?: number;
   style?: 'heading' | 'paragraph';
   headingLevel?: 1 | 2 | 3;
   numbering?: string;

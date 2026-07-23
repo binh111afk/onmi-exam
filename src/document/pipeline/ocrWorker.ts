@@ -8,6 +8,8 @@ import type { OcrDiagnosticReport } from '../../types/ocr-diagnostics';
 import type { BenchmarkRunOptions } from '../ocr/ocrProvider';
 import type { PipelineMode } from './pipelineMode';
 import { shouldAbortOnOcrFailure } from './pipelineMode';
+import { LatexOcrService } from '../../services/latexOcrService';
+import { validateLatexOcrCandidate } from '../ocr/latexCandidateValidator';
 
 export interface OcrTask {
   file?: File;
@@ -54,6 +56,8 @@ const toRawNodes = (content: DocumentContentNode[], region: OcrRegion): RawDocum
 });
 
 export class OcrWorker {
+  private readonly latexOcr = new LatexOcrService();
+
   constructor(
     private readonly benchmarkRunOptions?: BenchmarkRunOptions,
     private readonly pipelineMode: PipelineMode = 'strict',
@@ -61,8 +65,38 @@ export class OcrWorker {
 
   async process(task: OcrTask, onProgress?: (statusText: string) => void, memoryTelemetry?: LegacyOcrMemoryTelemetry, onRequestProfile?: (record: OcrRequestProfilerRecord) => void, onDiagnostics?: (report: OcrDiagnosticReport) => void): Promise<OcrWorkerResult> {
     const startedAt = performance.now();
-    if (!task.file || task.region.action === 'math-ocr') {
+    if (!task.file) {
       return { status: 'deferred', nodes: [], task, processingTimeMs: performance.now() - startedAt };
+    }
+
+    if (task.region.action === 'math-ocr') {
+      try {
+        const latex = await this.latexOcr.recognize(task.file);
+        const validation = validateLatexOcrCandidate(latex);
+        if (!validation.valid || !validation.latex) {
+          return {
+            status: 'deferred',
+            nodes: [],
+            task,
+            processingTimeMs: performance.now() - startedAt,
+            reason: `LaTeX OCR candidate rejected: ${validation.reason ?? 'unknown validation error'}`,
+          };
+        }
+        return {
+          status: 'completed',
+          nodes: [{ kind: 'text', text: `$$${validation.latex}$$`, page: task.region.page, confidence: 0.95 }],
+          task,
+          processingTimeMs: performance.now() - startedAt,
+        };
+      } catch (error) {
+        return {
+          status: 'deferred',
+          nodes: [],
+          task,
+          processingTimeMs: performance.now() - startedAt,
+          reason: error instanceof Error ? error.message : String(error),
+        };
+      }
     }
 
     const networkStartedAt = performance.now();

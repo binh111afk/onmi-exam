@@ -1,11 +1,11 @@
-import { extractGlmText, markdownToOmlJson } from './glmResponseAdapter.ts';
+import { markdownToOmlJson } from './glmResponseAdapter.ts';
 import { adaptGeminiResponse } from './geminiResponseAdapter';
 import type { OcrAdapterDiagnostic, OcrHttpDiagnostic, OcrProviderResponseDiagnostic } from '../../types/ocr-diagnostics';
 
-export type OcrProviderId = 'azure-qwen' | 'glm' | 'gpt' | 'gemini' | 'zhipu' | 'auto';
+export type OcrProviderId = 'azure-qwen' | 'gpt' | 'gemini' | 'auto';
 
 export interface BenchmarkRunOptions {
-  providerId: 'openai' | 'google' | 'zhipu';
+  providerId: 'openai' | 'google';
   model: string;
 }
 
@@ -124,7 +124,7 @@ const requireSuccessfulJson = (data: HttpResponseData, provider: string, model: 
     const responseError = isRecord(responseBody.error) ? responseBody.error : {};
     const apiMessage = asStringOrNull(responseError.message ?? responseBody.message);
     throw new OcrProviderHttpError(
-      `GLM OCR HTTP ${data.http.status} ${data.http.statusText}${apiMessage ? `: ${apiMessage}` : ''}`,
+      `OCR provider HTTP ${data.http.status} ${data.http.statusText}${apiMessage ? `: ${apiMessage}` : ''}`,
       data.http,
       metadata,
     );
@@ -165,36 +165,6 @@ const fileToBase64 = async (file: File): Promise<string> => {
   }
 
   return btoa(binary);
-};
-
-export const parseFileWithGlmOcr = async (
-  file: File,
-  onMarkdownReady?: () => void,
-): Promise<string> => {
-  const endpoint = '/api/glm-ocr';
-
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'glm-ocr',
-      file: await fileToBase64(file),
-      return_crop_images: false,
-      need_layout_visualization: false,
-    }),
-  });
-  const data = await readHttpResponse(response, 'glm-ocr', 'glm-ocr', endpoint);
-  const body = requireSuccessfulJson(data, 'glm-ocr', 'glm-ocr');
-  const markdown = extractGlmText(body);
-  if (!markdown.trim()) {
-    const apiMessage = typeof body.message === 'string' ? ` ${body.message}` : '';
-    throw new Error(`GLM OCR không trả về md_results.${apiMessage}`);
-  }
-
-  onMarkdownReady?.();
-  return markdownToOmlJson(markdown);
 };
 
 export class GptVisionProvider implements OcrProvider {
@@ -252,30 +222,9 @@ export class GeminiFlashProvider implements OcrProvider {
   }
 }
 
-export class ZhipuVisionProvider implements OcrProvider {
-  readonly id = 'zhipu' as const;
-  readonly displayName = 'Zhipu GLM Vision';
-  private readonly apiKey = import.meta.env.VITE_GLM_API_KEY;
-  private readonly endpoint = import.meta.env.VITE_GLM_API_URL;
-  private readonly model: string;
-
-  constructor(model?: string) { this.model = model ?? import.meta.env.VITE_GLM_MODEL ?? 'glm-4.6v-flash'; }
-
-  async process(request: OcrRequest): Promise<OcrResult> {
-    if (!this.apiKey || !this.endpoint) throw new Error('GLM provider chưa được cấu hình VITE_GLM_API_KEY/VITE_GLM_API_URL.');
-    const response = await fetchWithDiagnostics(this.endpoint, { method: 'POST', headers: { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: this.model, messages: [{ role: 'user', content: [{ type: 'text', text: request.prompt }, ...request.images.map((image) => ({ type: 'image_url', image_url: { url: image.base64Data } }))] }], response_format: { type: 'json_object' } }) }, this.id, this.model);
-    const data = await readHttpResponse(response, this.id, this.model, this.endpoint);
-    const body = requireSuccessfulJson(data, this.id, this.model);
-    const usage = isRecord(body.usage) ? body.usage : {};
-    const text = openAiText(body);
-    return { provider: this.id, model: this.model, rawResponse: data.rawResponse, text, requestTokens: asNumber(usage.prompt_tokens), responseTokens: asNumber(usage.completion_tokens), costEstimate: null, http: data.http, responseMetadata: metadataFromResponse(this.id, this.model, body), adapter: { provider: this.id, input: data.rawResponse, output: text } };
-  }
-}
-
 export class OcrProviderFactory {
   static create(id: OcrProviderId = 'gpt', model?: string): OcrProvider {
     if (id === 'gemini') return new GeminiFlashProvider(model);
-    if (id === 'zhipu') return new ZhipuVisionProvider(model);
     if (id === 'gpt' || id === 'azure-qwen') return new GptVisionProvider(model);
     throw new Error(`OCR provider không được hỗ trợ trong giai đoạn này: ${id}.`);
   }

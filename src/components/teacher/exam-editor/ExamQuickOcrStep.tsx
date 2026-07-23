@@ -244,7 +244,7 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
                   Lỗi nhận diện OCR
                 </h3>
                 <p className="text-[11px] text-slate-500 font-bold leading-relaxed">
-                  Đã xảy ra lỗi trong quá trình gửi yêu cầu nhận diện đến GLM OCR.
+                  Đã xảy ra lỗi trong quá trình nhận diện OCR.
                 </p>
                 <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-left font-mono text-[9px] text-red-650 max-h-[120px] overflow-y-auto mt-2">
                   {ocrError}
@@ -436,7 +436,7 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
                 Lỗi nhận diện OCR
               </h3>
               <p className="text-[11px] text-slate-500 font-bold leading-relaxed">
-                Đã xảy ra lỗi trong quá trình gửi yêu cầu nhận diện đến GLM OCR.
+                Đã xảy ra lỗi trong quá trình nhận diện OCR.
               </p>
               <div className="bg-red-50 border border-red-100 rounded-xl p-3 text-left font-mono text-[9px] text-red-650 max-h-[120px] overflow-y-auto mt-2">
                 {ocrError}

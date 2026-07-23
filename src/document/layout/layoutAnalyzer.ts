@@ -3,6 +3,7 @@ import type { RawDocument, RawDocumentNode } from '../../types/raw-document';
 import { DocumentRuleEngine } from '../rules/documentRuleEngine';
 import { vietnameseExamRules } from '../rules/vietnameseExamRules';
 import { DocumentNodeClassifier } from './documentNodeClassifier';
+import { shouldUseMathOcr } from './formulaOcrPolicy';
 
 const DEFAULT_BOX: LayoutBoundingBox = { x: 0, y: 0, width: 1, height: 1 };
 
@@ -17,6 +18,9 @@ const toBoundingBox = (node: RawDocumentNode, position: number): LayoutBoundingB
 const planOcr = (node: DocumentLayoutNode): OcrPlanItem => {
   switch (node.type) {
     case 'formula':
+      if (!shouldUseMathOcr(node.mathConfidence)) {
+        return { nodeId: node.id, action: 'no-ocr', reason: 'formula reconstructed from PDF glyph geometry', confidence: node.mathConfidence };
+      }
       return { nodeId: node.id, action: 'math-ocr', reason: 'formula region requires dedicated math recognition', confidence: node.confidence };
     case 'image':
       return { nodeId: node.id, action: 'text-ocr', reason: 'image may contain instructional or question text', confidence: node.confidence };
@@ -48,6 +52,7 @@ export class LayoutAnalyzer {
         type: classification.type,
         text: rawNode.kind === 'text' ? rawNode.text : undefined,
         confidence: classification.confidence,
+        mathConfidence: rawNode.kind === 'text' ? rawNode.mathConfidence : undefined,
       } satisfies DocumentLayoutNode;
     });
 

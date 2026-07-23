@@ -31,6 +31,7 @@ export interface DocumentLayoutNode {
   type: LayoutNodeType;
   text?: string;
   confidence: number;
+  mathConfidence?: number;
 }
 
 export interface DocumentLayoutPage {

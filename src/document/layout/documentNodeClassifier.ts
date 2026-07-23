@@ -18,6 +18,12 @@ const priority: Array<LayoutNodeType> = [
   'heading',
 ];
 
+const isFormulaDominant = (text: string): boolean => {
+  const proseWords = text.match(/\p{L}{3,}/gu) ?? [];
+  const mathWords = proseWords.filter((word) => /^(?:sin|cos|tan|cot|log|ln|lim)$/iu.test(word));
+  return proseWords.length - mathWords.length <= 1;
+};
+
 export class DocumentNodeClassifier {
   private readonly rules: DocumentRuleEngine;
 
@@ -31,7 +37,9 @@ export class DocumentNodeClassifier {
     if (node.kind === 'serialized') return { type: 'unknown', confidence: 0.25 };
     if (node.style === 'heading' || node.headingLevel !== undefined) return { type: 'heading', confidence: node.confidence };
 
-    const matchedKinds = this.rules.match(node.text).map((match) => match.kind);
+    const matchedKinds = this.rules.match(node.text)
+      .map((match) => match.kind)
+      .filter((kind) => kind !== 'formula' || isFormulaDominant(node.text));
     const matched = priority.find((type) => {
       const expectedRuleKind = type.replace('-candidate', '').replace('explanation', 'answer').replace('reading', 'reading-passage') as typeof matchedKinds[number];
       return matchedKinds.includes(expectedRuleKind);

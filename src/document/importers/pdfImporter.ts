@@ -3,6 +3,7 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 import '../../config/pdfjsWorker';
 import type { DocumentImporter } from '../contracts';
 import type { RawDocument, RawTextNode } from '../../types/raw-document';
+import { reconstructFormulaLineWithConfidence } from './formulaReconstructor';
 
 const MIN_PAGE_TEXT_LENGTH = 8;
 
@@ -42,7 +43,7 @@ const groupTokensIntoBaselineLines = (tokens: PdfTextToken[]): PdfTextToken[][] 
 
   for (const token of sortedByY) {
     const existingLine = lines.find((line) => {
-      const tolerance = Math.max(line.avgHeight, token.height) * 0.65;
+      const tolerance = Math.max(line.avgHeight, token.height) * 0.95;
       return Math.abs(token.y - line.baseY) <= tolerance;
     });
 
@@ -66,6 +67,7 @@ const groupTokensIntoBaselineLines = (tokens: PdfTextToken[]): PdfTextToken[][] 
 
 interface MergedTextSegment {
   text: string;
+  mathConfidence?: number;
   x: number;
   y: number;
   width: number;
@@ -116,6 +118,22 @@ const mergeLineTokensWithGeometry = (line: PdfTextToken[]): MergedTextSegment[] 
 };
 
 const buildSegmentFromTokens = (tokens: PdfTextToken[]): MergedTextSegment => {
+  const reconstructedFormula = reconstructFormulaLineWithConfidence(tokens);
+  if (reconstructedFormula !== null) {
+    const minX = Math.min(...tokens.map((token) => token.x));
+    const minY = Math.min(...tokens.map((token) => token.y - token.height));
+    const maxX = Math.max(...tokens.map((token) => token.x + token.width));
+    const maxY = Math.max(...tokens.map((token) => token.y));
+    return {
+      text: reconstructedFormula.text,
+      mathConfidence: reconstructedFormula.confidence,
+      x: minX,
+      y: minY,
+      width: Math.max(1, maxX - minX),
+      height: Math.max(1, maxY - minY),
+    };
+  }
+
   if (tokens.length === 1) {
     return {
       text: tokens[0].text.trim(),
@@ -187,6 +205,7 @@ export class PdfImporter implements DocumentImporter<File> {
                   nodes.push({
                     kind: 'text',
                     text: seg.text,
+                    ...(seg.mathConfidence === undefined ? {} : { mathConfidence: seg.mathConfidence }),
                     page: pageNumber,
                     boundingBox: [seg.x, seg.y, seg.width, seg.height],
                     confidence: 1,

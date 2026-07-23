@@ -107,6 +107,10 @@ const isNoiseText = (text: string): boolean => {
   if (/^\s*\d{1,2}\s+\d{1,2}\s*$/u.test(trimmed)) {
     return true;
   }
+  // Detached vector/arrow glyphs often collapse to incomplete assignments.
+  if (/^(?:[a-zA-Z]\s*=\s*;\s*)+[a-zA-Z]\s*=$/u.test(trimmed)) {
+    return true;
+  }
   // Diagram labels: single-character sequences separated by spaces (e.g. S V U T Q RP DN A C M B)
   if (/^(?:\s*[a-zA-Z1-9]\s+){3,}[a-zA-Z1-9]?\s*$/u.test(trimmed)) {
     return true;
