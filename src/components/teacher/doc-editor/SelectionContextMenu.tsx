@@ -1,13 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { 
-  Copy, 
   Scissors, 
   Clipboard, 
   Bold, 
   Italic, 
   Underline, 
-  Baseline, 
   Highlighter, 
   Heading1, 
   Heading2, 
@@ -16,6 +14,7 @@ import {
   ChevronRight,
   Check
 } from 'lucide-react';
+import { CopyIcon, TextColorIcon } from '../../AppIcons';
 import type { DocBlock } from '../../../types/doc-editor';
 import { useFormattingState } from './FormattingStateProvider';
 
@@ -138,7 +137,7 @@ export const SelectionContextMenu: React.FC<SelectionContextMenuProps> = ({
         onClick={() => handleAction(onCopy)}
         className="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center gap-2 hover:bg-slate-50 cursor-pointer text-slate-700"
       >
-        <Copy size={12} className="text-slate-400" />
+        <CopyIcon size={12} className="text-slate-400" />
         <span>Sao chép (Copy)</span>
       </button>
 
@@ -200,7 +199,7 @@ export const SelectionContextMenu: React.FC<SelectionContextMenuProps> = ({
           className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between hover:bg-slate-50 cursor-pointer text-slate-700 ${activeSubmenu === 'color' ? 'bg-slate-50' : ''}`}
         >
           <div className="flex items-center gap-2">
-            <Baseline size={12} className="text-slate-400" />
+            <TextColorIcon size={14} className="text-slate-400" />
             <span>Màu chữ</span>
           </div>
           <ChevronRight size={10} className="text-slate-400" />

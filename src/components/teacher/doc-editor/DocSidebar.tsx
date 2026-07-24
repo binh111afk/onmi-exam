@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Edit, Trash2, FolderPlus, FilePlus } from 'lucide-react';
+import { ChevronDown, Edit, FilePlus } from 'lucide-react';
+import { AddFolderIcon, TrashIcon } from '../../AppIcons';
 import type { Chapter, Lesson } from '../../../types/doc-editor';
 import { Tooltip } from './Tooltip';
 
@@ -215,7 +216,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
           <div className="flex items-center gap-1">
             <Tooltip content="Thêm thư mục con">
               <button onMouseDown={(e) => e.preventDefault()} onClick={handleAddFolder} className="p-1 hover:bg-slate-50 text-slate-400 hover:text-slate-700 rounded transition cursor-pointer">
-                <FolderPlus size={12} />
+                <AddFolderIcon size={12} />
               </button>
             </Tooltip>
             <Tooltip content="Thêm bài học mới">
@@ -264,8 +265,8 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                         <Tooltip content="S\u1eeda t\u00ean ch\u01b0\u01a1ng">
                           <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onStartEditing(ch.id); }} className="p-0.5 hover:bg-slate-100/50 text-slate-400 hover:text-slate-700 rounded transition"><Edit size={10} /></button>
                         </Tooltip>
-                        <Tooltip content="X\u00f3a ch\u01b0\u01a1ng">
-                          <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onDeleteChapter(ch.id); }} className="p-0.5 hover:bg-slate-100/50 text-slate-400 hover:text-red-500 rounded transition"><Trash2 size={10} /></button>
+                        <Tooltip content="Xóa chương">
+                          <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onDeleteChapter(ch.id); }} className="p-0.5 hover:bg-slate-100/50 text-slate-400 hover:text-red-500 rounded transition"><TrashIcon size={10} /></button>
                         </Tooltip>
                       </div>
                     )}
@@ -307,8 +308,8 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                                   <Tooltip content="\u0110\u1ed5i t\u00ean">
                                     <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onStartEditing(lesson.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-slate-700 rounded transition"><Edit size={10} /></button>
                                   </Tooltip>
-                                  <Tooltip content="X\u00f3a b\u00e0i h\u1ecdc">
-                                    <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onDeleteLesson(lesson.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-red-500 rounded transition"><Trash2 size={10} /></button>
+                                  <Tooltip content="Xóa bài học">
+                                    <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onDeleteLesson(lesson.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-red-500 rounded transition"><TrashIcon size={10} /></button>
                                   </Tooltip>
                                 </div>
                               )}
@@ -351,8 +352,8 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                                             <Tooltip content="\u0110\u1ed5i t\u00ean">
                                               <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onStartEditing(sub.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-slate-700 rounded transition"><Edit size={10} /></button>
                                             </Tooltip>
-                                            <Tooltip content="X\u00f3a m\u1ee5c">
-                                              <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onDeleteSubLesson(lesson.id, sub.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-red-500 rounded transition"><Trash2 size={10} /></button>
+                                            <Tooltip content="Xóa mục">
+                                              <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onDeleteSubLesson(lesson.id, sub.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-red-500 rounded transition"><TrashIcon size={10} /></button>
                                             </Tooltip>
                                           </div>
                                         )}
@@ -386,8 +387,8 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                                                     <Tooltip content="\u0110\u1ed5i t\u00ean">
                                                       <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onStartEditing(file.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-slate-700 rounded transition"><Edit size={10} /></button>
                                                     </Tooltip>
-                                                    <Tooltip content="X\u00f3a m\u1ee5c">
-                                                      <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onDeleteSubLesson(sub.id, file.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-red-500 rounded transition"><Trash2 size={10} /></button>
+                                                    <Tooltip content="Xóa mục">
+                                                      <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onDeleteSubLesson(sub.id, file.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-red-500 rounded transition"><TrashIcon size={10} /></button>
                                                     </Tooltip>
                                                   </div>
                                                 )}

@@ -1,14 +1,11 @@
 import React from 'react';
 import { 
-  Copy, 
-  Trash2, 
-  ChevronUp, 
-  ChevronDown, 
   AlignLeft, 
   AlignCenter, 
   AlignRight, 
   AlignJustify 
 } from 'lucide-react';
+import { CopyIcon, TrashIcon, AltArrowUpIcon, AltArrowDownIcon } from '../../AppIcons';
 import type { DocBlock } from '../../../types/doc-editor';
 import type { ToolbarAction } from './BlockWrapper';
 import { useFormattingState } from './FormattingStateProvider';
@@ -116,7 +113,7 @@ export const BlockToolbar: React.FC<BlockToolbarProps> = ({
         onClick={onMoveUp}
         className="p-1 rounded hover:bg-slate-100 text-slate-500 disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer h-6 w-6 flex items-center justify-center shrink-0"
       >
-        <ChevronUp size={13} />
+        <AltArrowUpIcon size={13} />
       </button>
       <button
         type="button"
@@ -124,7 +121,7 @@ export const BlockToolbar: React.FC<BlockToolbarProps> = ({
         onClick={onMoveDown}
         className="p-1 rounded hover:bg-slate-100 text-slate-500 disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer h-6 w-6 flex items-center justify-center shrink-0"
       >
-        <ChevronDown size={13} />
+        <AltArrowDownIcon size={13} />
       </button>
 
       <div className="h-4 w-px bg-slate-200 mx-0.5" />
@@ -137,7 +134,7 @@ export const BlockToolbar: React.FC<BlockToolbarProps> = ({
         className="p-1 rounded hover:bg-slate-100 text-slate-500 disabled:opacity-40 transition cursor-pointer h-6 w-6 flex items-center justify-center shrink-0"
         title="Nhân bản"
       >
-        <Copy size={12} />
+        <CopyIcon size={12} />
       </button>
       <button
         type="button"
@@ -146,7 +143,7 @@ export const BlockToolbar: React.FC<BlockToolbarProps> = ({
         className="p-1 rounded hover:bg-slate-100 hover:text-red-500 text-slate-500 disabled:opacity-40 transition cursor-pointer h-6 w-6 flex items-center justify-center shrink-0"
         title="Xóa"
       >
-        <Trash2 size={12} />
+        <TrashIcon size={12} />
       </button>
     </div>
   );

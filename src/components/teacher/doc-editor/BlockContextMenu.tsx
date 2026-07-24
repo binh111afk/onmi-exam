@@ -1,13 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  Copy,
-  Trash2,
-  ChevronUp,
-  ChevronDown,
-  ArrowUp,
-  ArrowDown
-} from 'lucide-react';
+import { ArrowUp, ArrowDown } from 'lucide-react';
+import { CopyIcon, TrashIcon, AltArrowUpIcon, AltArrowDownIcon } from '../../AppIcons';
 import { BLOCK_COMMANDS } from './CommandRegistry';
 import type { DocBlock } from '../../../types/doc-editor';
 
@@ -208,7 +202,7 @@ export const BlockContextMenu: React.FC<BlockContextMenuProps> = ({
         onClick={() => { onDuplicate(); onClose(); }}
         className="w-full text-left px-2.5 py-1.5 hover:bg-slate-50 rounded-lg flex items-center gap-2 cursor-pointer text-slate-655"
       >
-        <Copy size={11} className="text-slate-400" />
+        <CopyIcon size={11} className="text-slate-400" />
         <span>Nhân bản (Duplicate)</span>
       </button>
 
@@ -217,7 +211,7 @@ export const BlockContextMenu: React.FC<BlockContextMenuProps> = ({
         onClick={() => { onDelete(); onClose(); }}
         className="w-full text-left px-2.5 py-1.5 hover:bg-slate-50 hover:text-red-500 rounded-lg flex items-center gap-2 cursor-pointer text-slate-655"
       >
-        <Trash2 size={11} className="text-slate-400 group-hover:text-red-500" />
+        <TrashIcon size={11} className="text-slate-400 group-hover:text-red-500" />
         <span>Xóa block</span>
       </button>
 
@@ -251,7 +245,7 @@ export const BlockContextMenu: React.FC<BlockContextMenuProps> = ({
           canMoveUp ? 'hover:bg-slate-50 cursor-pointer text-slate-655' : 'opacity-40 cursor-not-allowed text-slate-400'
         }`}
       >
-        <ChevronUp size={11} className="text-slate-400" />
+        <AltArrowUpIcon size={11} className="text-slate-400" />
         <span>Di chuyển lên</span>
       </button>
 
@@ -263,7 +257,7 @@ export const BlockContextMenu: React.FC<BlockContextMenuProps> = ({
           canMoveDown ? 'hover:bg-slate-50 cursor-pointer text-slate-655' : 'opacity-40 cursor-not-allowed text-slate-400'
         }`}
       >
-        <ChevronDown size={11} className="text-slate-400" />
+        <AltArrowDownIcon size={11} className="text-slate-400" />
         <span>Di chuyển xuống</span>
       </button>
 

@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
 import { 
-  Undo,
-  Redo, 
   Bold, 
   Italic, 
   Underline, 
   Strikethrough,
-  Baseline,
   Highlighter,
   AlignLeft, 
   AlignCenter,
@@ -23,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Tooltip } from './Tooltip';
 import type { DocBlock } from '../../../types/doc-editor';
+import { UndoLeftIcon, UndoRightIcon, AltArrowDownIcon, TextColorIcon } from '../../AppIcons';
 import { useFormattingState } from './FormattingStateProvider';
 
 interface DocToolbarProps {
@@ -147,7 +145,7 @@ export const DocToolbar: React.FC<DocToolbarProps> = ({
           disabled={!canUndo}
           className={`p-1.5 rounded transition ${canUndo ? 'text-slate-600 hover:bg-slate-100 cursor-pointer' : 'text-slate-300'}`}
         >
-          <Undo size={13} />
+          <UndoLeftIcon size={13} />
         </button>
       </Tooltip>
 
@@ -158,7 +156,7 @@ export const DocToolbar: React.FC<DocToolbarProps> = ({
           disabled={!canRedo}
           className={`p-1.5 rounded transition ${canRedo ? 'text-slate-600 hover:bg-slate-100 cursor-pointer' : 'text-slate-300'}`}
         >
-          <Redo size={13} />
+          <UndoRightIcon size={13} />
         </button>
       </Tooltip>
       
@@ -355,7 +353,7 @@ export const DocToolbar: React.FC<DocToolbarProps> = ({
             className="p-1.5 text-slate-655 hover:bg-slate-100 rounded transition cursor-pointer flex items-center gap-0.5" 
           >
             <span className="flex flex-col items-center justify-center relative">
-              <Baseline size={13} className={colorTextClasses[normalizedActiveColor] || 'text-slate-655'} />
+              <TextColorIcon size={14} className={colorTextClasses[normalizedActiveColor] || 'text-slate-655'} />
               <span className={`w-3.5 h-[2px] mt-0.5 rounded-full ${colorTextClasses[normalizedActiveColor] ? 'bg-current' : 'bg-slate-400'}`} />
             </span>
             <ChevronDown size={8} />

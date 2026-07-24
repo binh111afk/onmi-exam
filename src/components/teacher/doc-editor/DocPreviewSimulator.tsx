@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { RefreshCw, Maximize2, Minimize2, ZoomIn, ZoomOut, RotateCcw, X, Video } from 'lucide-react';
+import { RefreshCw, RotateCcw, X, Video } from 'lucide-react';
+import { MaximizeIcon, MinimizeIcon, ZoomInIcon, ZoomOutIcon } from '../../AppIcons';
 import { Tooltip } from './Tooltip';
 
 
@@ -627,13 +628,13 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
             <div className="flex shrink-0 items-center gap-1.5 text-slate-500">
               <Tooltip content="Thu nhỏ">
                 <button type="button" onClick={() => stepZoom(-1)} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" aria-label="Thu nhỏ">
-                  <ZoomOut size={16} />
+                  <ZoomOutIcon size={16} />
                 </button>
               </Tooltip>
               <span className="w-12 text-center text-[10px] font-black text-slate-700">{isFitWidth ? 'Fit' : `${previewZoom}%`}</span>
               <Tooltip content="Phóng to">
                 <button type="button" onClick={() => stepZoom(1)} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" aria-label="Phóng to">
-                  <ZoomIn size={16} />
+                  <ZoomInIcon size={16} />
                 </button>
               </Tooltip>
               <Tooltip content="Reset Zoom">
@@ -648,7 +649,7 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
               </Tooltip>
               <Tooltip content="Thu nhỏ xem trước">
                 <button type="button" onClick={closeFullscreen} className="p-2 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition cursor-pointer" aria-label="Thu nhỏ xem trước">
-                  <Minimize2 size={16} />
+                  <MinimizeIcon size={16} />
                 </button>
               </Tooltip>
             </div>
@@ -685,7 +686,7 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
               onClick={openFullscreen}
               className="p-1.5 hover:bg-indigo-50 hover:text-primary rounded-lg transition cursor-pointer"
             >
-              <Maximize2 size={12} />
+              <MaximizeIcon size={12} />
             </button>
           </Tooltip>
         </div>
