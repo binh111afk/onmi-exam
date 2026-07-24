@@ -28,11 +28,37 @@ const SYMBOL_TO_LATEX: Readonly<Record<string, string>> = {
   '÷': '\\div',
   '∑': '\\sum',
   '∫': '\\int',
+  '∏': '\\prod',
+  '∂': '\\partial',
+  '∇': '\\nabla',
+  '∈': '\\in',
+  '∉': '\\notin',
+  '∅': '\\varnothing',
+  '⊂': '\\subset',
+  '⊆': '\\subseteq',
+  '⊃': '\\supset',
+  '⊇': '\\supseteq',
+  '∪': '\\cup',
+  '∩': '\\cap',
+  '∀': '\\forall',
+  '∃': '\\exists',
+  '∧': '\\land',
+  '∨': '\\lor',
+  '¬': '\\neg',
+  '→': '\\to',
+  '←': '\\leftarrow',
+  '↔': '\\leftrightarrow',
+  '⇒': '\\Rightarrow',
+  '⇔': '\\Leftrightarrow',
+  '≈': '\\approx',
+  '≡': '\\equiv',
+  '∝': '\\propto',
+  '⋅': '\\cdot',
 };
 
-const MATH_TOKEN = /^(?:[0-9A-Za-z]|log|ln|sin|cos|tan|lim|[=+−\-*/()|]|[∞π√≤≥≠±×÷∑∫])+$/u;
-const MATH_SIGNAL = /[=+−\-*/^]|(?:log|ln|sin|cos|tan|lim)|[∞π√≤≥≠±×÷∑∫]/u;
-const PROSE_WORD = /\p{L}{3,}/u;
+const MATH_TOKEN = /^(?:[0-9A-Za-z]|log|ln|sin|cos|tan|cot|lim|[=+−\-*/()|,.:]|[∞π√≤≥≠±×÷∑∫∏∂∇∈∉∅⊂⊆⊃⊇∪∩∀∃∧∨¬→←↔⇒⇔≈≡∝⋅])+$/u;
+const MATH_SIGNAL = /[=+−\-*/^]|(?:log|ln|sin|cos|tan|cot|lim)|[∞π√≤≥≠±×÷∑∫∏∂∇∈∉∅⊂⊆⊃⊇∪∩∀∃∧∨¬→←↔⇒⇔≈≡∝⋅]/u;
+const MATH_WORDS = new Set(['sin', 'cos', 'tan', 'cot', 'log', 'ln', 'lim']);
 
 const median = (values: number[]): number => {
   const sorted = [...values].sort((first, second) => first - second);
@@ -40,12 +66,44 @@ const median = (values: number[]): number => {
   return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle];
 };
 
-const normalizeSymbols = (text: string): string => Array.from(text, (character) => SYMBOL_TO_LATEX[character] ?? character).join('');
+const normalizeSymbols = (text: string): string => Array.from(text, (character) => {
+  const latex = SYMBOL_TO_LATEX[character] ?? character;
+  return latex !== character && /\\[A-Za-z]+$/u.test(latex) ? `${latex} ` : latex;
+}).join('');
 
 const joinTokens = (tokens: FormulaToken[]): string => tokens
   .map((token) => normalizeSymbols(token.text))
   .join('')
-  .replace(/\s+/gu, '');
+  .trim();
+
+const hasNonMathProse = (tokens: FormulaToken[]): boolean => {
+  const words: string[] = [];
+  let currentWord = '';
+  const sorted = [...tokens].sort((first, second) => first.x - second.x);
+  sorted.forEach((token, index) => {
+    const previous = sorted[index - 1];
+    const gap = previous ? token.x - (previous.x + previous.width) : 0;
+    if (previous && gap > Math.max(previous.height, token.height) * 0.45) {
+      words.push(currentWord);
+      currentWord = '';
+    }
+    currentWord += token.text;
+  });
+  words.push(currentWord);
+
+  const proseWords = words.flatMap((word) => word.match(/\p{L}{3,}/gu) ?? []);
+  return proseWords.some((word) => !MATH_WORDS.has(word.toLocaleLowerCase()));
+};
+
+type ScriptRole = 'superscript' | 'subscript' | null;
+
+const scriptRole = (token: FormulaToken, baselineY: number, baselineHeight: number): ScriptRole => {
+  if (token.height >= baselineHeight * 0.88) return null;
+  const offset = token.y - baselineY;
+  if (offset > baselineHeight * 0.22) return 'superscript';
+  if (offset < -baselineHeight * 0.22) return 'subscript';
+  return null;
+};
 
 const makeRuns = (tokens: FormulaToken[], predicate: (token: FormulaToken) => boolean): TokenRun[] => {
   const runs: TokenRun[] = [];
@@ -73,24 +131,28 @@ const runBounds = (run: TokenRun): { left: number; right: number; center: number
 
 const reconstructScripts = (tokens: FormulaToken[], baselineY: number, baselineHeight: number): string => {
   let output = '';
-  let previous: FormulaToken | undefined;
-
-  tokens.forEach((token) => {
-    const value = normalizeSymbols(token.text);
-    const isSmall = token.height < baselineHeight * 0.88;
-    const offset = token.y - baselineY;
-    const isSuperscript = isSmall && offset > baselineHeight * 0.22;
-    const isSubscript = isSmall && offset < -baselineHeight * 0.22;
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    const role = scriptRole(token, baselineY, baselineHeight);
+    const previous = tokens[index - 1];
     const gap = previous ? token.x - (previous.x + previous.width) : 0;
 
-    if (isSuperscript || isSubscript) {
-      output += `${isSuperscript ? '^' : '_'}{${value}}`;
-    } else {
-      if (previous && gap > Math.max(previous.height, token.height) * 0.45) output += ' ';
-      output += value;
+    if (role === null) {
+      if (previous && scriptRole(previous, baselineY, baselineHeight) === null && gap > Math.max(previous.height, token.height) * 0.45) output += ' ';
+      output += normalizeSymbols(token.text);
+      continue;
     }
-    previous = token;
-  });
+
+    const scriptTokens = [token];
+    while (index + 1 < tokens.length) {
+      const next = tokens[index + 1];
+      const nextGap = next.x - (scriptTokens.at(-1)!.x + scriptTokens.at(-1)!.width);
+      if (scriptRole(next, baselineY, baselineHeight) !== role || nextGap > Math.max(next.height, scriptTokens.at(-1)!.height) * 0.75) break;
+      scriptTokens.push(next);
+      index += 1;
+    }
+    output += `${role === 'superscript' ? '^' : '_'}{${joinTokens(scriptTokens)}}`;
+  }
 
   return output;
 };
@@ -102,15 +164,13 @@ const reconstructScripts = (tokens: FormulaToken[], baselineY: number, baselineH
 export const reconstructFormulaLineWithConfidence = <T extends FormulaToken>(tokens: T[]): FormulaReconstruction | null => {
   if (tokens.length === 0) return null;
   const sorted = [...tokens].sort((first, second) => first.x - second.x);
-  const hasMathContext = sorted.some((token) => MATH_SIGNAL.test(token.text));
-  if (!hasMathContext) return null;
-  const proseTokenCount = sorted.filter((token) => PROSE_WORD.test(token.text) && !MATH_TOKEN.test(token.text)).length;
-  if (proseTokenCount > 0) return null;
-  const hasSymbolNormalization = sorted.some((token) => normalizeSymbols(token.text) !== token.text);
-
   const baselineTokens = sorted.filter((token) => token.height >= Math.max(...sorted.map((item) => item.height)) * 0.88);
   const baselineY = median((baselineTokens.length > 0 ? baselineTokens : sorted).map((token) => token.y));
   const baselineHeight = median((baselineTokens.length > 0 ? baselineTokens : sorted).map((token) => token.height));
+  const hasScript = sorted.some((token) => scriptRole(token, baselineY, baselineHeight) !== null);
+  const hasMathContext = sorted.some((token) => MATH_SIGNAL.test(token.text)) || hasScript;
+  if (!hasMathContext || hasNonMathProse(sorted)) return null;
+  const hasSymbolNormalization = sorted.some((token) => normalizeSymbols(token.text) !== token.text);
   const isComparableMathToken = (token: FormulaToken): boolean => MATH_TOKEN.test(token.text) && token.height >= baselineHeight * 0.45;
   const numeratorRuns = makeRuns(sorted, (token) => isComparableMathToken(token) && token.y - baselineY > baselineHeight * 0.3);
   const denominatorRuns = makeRuns(sorted, (token) => isComparableMathToken(token) && baselineY - token.y > baselineHeight * 0.3);
@@ -135,7 +195,7 @@ export const reconstructFormulaLineWithConfidence = <T extends FormulaToken>(tok
     fractionIndexes.forEach((index) => consumed.add(index));
   });
 
-  if (fractions.size === 0 && !hasSymbolNormalization && !sorted.some((token) => token.height < baselineHeight * 0.88)) return null;
+  if (fractions.size === 0 && !hasSymbolNormalization && !hasScript) return null;
 
   const output: string[] = [];
   let outputTokens: FormulaToken[] = [];

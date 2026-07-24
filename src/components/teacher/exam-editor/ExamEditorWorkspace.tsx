@@ -23,8 +23,7 @@ import { ExamSidebar } from './ExamSidebar';
 import { QuestionBankWorkspace } from './QuestionBankWorkspace';
 import { OmlPreviewPaper } from '../../ExamEditor/OmlRenderer/OmlPreviewPaper';
 import { OmlGuideModal } from './OmlGuideModal';
-import { PreviewIcon, NewExamIcon, OmlCodeIcon, QuickComposeIcon, QuestionBankIcon } from './ExamEditorIcons';
-import { GuideIcon, SaveIcon } from '../doc-editor/DocEditorHeader';
+import { PreviewIcon, NewExamIcon, OmlCodeIcon, QuickComposeIcon, QuestionBankIcon, GuideIcon, SaveIcon } from '../../AppIcons';
 import { useAlert } from '../../common/Alert';
 
 // Hooks & Sub-components
@@ -885,24 +884,24 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
               <button
                 onClick={handleCreateNewExamClick}
-                className="px-3.5 py-1.5 border border-slate-200 text-slate-650 hover:bg-slate-50 text-[10px] font-bold rounded-xl flex items-center gap-1.5 transition cursor-pointer font-sans bg-white shadow-sm"
+                className="px-3.5 py-1.5 border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-[10px] font-bold rounded-xl flex items-center gap-1.5 transition cursor-pointer font-sans shadow-sm"
               >
-                <NewExamIcon size={12} className="text-primary" /> Tạo đề mới
+                <NewExamIcon size={12} /> Tạo đề mới
               </button>
               <button
                 onClick={handleSaveExam}
-                className="px-3.5 py-1.5 border border-slate-200 text-slate-650 hover:bg-slate-55 text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer font-sans bg-white shadow-sm"
+                className="px-3.5 py-1.5 border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer font-sans shadow-sm"
               >
-                <SaveIcon /> Lưu
+                <SaveIcon className="text-slate-700" /> Lưu
               </button>
               <button
                 onClick={() => setShowLivePreview(!showLivePreview)}
-                className={`px-3.5 py-1.5 border text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer font-sans bg-white shadow-sm ${showLivePreview
-                  ? 'bg-primary-light border-primary/20 text-primary hover:bg-primary-light/80'
-                  : 'border-slate-200 text-slate-650 hover:bg-slate-50'
+                className={`px-3.5 py-1.5 border text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer font-sans shadow-sm ${showLivePreview
+                  ? 'border-primary bg-primary text-white hover:bg-primary/90'
+                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                   }`}
               >
-                <PreviewIcon size={12} className="text-primary" /> Xem thử đề
+                <PreviewIcon size={12} /> Xem thử đề
               </button>
             </div>
           </header>

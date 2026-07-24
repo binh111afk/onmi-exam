@@ -32,37 +32,81 @@ const getTextToken = (item: unknown): PdfTextToken | null => {
 };
 
 /**
+ * PDF.js commonly returns a whole painted text run as one item. Formula
+ * structure, however, is encoded in the position of individual glyphs. When
+ * glyph widths are unavailable, distribute the measured run width across its
+ * Unicode code points as a deterministic local approximation.
+ */
+const splitTextRunIntoGlyphs = (token: PdfTextToken): PdfTextToken[] => {
+  const characters = Array.from(token.text);
+  if (characters.length <= 1) return [token];
+
+  const glyphWidth = token.width / characters.length;
+  return characters.flatMap((character, index) => {
+    if (/\s/u.test(character)) return [];
+    return [{
+      ...token,
+      text: character,
+      x: token.x + glyphWidth * index,
+      width: Math.max(0, glyphWidth),
+    }];
+  });
+};
+
+/**
+ * Some PDFs paint the same text run twice to simulate a heavier weight or
+ * shadow. Keep one copy so duplicated glyphs do not become duplicated words.
+ */
+const deduplicateTokens = (tokens: PdfTextToken[]): PdfTextToken[] => {
+  const seen = new Set<string>();
+  return tokens.filter((token) => {
+    const key = [
+      token.text,
+      token.fontName ?? '',
+      token.x.toFixed(2),
+      token.y.toFixed(2),
+      token.width.toFixed(2),
+      token.height.toFixed(2),
+    ].join('|');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+/**
  * Baseline Y-Clustering Engine:
- * Groups tokens on the same logical line using a font-height tolerant baseline.
+ * Groups tokens on the same logical line using a font-height relative baseline.
  * Handles subscripts (log₂), superscripts (a³), and fractions cleanly without line breaks.
  */
 const groupTokensIntoBaselineLines = (tokens: PdfTextToken[]): PdfTextToken[][] => {
-  // Sort tokens by Y descending (top to bottom of page)
-  const sortedByY = [...tokens].sort((a, b) => b.y - a.y);
-  const lines: { baseY: number; avgHeight: number; tokens: PdfTextToken[] }[] = [];
+  const sortedByY = [...tokens].sort((a, b) => b.height - a.height || b.y - a.y || a.x - b.x);
+  const lines: { baseY: number; fontHeight: number; tokens: PdfTextToken[] }[] = [];
 
   for (const token of sortedByY) {
-    const existingLine = lines.find((line) => {
-      const tolerance = Math.max(line.avgHeight, token.height) * 0.95;
-      return Math.abs(token.y - line.baseY) <= tolerance;
-    });
+    const existingLine = lines
+      .map((line) => ({
+        line,
+        distance: Math.abs(token.y - line.baseY),
+        tolerance: Math.max(line.fontHeight, token.height) * 0.6,
+      }))
+      .filter(({ distance, tolerance }) => distance <= tolerance)
+      .sort((first, second) => first.distance - second.distance)[0]?.line;
 
     if (existingLine) {
       existingLine.tokens.push(token);
-      // Recalculate line parameters
-      const totalH = existingLine.tokens.reduce((acc, t) => acc + t.height, 0);
-      existingLine.avgHeight = totalH / existingLine.tokens.length;
     } else {
       lines.push({
         baseY: token.y,
-        avgHeight: token.height,
+        fontHeight: token.height,
         tokens: [token],
       });
     }
   }
 
-  // Sort each line horizontally by X ascending
-  return lines.map((line) => line.tokens.sort((a, b) => a.x - b.x));
+  return lines
+    .sort((first, second) => second.baseY - first.baseY)
+    .map((line) => line.tokens.sort((a, b) => a.x - b.x));
 };
 
 interface MergedTextSegment {
@@ -150,14 +194,16 @@ const buildSegmentFromTokens = (tokens: PdfTextToken[]): MergedTextSegment => {
     const curr = tokens[i];
     const prevRight = prev.x + prev.width;
     const gap = curr.x - prevRight;
-    const avgH = (prev.height + curr.height) / 2;
-    const microGapThreshold = Math.max(0.75, avgH * 0.1);
+    const sharedHeight = Math.min(prev.height, curr.height);
+    const wordGapThreshold = Math.max(0.75, sharedHeight * 0.2);
+    const baselineTolerance = Math.max(prev.height, curr.height) * 0.45;
+    const staysInWord = gap <= wordGapThreshold && Math.abs(curr.y - prev.y) <= baselineTolerance;
 
-    if (gap <= microGapThreshold) {
-      // Micro-gap: concatenate WITHOUT space
+    if (staysInWord) {
+      // Contiguous glyph runs form one word.
       textAcc = `${textAcc}${curr.text}`;
     } else {
-      // Normal word gap: concatenate WITH space
+      // A word gap or baseline shift starts a new word.
       textAcc = `${textAcc} ${curr.text}`;
     }
   }
@@ -191,7 +237,12 @@ export class PdfImporter implements DocumentImporter<File> {
         const page = await pdf.getPage(pageNumber);
         try {
           const textContent = await page.getTextContent();
-          const tokens = textContent.items.map(getTextToken).filter((token): token is PdfTextToken => Boolean(token));
+          const tokens = deduplicateTokens(
+            textContent.items
+              .map(getTextToken)
+              .filter((token): token is PdfTextToken => Boolean(token))
+              .flatMap(splitTextRunIntoGlyphs),
+          );
           const textLength = tokens.reduce((total, token) => total + token.text.length, 0);
 
           if (textLength >= MIN_PAGE_TEXT_LENGTH) {

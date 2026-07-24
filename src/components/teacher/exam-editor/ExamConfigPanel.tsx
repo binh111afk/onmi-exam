@@ -18,7 +18,7 @@ import {
   Calculator,
   ShieldCheck,
 } from 'lucide-react';
-import { NextIcon } from '../doc-editor/DocEditorHeader';
+import { NextIcon } from '../../AppIcons';
 
 interface ToggleProps {
   id: string;

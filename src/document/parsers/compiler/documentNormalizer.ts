@@ -79,16 +79,20 @@ const normalizeMathExpression = (expression: string): string => expression
   .replace(/[−–]/gu, '-');
 
 const wrapMath = (expression: string): string => {
-  const match = expression.trim().match(/^(?<body>.*?)(?<punctuation>[.!?])?$/u);
+  const match = expression.trim().match(/^(?<body>.*?)(?<punctuation>[.!?;])?$/u);
   const body = match?.groups?.body ?? expression.trim();
   return `$${normalizeMathExpression(body)}$${match?.groups?.punctuation ?? ''}`;
 };
 
 const wrapInlineMath = (text: string): string => {
   if ((text.match(/(?:^|\s)[A-Da-d]\s*[.):]/gu) ?? []).length > 1) return text;
-  let output = text;
+  const coordinateExpression = /\b[A-Za-z]\s*=\s*\(\s*[-−–]?\d+(?:\s*[;,]\s*[-−–]?\d+){1,3}\s*\)/gu;
+  const assignmentExpression = /\b(?:[A-Z]{1,4}|[a-zA-Z]+\([^)]*\)|[a-zA-Z]+(?:_[A-Za-z0-9{}.]+|\^[A-Za-z0-9{}]+)?)\s*=\s*[-−–]?[0-9A-Za-z\p{No}{}^().,;]+(?:\s*[+−–\-*/]\s*[0-9A-Za-z\p{No}{}^().,;]+)*(?!\s*[+−–\-*/])(?=$|[\s;,.!?])/gu;
+  let output = text.replace(coordinateExpression, wrapMath);
   output = output.replace(/\(\s*α\s*\)\s*:\s*[^.,;!?$]+?=\s*[−-]?\d+/gu, wrapMath);
-  output = output.replace(/\b(?:[A-Z]{1,4}|[a-zA-Z]+\([^)]*\)|[a-zA-Z]+(?:_[A-Za-z0-9{}.]+|\^[A-Za-z0-9{}]+)?)\s*=\s*[-−]?[0-9A-Za-z\p{No}{}^().]+(?:\s*[+−\-*/]\s*[0-9A-Za-z\p{No}{}^().]+)*/gu, wrapMath);
+  output = output.split(/(\$[^$]*\$)/u).map((segment) => (
+    segment.startsWith('$') ? segment : segment.replace(assignmentExpression, wrapMath)
+  )).join('');
   return output.split(/(\$[^$]*\$)/u).map((segment) => {
     if (segment.startsWith('$')) return segment;
     return segment
@@ -100,6 +104,14 @@ const wrapInlineMath = (text: string): string => {
   }).join('');
 };
 
+const hasUnbalancedMathDelimiters = (text: string): boolean => (
+  (text.match(/\$[^$]*\$/gu) ?? []).some((segment) => {
+    const body = segment.slice(1, -1);
+    return [...body].filter((character) => character === '(').length !== [...body].filter((character) => character === ')').length
+      || [...body].filter((character) => character === '{').length !== [...body].filter((character) => character === '}').length;
+  })
+);
+
 /** Wraps only a complete, unambiguous math-only line or option. */
 export function normalizeMathAndText(input: string): string {
   if (!input) return input;
@@ -107,12 +119,15 @@ export function normalizeMathAndText(input: string): string {
     .replace(/[\uFFFD]/gu, '')
     .replace(/\uA76F/gu, '\\infty')
     .replace(/\$\$\./gu, '$')
-    .replace(/\$\$\+/gu, '$')
-    .replace(/\$([^$]+)\$\s*\./gu, '$$$1$$.');
+    .replace(/\$\$\+/gu, '$');
 
+  const startsWithLatexCommand = text.trimStart().charCodeAt(0) === 92;
+  if (startsWithLatexCommand || /[\p{L}\d)}]\$\s*[+−–-]/u.test(text) || hasUnbalancedMathDelimiters(text)) {
+    text = text.split('$').join('');
+  }
   const dollars = text.match(/\$/gu)?.length ?? 0;
   if (dollars % 2 !== 0) text = text.replace(/\$/gu, '');
-  if (!text.includes('$')) text = wrapInlineMath(text);
+  if (!text.includes('$') && !startsWithLatexCommand) text = wrapInlineMath(text);
   if (text.includes('$')) return text;
   if (/^\s*(?:câu|question|cau)\s*\.?\s*\d+/iu.test(text)) return text;
 

@@ -1,5 +1,14 @@
 import React from 'react';
-import { Home, FileText, BookOpen, Compass, Trophy, Users, Newspaper, ChevronRight, GraduationCap } from 'lucide-react';
+import { ChevronRight, GraduationCap } from 'lucide-react';
+import {
+  SidebarHomeIcon,
+  SidebarExamsIcon,
+  SidebarDocsIcon,
+  SidebarRoadmapIcon,
+  SidebarLeaderboardIcon,
+  SidebarBlogIcon,
+  SidebarContactIcon,
+} from './AppIcons';
 import { Logo } from './Logo';
 import type { User } from '../types';
 
@@ -11,14 +20,14 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, user }) => {
   const sidebarItems = [
-    { label: 'Trang chủ', view: 'home', icon: Home },
-    { label: 'Đề thi trắc nghiệm', view: 'exams', icon: FileText },
-    { label: 'Tài liệu tự học', view: 'documents', icon: BookOpen },
-    { label: 'Lộ trình cá nhân', view: 'about', icon: Compass },
+    { label: 'Trang chủ', view: 'home', icon: SidebarHomeIcon },
+    { label: 'Đề thi trắc nghiệm', view: 'exams', icon: SidebarExamsIcon },
+    { label: 'Tài liệu tự học', view: 'documents', icon: SidebarDocsIcon },
+    { label: 'Lộ trình cá nhân', view: 'about', icon: SidebarRoadmapIcon },
     { label: 'Giáo viên', view: 'teacher', icon: GraduationCap },
-    { label: 'Bảng xếp hạng', view: 'leaderboard', icon: Trophy },
-    { label: 'Blog', view: 'blog', icon: Newspaper, isNew: true },
-    { label: 'Liên hệ hỗ trợ', view: 'contact', icon: Users },
+    { label: 'Bảng xếp hạng', view: 'leaderboard', icon: SidebarLeaderboardIcon },
+    { label: 'Blog', view: 'blog', icon: SidebarBlogIcon, isNew: true },
+    { label: 'Liên hệ hỗ trợ', view: 'contact', icon: SidebarContactIcon },
   ];
 
   return (
@@ -48,7 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, use
                   }`}
               >
                 <div className="flex items-center gap-3.5">
-                  <Icon size={16} className={isActive ? 'text-primary' : 'text-text-secondary/80'} />
+                  <Icon size={18} className={isActive ? 'text-primary' : 'text-slate-400'} />
                   <span>{item.label}</span>
                 </div>
                 {item.isNew && (

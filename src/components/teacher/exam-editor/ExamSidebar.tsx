@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronLeft, Search, GripVertical } from 'lucide-react';
-import { QuickComposeIcon, SettingsIcon, ViewPublishIcon } from './ExamEditorIcons';
+import { ComposeIcon, SettingsIcon, ViewPublishIcon } from '../../AppIcons';
 
 interface ExamSidebarProps {
   examSubView: 'edit' | 'config' | 'publish';
@@ -44,7 +44,7 @@ export const ExamSidebar: React.FC<ExamSidebarProps> = ({
                 : 'text-text-secondary hover:bg-slate-50 hover:text-text-primary'
               }`}
           >
-            <QuickComposeIcon size={16} />
+            <ComposeIcon size={16} />
             <span>Soạn đề</span>
           </button>
           <button
