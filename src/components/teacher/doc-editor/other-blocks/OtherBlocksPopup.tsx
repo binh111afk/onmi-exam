@@ -4,7 +4,7 @@ import { OtherBlockCard } from './OtherBlockCard';
 
 interface OtherBlocksPopupProps {
   onClose: () => void;
-  onSelectBlock: (type: 'mindmap' | 'timeline' | 'flow' | 'tabs' | 'compare' | 'diagram' | 'matching' | 'fillblank' | 'dragdrop' | 'sortorder') => void;
+  onSelectBlock: (type: 'mindmap' | 'timeline' | 'flow' | 'tabs' | 'compare' | 'diagram' | 'matching' | 'fillblank' | 'dragdrop' | 'sortorder' | 'layout') => void;
 }
 
 export const OtherBlocksPopup: React.FC<OtherBlocksPopupProps> = ({
@@ -104,6 +104,13 @@ export const OtherBlocksPopup: React.FC<OtherBlocksPopupProps> = ({
             icon={<ListOrdered size={18} />}
             title="Sắp xếp thứ tự"
             description="Bài tập sắp xếp các mục theo thứ tự đúng"
+          />
+
+          <OtherBlockCard
+            onClick={() => onSelectBlock('layout')}
+            icon={<Columns size={18} />}
+            title="Bố cục"
+            description="Chia vùng nội dung thành các ô (2 cột, 3 cột...)"
           />
         </div>
 

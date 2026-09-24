@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { createDefaultBlock } from '../blocks/BlockFactory';
+import { createDefaultBlock, generateBlockId } from '../blocks/BlockFactory';
 import type { Chapter, Lesson, DocBlock } from '../../../../types/doc-editor';
 import { BLOCK_COMMANDS } from '../CommandRegistry';
 
@@ -30,6 +30,11 @@ export const useEditorBlocks = ({
   const [slashQuery, setSlashQuery] = useState('');
   const [slashMenuIndex, setSlashMenuIndex] = useState(0);
   const [slashMenuCoords, setSlashMenuCoords] = useState({ top: 0, left: 0 });
+
+  // Layout "Bố cục" (G1) — picker mở TRƯỚC, block chỉ tạo sau onPick (R1: không block mồ côi)
+  const [showLayoutPicker, setShowLayoutPicker] = useState(false);
+  const [layoutInsertIndex, setLayoutInsertIndex] = useState<number | null>(null);
+  const [layoutInsertMode, setLayoutInsertMode] = useState<'replace' | 'insert' | null>(null);
 
   const tableCellAlignRef = useRef<((align: 'left' | 'center' | 'right' | 'justify') => void) | null>(null);
   // Block gốc của menu "/" — ref vì activeBlockIndex derived qua activeBlockId có thể stale sau insert
@@ -255,6 +260,13 @@ export const useEditorBlocks = ({
       return;
     }
 
+    if (cmdType === 'layout') {
+      setLayoutInsertIndex(targetIndex);
+      setLayoutInsertMode('replace');
+      setShowLayoutPicker(true);
+      return;
+    }
+
     const nextChapters = chapters.map(ch => ({
       ...ch,
       lessons: ch.lessons.map(patchLessonFn(lesson => ({
@@ -277,6 +289,51 @@ export const useEditorBlocks = ({
     setActiveBlockIndex(targetIndex);
     focusBlock(targetIndex);
   }, [chapters, activeBlockIndex, patchLessonFn, pushHistoryState, setChapters, setActiveBlockIndex, setTableInsertIndex, setTableInsertMode, setShowTableModal]);
+
+  const openLayoutPicker = useCallback((mode: 'replace' | 'insert', index: number) => {
+    setLayoutInsertIndex(index);
+    setLayoutInsertMode(mode);
+    setShowLayoutPicker(true);
+  }, []);
+
+  const closeLayoutPicker = useCallback(() => {
+    setShowLayoutPicker(false);
+    setLayoutInsertIndex(null);
+    setLayoutInsertMode(null);
+  }, []);
+
+  /** Tạo block layout sau khi chọn preset (R1 — không block mồ côi) */
+  const createLayoutWithPreset = useCallback((columns: number[]) => {
+    const targetIndex = layoutInsertIndex !== null ? layoutInsertIndex : activeBlockIndex;
+    const newBlock: DocBlock = {
+      id: generateBlockId(),
+      type: 'layout',
+      text: '',
+      layoutContent: { columns, slots: columns.map(() => []) },
+    };
+    const nextChapters = chapters.map(ch => ({
+      ...ch,
+      lessons: ch.lessons.map(patchLessonFn(lesson => {
+        if (lesson.id !== activeLessonId) return lesson;
+        if (layoutInsertMode === 'insert') {
+          return {
+            ...lesson,
+            blocks: [...lesson.blocks.slice(0, targetIndex + 1), newBlock, ...lesson.blocks.slice(targetIndex + 1)],
+          };
+        }
+        return {
+          ...lesson,
+          blocks: lesson.blocks.map((b, idx) => (idx === targetIndex ? newBlock : b)),
+        };
+      })),
+    }));
+    pushHistoryState(nextChapters, false, targetIndex);
+    setChapters(nextChapters);
+    setActiveBlockIndex(targetIndex);
+    setShowLayoutPicker(false);
+    setLayoutInsertIndex(null);
+    setLayoutInsertMode(null);
+  }, [chapters, activeLessonId, activeBlockIndex, layoutInsertIndex, layoutInsertMode, patchLessonFn, pushHistoryState, setChapters, setActiveBlockIndex]);
 
   return {
     activeBlockId,
@@ -338,6 +395,10 @@ export const useEditorBlocks = ({
     handleDeleteAtEnd,
     filteredCommands,
     handleSelectSlashCommand,
+    showLayoutPicker,
+    openLayoutPicker,
+    closeLayoutPicker,
+    createLayoutWithPreset,
     insertBlockAbove,
     handleSelectOtherBlock,
     handleSideToolClick,

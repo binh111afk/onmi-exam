@@ -9,6 +9,7 @@ import { ImageBlock } from './ImageBlock';
 import { TableBlock } from './table/TableBlock';
 import { FormulaBlock } from './FormulaBlock';
 import { CodeBlock } from './code/CodeBlock';
+import { LayoutView } from './layout/LayoutView';
 import { QuizBlock } from './quiz/QuizBlock';
 import { FlashcardBlock } from './flashcard/FlashcardBlock';
 import { MindmapBlock } from './mindmap/MindmapBlock';
@@ -361,6 +362,23 @@ export const BlockRendererComponent: React.FC<BlockRendererProps> = ({
           onUpdateBlock={onUpdateBlock}
         />
       );
+    case 'layout': {
+      // R1 — fallback dữ liệu thiếu/hỏng: không crash với legacy
+      const lc = block.layoutContent;
+      if (!lc || !lc.slots?.length || lc.columns?.length !== lc.slots.length) {
+        return (
+          <div className="w-full text-[10px] font-bold text-slate-400 bg-slate-50 border border-dashed border-slate-200 rounded-xl px-3 py-4 text-center">
+            Bố cục trống
+          </div>
+        );
+      }
+      return (
+        <LayoutView
+          block={block}
+          onUpdateLayout={(next) => onUpdateBlock(idx, { ...block, layoutContent: next })}
+        />
+      );
+    }
     default:
       return (
         <ParagraphBlock

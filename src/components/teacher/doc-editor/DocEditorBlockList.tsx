@@ -4,6 +4,7 @@ import { BlockWrapper } from './BlockWrapper';
 import { BlockRenderer } from './blocks/BlockRenderer';
 import { DragIndicator } from './DragIndicator';
 import { BlockDragPreview } from './BlockDragPreview';
+import { LayoutPresetPicker } from './blocks/layout/LayoutPresetPicker';
 import { SlashMenu } from './SlashMenu';
 import { SelectionContextMenu } from './SelectionContextMenu';
 import { TableInsertModal } from './TableInsertModal';
@@ -174,6 +175,12 @@ interface DocEditorBlockListProps {
   setShowOtherBlocksPopup: (show: boolean) => void;
   handleSelectOtherBlock: (type: any) => void;
 
+  // Layout "Bố cục" picker (G1)
+  showLayoutPicker: boolean;
+  onCloseLayoutPicker: () => void;
+  onCreateLayout: (columns: number[]) => void;
+  onOpenLayoutPicker: (mode: 'replace' | 'insert', index: number) => void;
+
   // Outer click Drop handlers
   handleScrollWrapperClick: (e: React.MouseEvent) => void;
   handleBodyDrop: (e: React.DragEvent<HTMLDivElement>) => void;
@@ -231,6 +238,11 @@ export const DocEditorBlockList: React.FC<DocEditorBlockListProps> = ({
   showOtherBlocksPopup,
   setShowOtherBlocksPopup,
   handleSelectOtherBlock,
+
+  showLayoutPicker,
+  onCloseLayoutPicker,
+  onCreateLayout,
+  onOpenLayoutPicker,
 
   handleScrollWrapperClick,
   handleBodyDrop,
@@ -392,9 +404,22 @@ export const DocEditorBlockList: React.FC<DocEditorBlockListProps> = ({
       {showOtherBlocksPopup && (
         <OtherBlocksPopup
           onClose={() => setShowOtherBlocksPopup(false)}
-          onSelectBlock={handleSelectOtherBlock}
+          onSelectBlock={(type) => {
+            if (type === 'layout') {
+              // R1 — picker mở trước, block chỉ tạo sau onPick
+              onOpenLayoutPicker('insert', activeBlockIndex);
+              return;
+            }
+            handleSelectOtherBlock(type);
+          }}
         />
       )}
+
+      <LayoutPresetPicker
+        isOpen={showLayoutPicker}
+        onClose={onCloseLayoutPicker}
+        onPick={onCreateLayout}
+      />
     </div>
   );
 };

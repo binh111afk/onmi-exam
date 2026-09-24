@@ -15,7 +15,7 @@ import { Preview as DragDropPreview } from '../teacher/doc-editor/blocks/dragdro
 import { Preview as SortOrderPreview } from '../teacher/doc-editor/blocks/sortorder/Preview';
 import { CodePreview } from '../teacher/doc-editor/blocks/code/CodePreview';
 import type { CodeLanguage } from '../teacher/doc-editor/blocks/code/CodeTypes';
-import type { DocBlock } from '../../types/doc-editor';
+import type { DocBlock, GalleryImage } from '../../types/doc-editor';
 
 /**
  * Renderer student DUY NHẤT cho luồng học (B2) — cùng typography với canvas
@@ -107,6 +107,24 @@ export const StudentBlockRenderer: React.FC<{ blocks: DocBlock[] }> = ({ blocks 
               : block.align === 'justify' ? 'text-justify' : 'text-left';
         const inline = { __html: renderInlineLatex(block.text || '') } as const;
 
+        if (block.type === 'layout') {
+          // R1 — fallback; R7 — không hỗ trợ layout lồng (slot render qua self-composition chỉ nhận block tĩnh)
+          const lc = block.layoutContent;
+          if (!lc || !lc.slots?.length) return <div key={block.id} />;
+          return (
+            <div
+              key={block.id}
+              className="w-full my-3 grid grid-cols-1 gap-3 md:[grid-template-columns:var(--layout-cols)]"
+              style={{ '--layout-cols': lc.columns.map(c => `${c}fr`).join(' ') } as React.CSSProperties}
+            >
+              {lc.slots.map((slotBlocks, si) => (
+                <div key={si} className="min-w-0">
+                  <StudentBlockRenderer blocks={slotBlocks} />
+                </div>
+              ))}
+            </div>
+          );
+        }
         if (block.type === 'heading') {
           if (block.level === 1) {
             return (
@@ -171,11 +189,35 @@ export const StudentBlockRenderer: React.FC<{ blocks: DocBlock[] }> = ({ blocks 
 
         if (block.type === 'image') {
           const defaultSrc = 'https://images.unsplash.com/photo-1530026405186-ed1ea0ac7a63?w=500';
+          // Suy dẫn giống ImageBlock: images nếu có, không thì [src] — block cũ 1 ảnh giữ nguyên layout
+          const gallery: GalleryImage[] = block.images?.length
+            ? block.images
+            : block.src
+              ? [{ src: block.src, caption: block.caption }]
+              : [];
+          if (gallery.length >= 2) {
+            return (
+              <div key={block.id} style={indentStyle} className={`w-full flex ${block.align === 'center' ? 'justify-center' : block.align === 'right' ? 'justify-end' : 'justify-start'} my-3`}>
+                <div style={{ width: block.width || '100%' }} className="grid gap-2 grid-cols-[repeat(auto-fit,minmax(180px,1fr))] max-w-full">
+                  {gallery.map((img, gi) => (
+                    <figure key={`${img.src}-${gi}`} className="min-w-0 flex flex-col gap-1">
+                      <img src={img.src} alt={img.caption || 'Hình minh họa'} loading="lazy" className="w-full h-40 object-cover rounded-lg border border-slate-100 shadow-sm" />
+                      {img.caption && (
+                        <figcaption className="text-xs text-slate-500 font-medium text-center">
+                          {img.caption}
+                        </figcaption>
+                      )}
+                    </figure>
+                  ))}
+                </div>
+              </div>
+            );
+          }
           return (
             <div key={block.id} style={indentStyle} className={`w-full flex ${block.align === 'center' ? 'justify-center' : block.align === 'right' ? 'justify-end' : 'justify-start'} my-3`}>
               <div style={{ width: block.width || '100%' }} className="flex flex-col items-center gap-1.5 max-w-full">
-                <img src={block.src || defaultSrc} alt={block.caption || 'Hình minh họa'} className="w-full h-auto rounded-lg object-contain shadow-sm border border-slate-100" />
-                {block.caption && <span className="text-xs text-slate-500 font-medium">{block.caption}</span>}
+                <img src={gallery[0]?.src || defaultSrc} alt={gallery[0]?.caption || 'Hình minh họa'} className="w-full h-auto rounded-lg object-contain shadow-sm border border-slate-100" />
+                {gallery[0]?.caption && <span className="text-xs text-slate-500 font-medium">{gallery[0].caption}</span>}
               </div>
             </div>
           );

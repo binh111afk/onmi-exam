@@ -14,10 +14,11 @@ import {
   Award,
   Video,
   Code2,
+  LayoutTemplate,
 } from 'lucide-react';
 
 export interface DocCommand {
-  type: 'paragraph' | 'heading-1' | 'heading-2' | 'heading-3' | 'divider' | 'callout' | 'quote' | 'image' | 'table' | 'formula' | 'code' | 'quiz' | 'flashcard' | 'mindmap' | 'media' | 'fillblank' | 'dragdrop' | 'sortorder';
+  type: 'paragraph' | 'heading-1' | 'heading-2' | 'heading-3' | 'divider' | 'callout' | 'quote' | 'image' | 'table' | 'formula' | 'code' | 'quiz' | 'flashcard' | 'mindmap' | 'media' | 'fillblank' | 'dragdrop' | 'sortorder' | 'layout';
   label: string;
   desc: string;
   icon: React.ReactNode;
@@ -72,11 +73,17 @@ export const BLOCK_COMMANDS: DocCommand[] = [
     desc: 'Chèn ảnh tải lên hoặc liên kết', 
     icon: <ImageIcon size={14} className="text-slate-500" /> 
   },
-  { 
-    type: 'table', 
-    label: 'Bảng (Table)', 
-    desc: 'Chèn bảng dữ liệu hàng cột', 
-    icon: <Table size={14} className="text-slate-500" /> 
+  {
+    type: 'table',
+    label: 'Bảng (Table)',
+    desc: 'Chèn bảng dữ liệu hàng cột',
+    icon: <Table size={14} className="text-slate-500" />
+  },
+  {
+    type: 'layout',
+    label: 'Bố cục (Layout)',
+    desc: 'Chia vùng nội dung thành các ô',
+    icon: <LayoutTemplate size={14} className="text-slate-500" />
   },
   { 
     type: 'formula', 

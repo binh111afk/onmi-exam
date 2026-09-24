@@ -15,6 +15,8 @@ export interface ToolbarAction {
 
 interface BlockWrapperContextType {
   registerCustomActions: (actions: ToolbarAction[]) => void;
+  /** Block nội bộ (vd gallery ImageBlock) cần biết để ẩn control soạn thảo ở Xem như học sinh */
+  isPreviewMode: boolean;
 }
 
 export const BlockWrapperContext = createContext<BlockWrapperContextType | null>(null);
@@ -92,7 +94,7 @@ export const BlockWrapper: React.FC<BlockWrapperProps> = ({
     });
   }, []);
 
-  const wrapperContextValue = useMemo(() => ({ registerCustomActions }), [registerCustomActions]);
+  const wrapperContextValue = useMemo(() => ({ registerCustomActions, isPreviewMode: !!isPreviewMode }), [registerCustomActions, isPreviewMode]);
 
   const handleAlign = (align: DocBlock['align']) => {
     if (!canExecuteCommand || !applyBlockAlignment) return;

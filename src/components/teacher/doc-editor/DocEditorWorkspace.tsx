@@ -387,6 +387,10 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
     handleDeleteAtEnd,
     filteredCommands,
     handleSelectSlashCommand,
+    showLayoutPicker,
+    openLayoutPicker,
+    closeLayoutPicker,
+    createLayoutWithPreset,
     insertBlockAbove,
     handleSelectOtherBlock,
     focusBlock,
@@ -970,6 +974,10 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
                     showOtherBlocksPopup={showOtherBlocksPopup}
                     setShowOtherBlocksPopup={setShowOtherBlocksPopup}
                     handleSelectOtherBlock={handleSelectOtherBlock}
+                    showLayoutPicker={showLayoutPicker}
+                    onCloseLayoutPicker={closeLayoutPicker}
+                    onCreateLayout={createLayoutWithPreset}
+                    onOpenLayoutPicker={openLayoutPicker}
                     handleScrollWrapperClick={handleScrollWrapperClick}
                     handleBodyDrop={handleBodyDrop}
                   />

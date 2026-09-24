@@ -10,9 +10,22 @@ export interface TableCellStyle {
   color?: string;
 }
 
+/** Một ảnh trong gallery của block image (≥2 ảnh → render lưới) */
+export interface GalleryImage {
+  src: string;
+  caption?: string;
+}
+
+/** Bố cục khối (Windows Snap) — slot chứa block tĩnh xếp dọc; KHÔNG hỗ trợ layout lồng.
+ * columns = span tương đối (vd [2,1] ~ 8/4); slots.length phải === columns.length. */
+export interface LayoutContent {
+  columns: number[];
+  slots: DocBlock[][];
+}
+
 export interface DocBlock {
   id: string;
-  type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code' | 'quiz' | 'flashcard' | 'mindmap' | 'media' | 'timeline' | 'flow' | 'tabs' | 'compare' | 'diagram' | 'matching' | 'fillblank' | 'dragdrop' | 'sortorder';
+  type: 'heading' | 'paragraph' | 'bullet-list' | 'numbered-list' | 'todo-list' | 'callout' | 'quote' | 'divider' | 'image' | 'table' | 'formula' | 'code' | 'quiz' | 'flashcard' | 'mindmap' | 'media' | 'timeline' | 'flow' | 'tabs' | 'compare' | 'diagram' | 'matching' | 'fillblank' | 'dragdrop' | 'sortorder' | 'layout';
   order?: number;
   content?: {
     text?: string;
@@ -27,6 +40,8 @@ export interface DocBlock {
     rows?: string[][];
     width?: string;
     alt?: string;
+    images?: GalleryImage[];
+    layoutContent?: LayoutContent;
     hasHeaderRow?: boolean;
     hasHeaderColumn?: boolean;
     columnWidths?: number[];
@@ -64,6 +79,8 @@ export interface DocBlock {
   rows?: string[][];
   width?: string;
   alt?: string;
+  images?: GalleryImage[];
+  layoutContent?: LayoutContent;
   hasHeaderRow?: boolean;
   hasHeaderColumn?: boolean;
   columnWidths?: number[];
