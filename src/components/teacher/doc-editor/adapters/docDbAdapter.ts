@@ -50,6 +50,8 @@ export const transformDbToClientState = (
       title: lesson.title,
       isFolder: lesson.is_folder,
       blocks: blocksByLesson[lesson.id] || [],
+      ...(lesson.estimated_duration !== undefined ? { estimatedDuration: lesson.estimated_duration } : {}),
+      ...(lesson.practice_ids?.length ? { practiceIds: lesson.practice_ids } : {}),
       ...(subLessons.length > 0 ? { subLessons } : {}),
     };
   };
@@ -117,6 +119,8 @@ export const transformChaptersToDb = (
           parent_lesson_id: parentLessonId,
           is_folder: !!lesson.isFolder,
           order: lesIdx,
+          ...(lesson.estimatedDuration !== undefined ? { estimated_duration: lesson.estimatedDuration } : {}),
+          ...(lesson.practiceIds?.length ? { practice_ids: lesson.practiceIds } : {}),
         });
 
         const blocks = transformClientToDbPayload(lesson.id, lesson.blocks || []);

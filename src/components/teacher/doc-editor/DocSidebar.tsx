@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Edit, Plus, Clock } from 'lucide-react';
+import { ChevronDown, Edit, Plus, Clock, ClipboardList, Check } from 'lucide-react';
 import { TrashIcon } from '../../AppIcons';
+import { mockExams } from '../../../data/mockData';
 import type { Chapter } from '../../../types/doc-editor';
 import { Tooltip } from './Tooltip';
 
@@ -43,6 +44,7 @@ interface DocSidebarProps {
   onMoveLesson: (sourceLessonId: string, targetParentId: string, targetBeforeId?: string) => void;
   onChapterReorder: (sourceChapterId: string, targetChapterId: string) => void;
   onSetLessonDuration: (lessonId: string, minutes?: number) => void;
+  onSetLessonPractices: (lessonId: string, practiceIds: string[]) => void;
 }
 
 interface InlineInputProps {
@@ -91,10 +93,11 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
   editingItemId, onStartEditing, onSaveEdit, onCancelEdit,
   onCreateChapter, onCreateLesson,
   onDeleteChapter, onDeleteLesson, onDeleteSubLesson,
-  onMoveLesson, onChapterReorder, onSetLessonDuration,
+  onMoveLesson, onChapterReorder, onSetLessonDuration, onSetLessonPractices,
 }) => {
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [durationEditingId, setDurationEditingId] = useState<string | null>(null);
+  const [practicePickerId, setPracticePickerId] = useState<string | null>(null);
   const handleDragOver = (e: React.DragEvent) => e.preventDefault();
 
   const handleLessonDragStart = (e: React.DragEvent, lessonId: string) => {
@@ -219,7 +222,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                       return (
                         <div key={lesson.id} className="space-y-0.5">
                           <div
-                            className={`group/lesson w-full flex items-center justify-between gap-1 py-2 px-2.5 rounded-lg text-sm transition font-bold cursor-pointer ${isLessonSelected ? 'bg-slate-100/60 text-text-primary ring-1 ring-slate-200/50' : isActive && !isLegacyFolder ? 'bg-primary-light text-primary font-black' : 'text-text-secondary hover:text-text-primary hover:bg-slate-50/50'}`}
+                            className={`group/lesson relative w-full flex items-center justify-between gap-1 py-2 px-2.5 rounded-lg text-sm transition font-bold cursor-pointer ${isLessonSelected ? 'bg-slate-100/60 text-text-primary ring-1 ring-slate-200/50' : isActive && !isLegacyFolder ? 'bg-primary-light text-primary font-black' : 'text-text-secondary hover:text-text-primary hover:bg-slate-50/50'}`}
                             draggable={!isLessonEditing}
                             onDragStart={(e) => handleLessonDragStart(e, lesson.id)}
                             onDragOver={handleDragOver}
@@ -267,6 +270,9 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                               {!isLessonEditing && durationEditingId !== lesson.id && lesson.estimatedDuration && (
                                 <span className="text-[9px] font-bold text-slate-400 bg-slate-100 rounded px-1 py-0.5 shrink-0">{lesson.estimatedDuration}p</span>
                               )}
+                              {!isLessonEditing && durationEditingId !== lesson.id && (lesson.practiceIds?.length ?? 0) > 0 && (
+                                <span className="text-[9px] font-bold text-primary bg-primary-light rounded px-1 py-0.5 shrink-0">{lesson.practiceIds?.length} LT</span>
+                              )}
                             </div>
                             {!isLessonEditing && (
                               <div className="flex items-center gap-1 shrink-0">
@@ -277,9 +283,21 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                                 )}
                                 <div className="flex items-center gap-1 opacity-0 group-hover/lesson:opacity-100 transition pl-1">
                                   {!isLegacyFolder && (
+                                    <Tooltip content="Gắn bài luyện tập">
+                                      <button
+                                        onMouseDown={(e) => { e.stopPropagation(); setPracticePickerId(p => (p === lesson.id ? null : lesson.id)); }}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-primary rounded transition"
+                                      >
+                                        <ClipboardList size={10} />
+                                      </button>
+                                    </Tooltip>
+                                  )}
+                                  {!isLegacyFolder && (
                                     <Tooltip content="Thời lượng dự kiến (phút)">
                                       <button
-                                        onMouseDown={(e) => { e.stopPropagation(); setDurationEditingId(lesson.id); }}
+                                        onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setDurationEditingId(lesson.id); }}
+                                        onClick={(e) => e.stopPropagation()}
                                         className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-primary rounded transition"
                                       >
                                         <Clock size={10} />
@@ -294,6 +312,37 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                                   </Tooltip>
                                 </div>
                               </div>
+                            )}
+                            {practicePickerId === lesson.id && (
+                              <>
+                                <div
+                                  className="fixed inset-0 z-40"
+                                  onClick={(e) => { e.stopPropagation(); setPracticePickerId(null); }}
+                                />
+                                <div className="absolute right-2 top-full mt-1 z-50 w-56 bg-white border border-slate-100 rounded-xl shadow-lg py-1.5 max-h-56 overflow-y-auto">
+                                  {mockExams.map((exam) => {
+                                    const linked = lesson.practiceIds ?? [];
+                                    const selected = linked.includes(exam.id);
+                                    return (
+                                      <button
+                                        key={exam.id}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          onSetLessonPractices(lesson.id, selected ? linked.filter(x => x !== exam.id) : [...linked, exam.id]);
+                                        }}
+                                        className="w-full px-3 py-1.5 flex items-center gap-2 text-left text-[11px] font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+                                      >
+                                        <span className={`h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0 ${selected ? 'bg-primary border-primary text-white' : 'border-slate-300'}`}>
+                                          {selected && <Check size={10} />}
+                                        </span>
+                                        <span className="truncate flex-1 min-w-0">{exam.title}</span>
+                                        <span className="text-slate-400 font-medium shrink-0">{exam.questionCount} câu</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </>
                             )}
                           </div>
 

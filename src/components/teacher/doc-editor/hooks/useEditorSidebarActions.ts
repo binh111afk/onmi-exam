@@ -95,6 +95,19 @@ export const useEditorSidebarActions = ({
     setChapters(nextChapters);
   }, [chapters, pushHistoryState, setChapters]);
 
+  /** Liên kết hoạt động luyện tập (exam ids) — mảng thay thế trọn vẹn từ picker; rỗng = gán [] (publish xử lý ?? []) */
+  const handleSetLessonPractices = useCallback((lessonId: string, practiceIds: string[]) => {
+    const mapLessons = (lessons: Lesson[]): Lesson[] =>
+      lessons.map(l => {
+        if (l.id === lessonId) return { ...l, practiceIds };
+        if (l.subLessons?.length) return { ...l, subLessons: mapLessons(l.subLessons) };
+        return l;
+      });
+    const nextChapters = chapters.map(ch => ({ ...ch, lessons: mapLessons(ch.lessons) }));
+    pushHistoryState(nextChapters);
+    setChapters(nextChapters);
+  }, [chapters, pushHistoryState, setChapters]);
+
   const handleDeleteChapter = useCallback(async (chapterId: string) => {
     const title = getNodeTitle(chapterId);
     if (!title) return;
@@ -258,5 +271,6 @@ export const useEditorSidebarActions = ({
     handleChapterReorder,
     handleDepthExceeded,
     handleSetLessonDuration,
+    handleSetLessonPractices,
   };
 };

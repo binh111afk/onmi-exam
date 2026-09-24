@@ -9,6 +9,9 @@ export interface FlatNode {
   order: number;
   isFolder?: boolean;
   blocks?: DocBlock[];
+  /** Field mở rộng của Lesson — phải sống sót qua round-trip toNodesMap ↔ buildNestedChapters */
+  estimatedDuration?: number;
+  practiceIds?: string[];
 }
 
 type NodesMap = Record<string, FlatNode>;
@@ -88,6 +91,8 @@ const toNodesMap = (chapters: Chapter[]): NodesMap => {
       order,
       isFolder: lesson.isFolder,
       blocks: lesson.blocks,
+      ...(lesson.estimatedDuration !== undefined ? { estimatedDuration: lesson.estimatedDuration } : {}),
+      ...(lesson.practiceIds !== undefined ? { practiceIds: lesson.practiceIds } : {}),
     };
 
     lesson.subLessons?.forEach((subLesson, subIndex) => {
@@ -134,6 +139,8 @@ export const buildNestedChapters = (nodesMap: NodesMap): Chapter[] => {
       title: node.text,
       blocks: node.blocks ?? [],
       isFolder: node.isFolder,
+      ...(node.estimatedDuration !== undefined ? { estimatedDuration: node.estimatedDuration } : {}),
+      ...(node.practiceIds !== undefined ? { practiceIds: node.practiceIds } : {}),
       ...((node.isFolder || childLessons.length > 0) ? { subLessons: childLessons } : {}),
     };
   };

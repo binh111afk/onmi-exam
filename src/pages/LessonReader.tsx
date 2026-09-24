@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, CheckCircle2, ChevronLeft } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, ChevronLeft, List } from 'lucide-react';
 import { publishedDocService } from '../services/publishedDocService';
 import { lessonProgressService } from '../services/lessonProgressService';
 import { StudentBlockRenderer } from '../components/student/StudentBlockRenderer';
+import { StudentDocDrawer } from '../components/student/StudentDocDrawer';
 
 // Lesson Reader — học sinh đọc MỘT bài: breadcrumb, eyebrow "BÀI N" + tiêu đề,
 // nội dung qua renderer student, đánh dấu hoàn thành, ← Bài trước / Bài tiếp theo (cross-chapter).
@@ -20,6 +21,7 @@ export const LessonReader: React.FC = () => {
   const lesson = chapter?.lessons[safeLIdx];
   // Đẩy re-render sau khi ghi progress vào localStorage (state không React-managed)
   const [progressBump, setProgressBump] = useState(0);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     if (doc && chapter && lesson) {
@@ -42,6 +44,7 @@ export const LessonReader: React.FC = () => {
   }
 
   const completed = progressBump >= 0 && lessonProgressService.isCompleted(doc.id, chapterIdx, safeLIdx);
+  const firstPractice = lesson.practiceIds?.[0];
 
   // Danh sách phẳng toàn tài liệu để điều hướng trước/sau xuyên chương
   const flat: Array<{ cIdx: number; lIdx: number; title: string }> = [];
@@ -60,11 +63,26 @@ export const LessonReader: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto px-6 py-10">
-      <div className="flex items-center gap-1.5 text-xs font-bold min-w-0">
-        <Link to={`/library/${doc.id}`} className="text-text-secondary hover:text-primary truncate max-w-[180px]">{doc.title}</Link>
-        <span className="text-slate-300">/</span>
-        <Link to={`/library/${doc.id}/chapter/${chapterIdx}`} className="text-text-secondary hover:text-primary truncate">{chapter.title}</Link>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 text-xs font-bold min-w-0">
+          <Link to={`/library/${doc.id}`} className="text-text-secondary hover:text-primary truncate max-w-[180px]">{doc.title}</Link>
+          <span className="text-slate-300">/</span>
+          <Link to={`/library/${doc.id}/chapter/${chapterIdx}`} className="text-text-secondary hover:text-primary truncate">{chapter.title}</Link>
+        </div>
+        <button
+          onClick={() => setDrawerOpen(true)}
+          aria-label="Mở mục lục"
+          className="inline-flex items-center gap-1 text-xs font-bold text-text-secondary hover:text-primary transition cursor-pointer shrink-0"
+        >
+          <List size={14} /> Mục lục
+        </button>
       </div>
+      <StudentDocDrawer
+        doc={doc}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        currentLesson={{ chapterIdx, lessonIdx: safeLIdx }}
+      />
 
       <p className="text-xs font-black text-primary uppercase tracking-wider mt-8">Bài {safeLIdx + 1}</p>
       <h1 className="text-3xl font-bold text-text-primary mt-1 leading-snug">{lesson.title}</h1>
@@ -74,8 +92,18 @@ export const LessonReader: React.FC = () => {
 
       <div className="mt-12">
         {completed ? (
-          <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-success/10 text-success text-sm font-bold rounded-xl border border-success/20">
-            <CheckCircle2 size={16} /> Đã hoàn thành
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-success/10 text-success text-sm font-bold rounded-xl border border-success/20">
+              <CheckCircle2 size={16} /> Đã hoàn thành
+            </div>
+            {firstPractice && (
+              <button
+                onClick={() => navigate(`/practice/${firstPractice}`)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white text-sm font-bold rounded-xl transition cursor-pointer shadow-md shadow-indigo-100"
+              >
+                Luyện tập <ArrowRight size={16} />
+              </button>
+            )}
           </div>
         ) : (
           <button

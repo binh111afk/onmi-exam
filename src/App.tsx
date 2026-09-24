@@ -653,7 +653,7 @@ function AppShell() {
                 )}
               />
               <Route path="/library/:docId" element={<DocReaderRoute />} />
-              <Route path="/library/:docId/chapter/:chapterIdx" element={<ChapterOverview />} />
+              <Route path="/library/:docId/chapter/:chapterIdx" element={<ChapterOverview completedExams={user.completedExams} />} />
               <Route path="/library/:docId/chapter/:chapterIdx/lesson/:lessonIdx" element={<LessonReader />} />
               <Route path="/help" element={<Contact />} />
               <Route path="/exams" element={<Redirect to="/practice/exams" />} />

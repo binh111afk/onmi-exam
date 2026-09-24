@@ -432,6 +432,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
     handleMoveLesson,
     handleChapterReorder,
     handleSetLessonDuration,
+    handleSetLessonPractices,
   } = useEditorSidebarActions({
     documentTree,
     activeLessonId,
@@ -868,6 +869,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
               onMoveLesson={handleMoveLesson}
               onChapterReorder={handleChapterReorder}
               onSetLessonDuration={handleSetLessonDuration}
+              onSetLessonPractices={handleSetLessonPractices}
             />
 
             {/* 2. CENTER PANEL: Rich Editor Workspace — một nguồn render, canvas = trang student */}

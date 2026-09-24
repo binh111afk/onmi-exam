@@ -181,6 +181,8 @@ export interface DbLesson {
   parent_lesson_id: string | null;
   is_folder: boolean;
   order: number;
+  estimated_duration?: number;
+  practice_ids?: string[];
 }
 
 export interface DbBlock {
