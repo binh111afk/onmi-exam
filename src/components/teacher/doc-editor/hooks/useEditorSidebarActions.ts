@@ -32,6 +32,7 @@ export const useEditorSidebarActions = ({
   setActiveBlockIndex,
 }: {
   documentTree: {
+    chapters: Chapter[];
     getNodeTitle: (id: string) => string | undefined;
     getDeletedIds: (id: string) => string[];
     deleteNode: (id: string) => Chapter[];
@@ -67,6 +68,7 @@ export const useEditorSidebarActions = ({
     reorderChapter,
     getNodeTitle,
     getDeletedIds,
+    chapters,
   } = documentTree;
 
   const handleCreateChapter = useCallback(() => {
@@ -74,6 +76,24 @@ export const useEditorSidebarActions = ({
     setNewItems(prev => [...prev, newId]);
     setEditingItemId(newId);
   }, [createChapter, setEditingItemId, setNewItems]);
+
+  /** Thời lượng dự kiến (phút) — manual; bỏ trống → xóa field để auto-estimate chạy */
+  const handleSetLessonDuration = useCallback((lessonId: string, minutes?: number) => {
+    const mapLessons = (lessons: Lesson[]): Lesson[] =>
+      lessons.map(l => {
+        if (l.id === lessonId) {
+          const next = { ...l };
+          if (minutes === undefined || Number.isNaN(minutes)) delete next.estimatedDuration;
+          else next.estimatedDuration = Math.max(1, Math.round(minutes));
+          return next;
+        }
+        if (l.subLessons?.length) return { ...l, subLessons: mapLessons(l.subLessons) };
+        return l;
+      });
+    const nextChapters = chapters.map(ch => ({ ...ch, lessons: mapLessons(ch.lessons) }));
+    pushHistoryState(nextChapters);
+    setChapters(nextChapters);
+  }, [chapters, pushHistoryState, setChapters]);
 
   const handleDeleteChapter = useCallback(async (chapterId: string) => {
     const title = getNodeTitle(chapterId);
@@ -237,5 +257,6 @@ export const useEditorSidebarActions = ({
     handleMoveLesson,
     handleChapterReorder,
     handleDepthExceeded,
+    handleSetLessonDuration,
   };
 };

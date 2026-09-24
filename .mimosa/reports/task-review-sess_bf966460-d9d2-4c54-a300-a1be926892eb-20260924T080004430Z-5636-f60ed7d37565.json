@@ -1,0 +1,528 @@
+{
+  "schema_version": "mimosa-task-review/v2",
+  "run_id": "20260924T080004430Z-5636-f60ed7d37565",
+  "run_status": "completed",
+  "errors": [],
+  "coverage": {
+    "schema_version": "mimosa-hook-coverage/v1",
+    "status": "complete",
+    "scope": "hook_observed_diff",
+    "baseline": {
+      "complete": true,
+      "captured_files": 320,
+      "candidate_limit": 5000,
+      "truncated": false,
+      "enumeration_error_count": 0,
+      "snapshot_error_count": 0,
+      "compensated_target_count": 6
+    },
+    "change_tracking": {
+      "touched_observed": 6,
+      "touched_retained": 6,
+      "truncated": false,
+      "bash_mutation": true,
+      "bash_discovered": 6,
+      "bash_discovery_limit": 80,
+      "bash_discovery_truncated": false
+    },
+    "candidates": {
+      "eligible_files": 6,
+      "selected_files": 6,
+      "limit": 20,
+      "truncated": false
+    },
+    "scanning": {
+      "required_files": 6,
+      "scanned_files": 6,
+      "skipped_files": 0,
+      "failed_files": 0,
+      "project_checks_required": 0,
+      "project_checks_completed": 0
+    },
+    "notification": {
+      "eligible_findings": 0,
+      "detailed_findings": 0,
+      "detail_limit": 3,
+      "truncated": false
+    },
+    "reason_counts": {},
+    "reasons": [],
+    "reasons_truncated": false
+  },
+  "generated_at": "2026-09-24T08:00:04.430Z",
+  "session_id": "sess_bf966460-d9d2-4c54-a300-a1be926892eb",
+  "target": ".",
+  "revision": "996060ba57dca256e4c3e23f8f581f0a6459607a",
+  "rules_version": "unavailable",
+  "diff_hash": "382efd0a0157b15a2615f9a58b87cb32b1c7ac5dd6328d3290090812a94535b5",
+  "diff": {
+    "algorithm": "sha256",
+    "changed_file_count": 6,
+    "changed_files": [
+      {
+        "file": "src/components/teacher/doc-editor/DocEditorBlockList.tsx",
+        "ranges": [
+          {
+            "start": 288,
+            "end": 288
+          },
+          {
+            "start": 290,
+            "end": 290
+          },
+          {
+            "start": 339,
+            "end": 339
+          }
+        ],
+        "before_hash": "388d7708d293b5810ffb3975fa89bfdd39cbc5ccd674b6822b65e51db9b31ae0",
+        "after_hash": "cd796435c3a623de0d837ee949b196e33e71820a122a2691e0642d302e85cb86"
+      },
+      {
+        "file": "src/components/teacher/doc-editor/DocEditorHeader.tsx",
+        "ranges": [
+          {
+            "start": 42,
+            "end": 42
+          },
+          {
+            "start": 56,
+            "end": 56
+          },
+          {
+            "start": 74,
+            "end": 74
+          },
+          {
+            "start": 80,
+            "end": 80
+          },
+          {
+            "start": 94,
+            "end": 94
+          },
+          {
+            "start": 99,
+            "end": 99
+          },
+          {
+            "start": 119,
+            "end": 119
+          },
+          {
+            "start": 128,
+            "end": 128
+          }
+        ],
+        "before_hash": "af913d7cb0bebce476ce798e93c38cebf8d81dfb06042350435324e7a1a2765a",
+        "after_hash": "ac87e83194a59bc094ccc32ea99366123bfcac410b471948858831590a3799dd"
+      },
+      {
+        "file": "src/components/teacher/doc-editor/DocEditorWorkspace.tsx",
+        "ranges": [
+          {
+            "start": 274,
+            "end": 281
+          },
+          {
+            "start": 859,
+            "end": 867
+          },
+          {
+            "start": 871,
+            "end": 872
+          },
+          {
+            "start": 880,
+            "end": 880
+          },
+          {
+            "start": 943,
+            "end": 963
+          }
+        ],
+        "before_hash": "cd5025fe9e63dc8d4b63c022739c7c5e1ed28da8049ef5fbebdf89a2d8649654",
+        "after_hash": "a441faa541347df59f3d9ab375a1200dd0887bf11ea827dcd63956fd74847501"
+      },
+      {
+        "file": "src/components/teacher/doc-editor/DocPreviewSimulator.tsx",
+        "ranges": [
+          {
+            "start": 624,
+            "end": 625
+          },
+          {
+            "start": 628,
+            "end": 628
+          },
+          {
+            "start": 647,
+            "end": 647
+          }
+        ],
+        "before_hash": "fb74854a3158526042e60eb6f91b2101b82cb6ce2c7d8a180eb9a312a868ce67",
+        "after_hash": "99b8e8a7d14587d6d42e4c83679a05c3227f0a990d97c6d04c4d20206fda27b8"
+      },
+      {
+        "file": "src/components/teacher/doc-editor/DocSidebar.tsx",
+        "ranges": [
+          {
+            "start": 76,
+            "end": 76
+          },
+          {
+            "start": 123,
+            "end": 123
+          },
+          {
+            "start": 127,
+            "end": 127
+          },
+          {
+            "start": 132,
+            "end": 132
+          },
+          {
+            "start": 143,
+            "end": 143
+          },
+          {
+            "start": 155,
+            "end": 155
+          },
+          {
+            "start": 167,
+            "end": 167
+          },
+          {
+            "start": 179,
+            "end": 179
+          },
+          {
+            "start": 183,
+            "end": 183
+          },
+          {
+            "start": 185,
+            "end": 186
+          },
+          {
+            "start": 199,
+            "end": 199
+          },
+          {
+            "start": 220,
+            "end": 220
+          },
+          {
+            "start": 231,
+            "end": 231
+          },
+          {
+            "start": 234,
+            "end": 234
+          },
+          {
+            "start": 247,
+            "end": 247
+          },
+          {
+            "start": 252,
+            "end": 252
+          },
+          {
+            "start": 273,
+            "end": 273
+          },
+          {
+            "start": 284,
+            "end": 284
+          },
+          {
+            "start": 297,
+            "end": 297
+          },
+          {
+            "start": 300,
+            "end": 300
+          },
+          {
+            "start": 314,
+            "end": 314
+          },
+          {
+            "start": 332,
+            "end": 332
+          },
+          {
+            "start": 335,
+            "end": 335
+          },
+          {
+            "start": 357,
+            "end": 357
+          }
+        ],
+        "before_hash": "6d78f62042dea3e421eea72717bde96edfac0c9a41da362434451265231603fc",
+        "after_hash": "3094c48b43972a0d587c7e8d728c6f7aa03a83c52acd932ec5cbb52fdbbf21aa"
+      },
+      {
+        "file": "src/components/teacher/doc-editor/DocToolbar.tsx",
+        "ranges": [
+          {
+            "start": 139,
+            "end": 139
+          },
+          {
+            "start": 148,
+            "end": 148
+          },
+          {
+            "start": 159,
+            "end": 159
+          },
+          {
+            "start": 163,
+            "end": 163
+          },
+          {
+            "start": 176,
+            "end": 176
+          },
+          {
+            "start": 179,
+            "end": 179
+          },
+          {
+            "start": 188,
+            "end": 188
+          },
+          {
+            "start": 193,
+            "end": 193
+          },
+          {
+            "start": 198,
+            "end": 198
+          },
+          {
+            "start": 203,
+            "end": 203
+          },
+          {
+            "start": 208,
+            "end": 208
+          },
+          {
+            "start": 213,
+            "end": 213
+          },
+          {
+            "start": 218,
+            "end": 218
+          },
+          {
+            "start": 223,
+            "end": 223
+          },
+          {
+            "start": 228,
+            "end": 228
+          },
+          {
+            "start": 233,
+            "end": 233
+          },
+          {
+            "start": 238,
+            "end": 238
+          },
+          {
+            "start": 243,
+            "end": 243
+          },
+          {
+            "start": 248,
+            "end": 248
+          },
+          {
+            "start": 253,
+            "end": 253
+          },
+          {
+            "start": 270,
+            "end": 270
+          },
+          {
+            "start": 273,
+            "end": 273
+          },
+          {
+            "start": 287,
+            "end": 287
+          },
+          {
+            "start": 292,
+            "end": 292
+          },
+          {
+            "start": 299,
+            "end": 299
+          },
+          {
+            "start": 308,
+            "end": 308
+          },
+          {
+            "start": 318,
+            "end": 318
+          },
+          {
+            "start": 328,
+            "end": 328
+          },
+          {
+            "start": 338,
+            "end": 338
+          },
+          {
+            "start": 359,
+            "end": 359
+          },
+          {
+            "start": 369,
+            "end": 369
+          },
+          {
+            "start": 377,
+            "end": 377
+          },
+          {
+            "start": 398,
+            "end": 398
+          },
+          {
+            "start": 401,
+            "end": 401
+          },
+          {
+            "start": 411,
+            "end": 411
+          },
+          {
+            "start": 419,
+            "end": 419
+          },
+          {
+            "start": 426,
+            "end": 426
+          },
+          {
+            "start": 435,
+            "end": 435
+          },
+          {
+            "start": 445,
+            "end": 445
+          },
+          {
+            "start": 455,
+            "end": 455
+          },
+          {
+            "start": 465,
+            "end": 465
+          },
+          {
+            "start": 469,
+            "end": 469
+          },
+          {
+            "start": 478,
+            "end": 478
+          },
+          {
+            "start": 488,
+            "end": 488
+          },
+          {
+            "start": 498,
+            "end": 498
+          },
+          {
+            "start": 505,
+            "end": 505
+          },
+          {
+            "start": 511,
+            "end": 511
+          },
+          {
+            "start": 515,
+            "end": 515
+          },
+          {
+            "start": 521,
+            "end": 521
+          },
+          {
+            "start": 523,
+            "end": 523
+          }
+        ],
+        "before_hash": "74bd977357d7339a90baba769bacf9ea26c16e6bdd632b7f0aafe04977413489",
+        "after_hash": "214444315097e54bd84a61ea47bdcd258553a7a13193bf9316e8f5b6f0039bc1"
+      }
+    ]
+  },
+  "timing": {
+    "started_at": "2026-09-24T08:00:02.457Z",
+    "completed_at": "2026-09-24T08:00:04.430Z",
+    "duration_ms": 1973,
+    "measurement": "hook_wall_clock"
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "model_calls": 0,
+    "measurement": "known-zero"
+  },
+  "telemetry": {
+    "schemaVersion": "mimosa-gate-telemetry/v1",
+    "profile": "gate",
+    "operation": "Stop",
+    "outcome": "complete",
+    "latencyMs": 1973,
+    "peakMemoryBytes": 153571328,
+    "memoryMeasurement": "max-observed-process-rss",
+    "scannedFiles": 6,
+    "cache": {
+      "hits": 0,
+      "misses": 0,
+      "measurement": "not-applicable"
+    },
+    "denyCount": 0,
+    "tokens": {
+      "input": 0,
+      "output": 0,
+      "total": 0,
+      "modelCalls": 0,
+      "measurement": "known-zero"
+    }
+  },
+  "finding_count": 0,
+  "rewake_finding_count": 0,
+  "evidence_boundary": {
+    "scan": "candidate",
+    "static_fix_verification": "observed_static_only",
+    "runtime_verification": "not_performed"
+  },
+  "finding_events": [],
+  "findings": [],
+  "artifacts": {
+    "immutable_report": ".mimosa/reports/task-review-sess_bf966460-d9d2-4c54-a300-a1be926892eb-20260924T080004430Z-5636-f60ed7d37565.json",
+    "latest_report": ".mimosa/reports/task-review-sess_bf966460-d9d2-4c54-a300-a1be926892eb.json",
+    "history_summary": ".mimosa/history/run-20260924T080004430Z-5636-f60ed7d37565.json"
+  }
+}

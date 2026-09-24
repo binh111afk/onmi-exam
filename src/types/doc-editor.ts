@@ -155,6 +155,10 @@ export interface Lesson {
   blocks: DocBlock[];
   isFolder?: boolean;
   subLessons?: Lesson[];
+  /** Phút — teacher nhập tay; không có thì auto-estimate (manual thắng) */
+  estimatedDuration?: number;
+  /** Liên kết hoạt động luyện tập riêng (không đếm quiz block) */
+  practiceIds?: string[];
 }
 
 export interface Chapter {

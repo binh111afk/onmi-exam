@@ -1,0 +1,69 @@
+import React from 'react';
+import { ArrowLeft, HelpCircle, FileText } from 'lucide-react';
+import type { Exam } from '../types';
+import { subjectToSlug } from '../data/mockData';
+
+interface PracticeTopicsProps {
+  exams: Exam[];
+  onSelectTopic: (practiceId: string) => void;
+  onBack: () => void;
+}
+
+export const PracticeTopics: React.FC<PracticeTopicsProps> = ({ exams, onSelectTopic, onBack }) => {
+  const subjects = Array.from(new Set(exams.map((e) => e.subject)))
+    .map((subject) => {
+      const subjectExams = exams.filter((e) => e.subject === subject);
+      return {
+        subject,
+        examCount: subjectExams.length,
+        questionCount: subjectExams.reduce((sum, e) => sum + e.questions.length, 0),
+      };
+    });
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-8 antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-primary transition-colors cursor-pointer mb-5"
+      >
+        <ArrowLeft size={14} /> Luyện tập
+      </button>
+
+      <header className="mb-6">
+        <h1 className="text-2xl font-black text-text-primary">Luyện theo chủ đề</h1>
+        <p className="text-xs text-text-secondary font-medium mt-1">
+          Chọn môn học — Omni gom câu hỏi từ các đề có sẵn thành bộ luyện cho bạn
+        </p>
+      </header>
+
+      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {subjects.map((item) => {
+          const slug = subjectToSlug(item.subject);
+          return (
+            <div
+              key={item.subject}
+              className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col hover:border-primary/30 transition-all duration-200"
+            >
+              <h2 className="text-sm font-black text-text-primary">{item.subject}</h2>
+              <div className="flex items-center gap-3 text-[10px] font-bold text-text-secondary mt-2 mb-4">
+                <span className="flex items-center gap-1">
+                  <FileText size={12} /> {item.examCount} đề
+                </span>
+                <span className="flex items-center gap-1">
+                  <HelpCircle size={12} /> {item.questionCount} câu hỏi
+                </span>
+              </div>
+              <button
+                onClick={() => slug && onSelectTopic(`topic-${slug}`)}
+                disabled={!slug}
+                className="mt-auto w-full py-2.5 bg-primary hover:bg-primary/90 disabled:bg-slate-200 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer"
+              >
+                Bắt đầu luyện
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};

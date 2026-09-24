@@ -1,0 +1,413 @@
+{
+  "schema_version": "mimosa-task-review/v2",
+  "run_id": "20260923T151138903Z-26296-7df8e12decf6",
+  "run_status": "inconclusive",
+  "errors": [
+    {
+      "stage": "candidate-select",
+      "target": "src/document/parsers/compiler/index.ts",
+      "reason": "candidate_limit_exceeded: 14 changed reviewable file(s) were not scanned because the limit is 20"
+    },
+    {
+      "stage": "scan",
+      "target": "src/pages/Teacher.tsx",
+      "reason": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "src/components/teacher/doc-editor/blocks/MediaBlock.tsx",
+      "reason": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "src/components/teacher/doc-editor/DocToolbar.tsx",
+      "reason": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "src/components/teacher/doc-editor/PublishModal.tsx",
+      "reason": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "src/components/teacher/exam-editor/ExamEditorWorkspace.tsx",
+      "reason": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "src/components/teacher/exam-editor/ExamQuickOcrStep.tsx",
+      "reason": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "src/components/teacher/exam-editor/OmlGuideModal.tsx",
+      "reason": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "src/components/teacher/TeacherDashboard.tsx",
+      "reason": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "src/components/teacher/doc-editor/blocks/FormulaBlock.tsx",
+      "reason": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT"
+    }
+  ],
+  "coverage": {
+    "schema_version": "mimosa-hook-coverage/v1",
+    "status": "partial",
+    "scope": "hook_observed_diff",
+    "baseline": {
+      "complete": true,
+      "captured_files": 334,
+      "candidate_limit": 5000,
+      "truncated": false,
+      "enumeration_error_count": 0,
+      "snapshot_error_count": 0,
+      "compensated_target_count": 34
+    },
+    "change_tracking": {
+      "touched_observed": 13,
+      "touched_retained": 13,
+      "truncated": false,
+      "bash_mutation": true,
+      "bash_discovered": 34,
+      "bash_discovery_limit": 80,
+      "bash_discovery_truncated": false
+    },
+    "candidates": {
+      "eligible_files": 34,
+      "selected_files": 20,
+      "limit": 20,
+      "truncated": true
+    },
+    "scanning": {
+      "required_files": 9,
+      "scanned_files": 0,
+      "skipped_files": 0,
+      "failed_files": 9,
+      "project_checks_required": 0,
+      "project_checks_completed": 0
+    },
+    "notification": {
+      "eligible_findings": 0,
+      "detailed_findings": 0,
+      "detail_limit": 3,
+      "truncated": false
+    },
+    "reason_counts": {
+      "candidate_limit_exceeded": 1,
+      "scanner_failed": 9,
+      "project_check_failed": 10
+    },
+    "reasons": [
+      {
+        "code": "candidate_limit_exceeded",
+        "stage": "candidate-select",
+        "target": "src/document/parsers/compiler/index.ts",
+        "detail": "14 changed reviewable file(s) were not scanned because the limit is 20",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "src/pages/Teacher.tsx",
+        "detail": "spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/doc-editor/blocks/MediaBlock.tsx",
+        "detail": "spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/doc-editor/DocToolbar.tsx",
+        "detail": "spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/doc-editor/PublishModal.tsx",
+        "detail": "spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/exam-editor/ExamEditorWorkspace.tsx",
+        "detail": "spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/exam-editor/ExamQuickOcrStep.tsx",
+        "detail": "spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/exam-editor/OmlGuideModal.tsx",
+        "detail": "spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/TeacherDashboard.tsx",
+        "detail": "spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/doc-editor/blocks/FormulaBlock.tsx",
+        "detail": "spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "candidate-select",
+        "target": "src/document/parsers/compiler/index.ts",
+        "detail": "candidate_limit_exceeded: 14 changed reviewable file(s) were not scanned because the limit is 20",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "src/pages/Teacher.tsx",
+        "detail": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/doc-editor/blocks/MediaBlock.tsx",
+        "detail": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/doc-editor/DocToolbar.tsx",
+        "detail": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/doc-editor/PublishModal.tsx",
+        "detail": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/exam-editor/ExamEditorWorkspace.tsx",
+        "detail": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/exam-editor/ExamQuickOcrStep.tsx",
+        "detail": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/exam-editor/OmlGuideModal.tsx",
+        "detail": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/TeacherDashboard.tsx",
+        "detail": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/doc-editor/blocks/FormulaBlock.tsx",
+        "detail": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      }
+    ],
+    "reasons_truncated": false
+  },
+  "generated_at": "2026-09-23T15:11:38.903Z",
+  "session_id": "sess_fc856221-cd20-4b3e-8008-400c300097e5",
+  "target": ".",
+  "revision": "31bdab1feb07eedcf28ea0a9fa157aaa81769b0f",
+  "rules_version": "unavailable",
+  "diff_hash": "7b353734bcf8e037f444a8291fa84388f3207ac797cadeed065b9eb9ae374b1d",
+  "diff": {
+    "algorithm": "sha256",
+    "changed_file_count": 9,
+    "changed_files": [
+      {
+        "file": "src/components/teacher/doc-editor/blocks/FormulaBlock.tsx",
+        "ranges": [
+          {
+            "start": 1,
+            "end": 1
+          }
+        ],
+        "before_hash": "f8c587ba008a4e3bbc360a532e23cd5f60f10e4861667b1023e7b93913104c61",
+        "after_hash": "598c422f33405749e8e0b4818b65d5b93700322a3d842045b7afc9009ae042d6"
+      },
+      {
+        "file": "src/components/teacher/doc-editor/blocks/MediaBlock.tsx",
+        "ranges": [
+          {
+            "start": 3,
+            "end": 3
+          }
+        ],
+        "before_hash": "21f17f5e25eeeed5576386748c1463443719491cddcab12bb6db173fc1120ccd",
+        "after_hash": "3120fc92e5f913a9a9a45375c577de42f0e8a0ec7863d0a92ff69303b9342f71"
+      },
+      {
+        "file": "src/components/teacher/doc-editor/DocToolbar.tsx",
+        "ranges": [
+          {
+            "start": 23,
+            "end": 23
+          }
+        ],
+        "before_hash": "634145ccb5fe9dfdf4515abbc1f28f623ef7a52d48c5170c6256a017520c3be6",
+        "after_hash": "74bd977357d7339a90baba769bacf9ea26c16e6bdd632b7f0aafe04977413489"
+      },
+      {
+        "file": "src/components/teacher/doc-editor/PublishModal.tsx",
+        "ranges": [
+          {
+            "start": 1,
+            "end": 1
+          }
+        ],
+        "before_hash": "7c4f5558ef4b7660dd9e1a5f27980d7220ea06f361fd740b5e8be933496da6bd",
+        "after_hash": "4844db9acc66ef17acb9e0c00b993bdab25aee9646383f790e549669a44c14b2"
+      },
+      {
+        "file": "src/components/teacher/exam-editor/ExamEditorWorkspace.tsx",
+        "ranges": [
+          {
+            "start": 6,
+            "end": 434
+          }
+        ],
+        "before_hash": "059362f08c90f9ff0562a0d2cc449e047426c8fd184177ee7dbada039ed02b2e",
+        "after_hash": "1b45ed39de1e49233a241817e3d88bd702bfa1d40a5712267ddc0aa26737b039"
+      },
+      {
+        "file": "src/components/teacher/exam-editor/ExamQuickOcrStep.tsx",
+        "ranges": [
+          {
+            "start": 9,
+            "end": 94
+          }
+        ],
+        "before_hash": "2eaea091bd0ade487d67998082e8fd1987f937c61088338a3939fe5de17c98d5",
+        "after_hash": "af1ef4ba421035f625f14b689fd5c70e90b6ef761bad19d33f783032e8f5e0a6"
+      },
+      {
+        "file": "src/components/teacher/exam-editor/OmlGuideModal.tsx",
+        "ranges": [
+          {
+            "start": 2,
+            "end": 2
+          }
+        ],
+        "before_hash": "839d4521a019e0fdaeca75397f382894a0b250a7d55150351648b606ce23d911",
+        "after_hash": "f5110ef061be39269487d58e9e457e868d6df3d15c9ec92f27c47c518f32e16c"
+      },
+      {
+        "file": "src/components/teacher/TeacherDashboard.tsx",
+        "ranges": [
+          {
+            "start": 4,
+            "end": 11
+          }
+        ],
+        "before_hash": "f1fe519e3dfbbb935a497881737c8b88257f8929226b404565a452e5f9df9705",
+        "after_hash": "6351a2a853da5456eecae807bf771c91c808bc4f40e1ad01c1a959e0ef622655"
+      },
+      {
+        "file": "src/pages/Teacher.tsx",
+        "ranges": [
+          {
+            "start": 1,
+            "end": 1
+          },
+          {
+            "start": 8,
+            "end": 8
+          }
+        ],
+        "before_hash": "78c20534276af7722bb97eeaf8852564abd3c9f1e81ac199d5f10727eb21c25b",
+        "after_hash": "b3acdd77db78444e7592f6918b52e9dedb1f321f937a8d7095992589dcea0faf"
+      }
+    ]
+  },
+  "timing": {
+    "started_at": "2026-09-23T15:11:36.153Z",
+    "completed_at": "2026-09-23T15:11:38.903Z",
+    "duration_ms": 2750,
+    "measurement": "hook_wall_clock"
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "model_calls": 0,
+    "measurement": "known-zero"
+  },
+  "telemetry": {
+    "schemaVersion": "mimosa-gate-telemetry/v1",
+    "profile": "gate",
+    "operation": "Stop",
+    "outcome": "partial/INCONCLUSIVE",
+    "latencyMs": 2750,
+    "peakMemoryBytes": 104157184,
+    "memoryMeasurement": "max-observed-process-rss",
+    "scannedFiles": 0,
+    "cache": {
+      "hits": 0,
+      "misses": 0,
+      "measurement": "not-applicable"
+    },
+    "denyCount": 0,
+    "tokens": {
+      "input": 0,
+      "output": 0,
+      "total": 0,
+      "modelCalls": 0,
+      "measurement": "known-zero"
+    }
+  },
+  "finding_count": 0,
+  "rewake_finding_count": 0,
+  "evidence_boundary": {
+    "scan": "candidate",
+    "static_fix_verification": "observed_static_only",
+    "runtime_verification": "not_performed"
+  },
+  "finding_events": [],
+  "findings": [],
+  "artifacts": {
+    "immutable_report": ".mimosa/reports/task-review-sess_fc856221-cd20-4b3e-8008-400c300097e5-20260923T151138903Z-26296-7df8e12decf6.json",
+    "latest_report": ".mimosa/reports/task-review-sess_fc856221-cd20-4b3e-8008-400c300097e5.json",
+    "history_summary": ".mimosa/history/run-20260923T151138903Z-26296-7df8e12decf6.json"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "stop-20260923T080842452Z-14428-c67c942d932e",
+  "runId": "20260923T080842452Z-14428-c67c942d932e",
+  "runStatus": "completed",
+  "coverage": {
+    "status": "complete",
+    "reasons": []
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "Stop"
+  },
+  "revision": "31bdab1feb07eedcf28ea0a9fa157aaa81769b0f",
+  "diffHash": "fc9258ad602942023a741aad87afc99899275156183654741cddf14ac462e00a",
+  "rulesVersion": "unavailable",
+  "sessionHash": "f04a7a9ea58f4bee053cd68da8db19ce1fd684d06c157c97c9b8759199730067",
+  "reportRef": ".mimosa/reports/task-review-sess_fc856221-cd20-4b3e-8008-400c300097e5-20260923T080842452Z-14428-c67c942d932e.json",
+  "events": [],
+  "observedFindingIds": [],
+  "verifiedFiles": [
+    {
+      "file": "src/App.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/pages/PracticeMistakes.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/pages/CourseDetail.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/pages/Courses.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/pages/PracticeTopics.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    }
+  ],
+  "recordedAt": "2026-09-23T08:08:43.024Z"
+}

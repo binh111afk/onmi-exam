@@ -1,0 +1,157 @@
+import React, { useMemo, useState } from 'react';
+import { ArrowLeft, CheckCircle2, ChevronDown, ChevronUp, Target, XCircle } from 'lucide-react';
+import type { Exam, User } from '../types';
+import { mockExams, subjectToSlug } from '../data/mockData';
+
+type LastExamResult = NonNullable<User['lastExamResult']>;
+
+interface ResultProps {
+  exam: Exam;
+  result: LastExamResult;
+  weakTopics: string[];
+  continuePath: string;
+  onNavigatePath: (path: string) => void;
+}
+
+const optionLetter = (index: number): string => String.fromCharCode(65 + index);
+
+export const Result: React.FC<ResultProps> = ({ exam, result, weakTopics, continuePath, onNavigatePath }) => {
+  // Đúng/sai tính trên flat lookup toàn mockExams + result.answers — KHÔNG đếm trên exam.questions
+  // (adaptive/mistakes-review rebuild khác tập lúc thi vì examMistakes đã mutate; result.score/10 là chỉ số chính)
+  // invariant: mọi questionId trong answers đều tồn tại duy nhất trong mockExams (đã verify 18/18)
+  const questionById = useMemo(
+    () => new Map(mockExams.flatMap((e) => e.questions.map((q) => [q.id, q]))),
+    []
+  );
+
+  const answered = Object.entries(result.answers);
+  const wrong = answered.filter(([qid, opt]) => {
+    const q = questionById.get(qid);
+    return q && q.correctOptionIndex !== opt;
+  });
+  const correctCount = answered.length - wrong.length;
+  const accuracy = answered.length > 0 ? Math.round((correctCount / answered.length) * 100) : 0;
+  const topicSlug = subjectToSlug(exam.subject);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-8 antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <button
+        onClick={() => onNavigatePath(`/practice/${exam.id}`)}
+        className="flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-primary transition-colors cursor-pointer mb-5"
+      >
+        <ArrowLeft size={14} /> Đề thi
+      </button>
+
+      <header className="bg-white border border-slate-100 rounded-2xl p-6 mb-6 text-center">
+        <span className="text-[10px] font-black text-text-secondary uppercase tracking-widest">Kết quả</span>
+        <div className="flex items-end justify-center gap-1 mt-2">
+          <span className="text-4xl font-black text-primary">{result.score.toFixed(1)}</span>
+          <span className="text-sm font-black text-text-secondary mb-1.5">/ 10</span>
+        </div>
+        <p className="text-xs font-bold text-text-secondary mt-2">
+          Đúng {correctCount} / {answered.length} đã trả lời • {accuracy}% accuracy
+        </p>
+        <div className="h-2 bg-slate-100 rounded-full overflow-hidden max-w-sm mx-auto mt-4">
+          <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${accuracy}%` }}></div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+          {wrong.length > 0 ? (
+            <>
+              <span className="text-[10px] font-bold text-text-secondary">Cần cải thiện:</span>
+              {weakTopics.map((topic) => (
+                <span key={topic} className="text-[10px] font-extrabold text-amber-700 bg-amber-50 px-2 py-1 rounded-md flex items-center gap-1">
+                  <Target size={10} /> {topic}
+                </span>
+              ))}
+            </>
+          ) : (
+            <span className="text-[11px] font-black text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+              <CheckCircle2 size={13} /> Tuyệt vời! Bạn làm đúng tất cả câu đã trả lời.
+            </span>
+          )}
+        </div>
+      </header>
+
+      {wrong.length > 0 && (
+        <section className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-black text-text-primary">Câu sai ({wrong.length})</h2>
+            <button
+              onClick={() => onNavigatePath('/practice/mistakes')}
+              className="text-[10px] font-black text-primary hover:underline cursor-pointer"
+            >
+              Ôn tất cả &rarr;
+            </button>
+          </div>
+          <div className="space-y-3">
+            {wrong.map(([qid, chosen]) => {
+              const question = questionById.get(qid);
+              if (!question) return null; // guard: không resolve được thì skip, không tính sai
+              const isExpanded = expandedId === qid;
+              return (
+                <div key={qid} className="bg-white border border-slate-100 rounded-2xl p-5">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <p className="text-xs font-bold text-text-primary leading-relaxed">{question.text}</p>
+                    <span className="text-[9px] font-bold text-text-secondary bg-slate-100 px-2 py-1 rounded-md shrink-0">
+                      {exam.title}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 mb-3 text-[11px] font-bold">
+                    <span className="flex items-center gap-1 text-danger bg-red-50 px-2 py-1 rounded-md">
+                      <XCircle size={11} /> Bạn chọn: {typeof chosen === 'number' ? optionLetter(chosen) : '—'}
+                    </span>
+                    <span className="flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md">
+                      <CheckCircle2 size={11} /> Đáp án: {optionLetter(question.correctOptionIndex)}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setExpandedId(isExpanded ? null : qid)}
+                    className="flex items-center gap-1 text-[10px] font-black text-primary hover:underline cursor-pointer"
+                  >
+                    {isExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />} Xem giải thích
+                  </button>
+                  {isExpanded && (
+                    <p className="text-[11px] text-text-secondary font-medium leading-relaxed mt-2 bg-slate-50 rounded-xl p-3">
+                      {question.explanation}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* CORE: không để user kết thúc flow ở màn hình điểm số */}
+      <section className="bg-primary-light border border-primary/20 rounded-2xl p-5">
+        <h3 className="text-xs font-black text-text-primary mb-3">Bước tiếp theo của bạn</h3>
+        <div className="flex flex-col sm:flex-row gap-2.5">
+          {wrong.length > 0 && (
+            <button
+              onClick={() => onNavigatePath('/practice/mistakes')}
+              className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-white text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer"
+            >
+              Ôn câu sai
+            </button>
+          )}
+          {topicSlug && (
+            <button
+              onClick={() => onNavigatePath(`/practice/topic-${topicSlug}`)}
+              className="flex-1 py-2.5 bg-white border border-primary/30 hover:bg-white/70 text-primary text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer"
+            >
+              Luyện câu tương tự
+            </button>
+          )}
+          <button
+            onClick={() => onNavigatePath(continuePath)}
+            className="flex-1 py-2.5 bg-white border border-primary/30 hover:bg-white/70 text-primary text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer"
+          >
+            Tiếp tục khóa học
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+};

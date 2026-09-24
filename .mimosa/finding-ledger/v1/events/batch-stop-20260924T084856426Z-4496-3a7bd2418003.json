@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "stop-20260924T084856426Z-4496-3a7bd2418003",
+  "runId": "20260924T084856426Z-4496-3a7bd2418003",
+  "runStatus": "inconclusive",
+  "coverage": {
+    "status": "partial",
+    "reasons": [
+      {
+        "code": "project_check_failed",
+        "stage": "supply-chain-check",
+        "target": ".",
+        "detail": "spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affectsCompletion": true
+      }
+    ]
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "Stop"
+  },
+  "revision": "996060ba57dca256e4c3e23f8f581f0a6459607a",
+  "diffHash": "a93d75bc53127403e4eb86ddfc14fe56339b54329cee209c0ab8de04ef4d54f3",
+  "rulesVersion": "unavailable",
+  "sessionHash": "2fef7f43ae47f283db1a46b3490649ae84bc8f332d205e05fc4666c9ba48f044",
+  "reportRef": ".mimosa/reports/task-review-sess_bf966460-d9d2-4c54-a300-a1be926892eb-20260924T084856426Z-4496-3a7bd2418003.json",
+  "events": [],
+  "observedFindingIds": [],
+  "verifiedFiles": [
+    {
+      "file": "src/components/teacher/doc-editor/DocEditorWorkspace.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/teacher/doc-editor/DocEditorBlockList.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/teacher/doc-editor/blocks/ParagraphBlock.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/teacher/doc-editor/DocPreviewSimulator.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/teacher/doc-editor/BlockWrapper.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    }
+  ],
+  "recordedAt": "2026-09-24T08:48:57.156Z"
+}

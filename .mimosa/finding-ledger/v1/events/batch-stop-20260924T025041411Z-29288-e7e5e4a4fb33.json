@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "stop-20260924T025041411Z-29288-e7e5e4a4fb33",
+  "runId": "20260924T025041411Z-29288-e7e5e4a4fb33",
+  "runStatus": "completed",
+  "coverage": {
+    "status": "complete",
+    "reasons": []
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "Stop"
+  },
+  "revision": "31bdab1feb07eedcf28ea0a9fa157aaa81769b0f",
+  "diffHash": "36a11014ebe9ef8cb981e02932bda49744869e715e16362dba86c30886574a63",
+  "rulesVersion": "unavailable",
+  "sessionHash": "33c85837a532260dd400fcf4ee1f670d9d4c405479ec820cb2132fdfe3e088bb",
+  "reportRef": ".mimosa/reports/task-review-sess_74bbc427-e952-4139-a026-658c20f82548-20260924T025041411Z-29288-e7e5e4a4fb33.json",
+  "events": [],
+  "observedFindingIds": [],
+  "verifiedFiles": [
+    {
+      "file": "src/components/teacher/doc-editor/blocks/compare/CompareSettings.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/teacher/doc-editor/blocks/diagram/DiagramSettings.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/teacher/doc-editor/blocks/dragdrop/SettingsDialog.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/teacher/doc-editor/blocks/fillblank/SettingsDialog.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/teacher/doc-editor/blocks/flow/FlowSettings.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/teacher/doc-editor/blocks/matching/MatchingSettings.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/teacher/doc-editor/blocks/tabs/TabsSettings.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/teacher/doc-editor/blocks/timeline/TimelineSettings.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/teacher/doc-editor/blocks/sortorder/SettingsDialog.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    }
+  ],
+  "recordedAt": "2026-09-24T02:50:41.934Z"
+}

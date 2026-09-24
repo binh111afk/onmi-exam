@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "mimosa-finding-history/v1",
+  "runId": "20260924T101552435Z-21908-1f7ab7432676",
+  "runStatus": "inconclusive",
+  "errors": [
+    "scan:src/components/teacher/doc-editor/DocEditorWorkspace.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "scan:src/components/teacher/doc-editor/hooks/useEditorBlocks.ts: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "supply-chain-check:.: stop_budget_exhausted: focused supply-chain check was not run before the gate budget"
+  ],
+  "target": ".",
+  "revision": "996060ba57dca256e4c3e23f8f581f0a6459607a",
+  "diffHash": "d7e20ad24b3021b84df0fbaff52f146b8ae70a607b968f122e67529cda3bbd95",
+  "rulesVersion": "unavailable",
+  "recordedAt": "2026-09-24T10:15:52.435Z",
+  "timing": {
+    "startedAt": "2026-09-24T10:15:49.041Z",
+    "completedAt": "2026-09-24T10:15:52.435Z",
+    "durationMs": 3394
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "modelCalls": 0,
+    "measurement": "known-zero"
+  },
+  "findings": {
+    "total": 0,
+    "bySeverity": {},
+    "byStatus": {}
+  },
+  "coverage": {
+    "status": "partial",
+    "reasonCounts": {
+      "scanner_failed": 2,
+      "stop_budget_exhausted": 1,
+      "project_check_failed": 3
+    }
+  },
+  "evidenceBoundary": "static_only",
+  "immutableReport": ".mimosa/reports/task-review-sess_bf966460-d9d2-4c54-a300-a1be926892eb-20260924T101552435Z-21908-1f7ab7432676.json"
+}

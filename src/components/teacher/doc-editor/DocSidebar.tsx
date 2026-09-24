@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Edit, Plus } from 'lucide-react';
+import { ChevronDown, Edit, Plus, Clock } from 'lucide-react';
 import { TrashIcon } from '../../AppIcons';
 import type { Chapter } from '../../../types/doc-editor';
 import { Tooltip } from './Tooltip';
@@ -42,6 +42,7 @@ interface DocSidebarProps {
   onDeleteSubLesson: (lessonId: string, subLessonId: string) => void;
   onMoveLesson: (sourceLessonId: string, targetParentId: string, targetBeforeId?: string) => void;
   onChapterReorder: (sourceChapterId: string, targetChapterId: string) => void;
+  onSetLessonDuration: (lessonId: string, minutes?: number) => void;
 }
 
 interface InlineInputProps {
@@ -73,7 +74,7 @@ const InlineInput: React.FC<InlineInputProps> = ({ initialValue, onSave, onCance
       onBlur={() => onSave(val)}
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
-      className="w-full bg-slate-50 border border-slate-200 outline-none px-1 rounded text-[10px] font-bold text-slate-800 focus:ring-1 focus:ring-primary focus:border-primary transition"
+      className="w-full bg-slate-50 border border-slate-200 outline-none px-1 rounded text-xs font-bold text-slate-800 focus:ring-1 focus:ring-primary focus:border-primary transition"
     />
   );
 };
@@ -90,9 +91,10 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
   editingItemId, onStartEditing, onSaveEdit, onCancelEdit,
   onCreateChapter, onCreateLesson,
   onDeleteChapter, onDeleteLesson, onDeleteSubLesson,
-  onMoveLesson, onChapterReorder,
+  onMoveLesson, onChapterReorder, onSetLessonDuration,
 }) => {
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [durationEditingId, setDurationEditingId] = useState<string | null>(null);
   const handleDragOver = (e: React.DragEvent) => e.preventDefault();
 
   const handleLessonDragStart = (e: React.DragEvent, lessonId: string) => {
@@ -120,16 +122,16 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
   return (
     <aside
       onClick={() => { onSelectChapter(null); onSelectLesson(null); }}
-      className="w-[264px] bg-white border-r border-slate-100 flex flex-col justify-between shrink-0 overflow-y-auto p-4 select-none"
+      className="w-[264px] bg-[#FBFBFD] border-r border-slate-100 flex flex-col justify-between shrink-0 overflow-y-auto p-4 select-none"
     >
       <div className="space-y-4">
         <div className="flex justify-between items-center pb-2 border-b border-slate-50">
-          <span className="text-[10px] font-black text-[#1E293B] uppercase tracking-wider">MỤC LỤC</span>
+          <span className="text-xs font-black text-[#1E293B] uppercase tracking-wider">MỤC LỤC</span>
           <div className="relative">
             <button
               onMouseDown={(e) => e.preventDefault()}
               onClick={(e) => { e.stopPropagation(); setAddMenuOpen(o => !o); }}
-              className="flex items-center gap-1 px-2 py-1 bg-primary hover:bg-primary-hover text-white text-[9px] font-black rounded-lg transition cursor-pointer"
+              className="flex items-center gap-1 px-2 py-1.5 bg-primary hover:bg-primary-hover text-white text-[11px] font-black rounded-lg transition cursor-pointer"
             >
               <Plus size={11} /> Thêm
             </button>
@@ -140,7 +142,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                   <button
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={(e) => { e.stopPropagation(); onCreateChapter(); setAddMenuOpen(false); }}
-                    className="w-full px-3 py-1.5 text-left text-[10px] font-bold text-slate-700 hover:bg-slate-50 hover:text-primary transition cursor-pointer flex items-center gap-1.5"
+                    className="w-full px-3 py-1.5 text-left text-xs font-bold text-slate-700 hover:bg-slate-50 hover:text-primary transition cursor-pointer flex items-center gap-1.5"
                   >
                     <Plus size={11} /> Thêm chương
                   </button>
@@ -152,7 +154,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                       if (selectedChapterId) onCreateLesson(selectedChapterId);
                       setAddMenuOpen(false);
                     }}
-                    className={`w-full px-3 py-1.5 text-left text-[10px] font-bold flex items-center gap-1.5 transition ${selectedChapterId ? 'text-slate-700 hover:bg-slate-50 hover:text-primary cursor-pointer' : 'text-slate-300 cursor-default'}`}
+                    className={`w-full px-3 py-1.5 text-left text-xs font-bold flex items-center gap-1.5 transition ${selectedChapterId ? 'text-slate-700 hover:bg-slate-50 hover:text-primary cursor-pointer' : 'text-slate-300 cursor-default'}`}
                   >
                     <Plus size={11} /> Thêm bài học vào chương đang chọn
                   </button>
@@ -164,7 +166,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
 
         <div className="space-y-3">
           {chapters.length === 0 && (
-            <div className="text-[10px] text-slate-400 font-medium italic">Chưa có chương — bấm "+ Thêm" để bắt đầu</div>
+            <div className="text-xs text-slate-400 font-medium italic">Chưa có chương — bấm "+ Thêm" để bắt đầu</div>
           )}
           {chapters.map((ch, chapterIndex) => {
             const isChEditing = ch.id === editingItemId;
@@ -176,14 +178,14 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                   onDragOver={handleDragOver} onDrop={(e) => handleChapterLessonDrop(e, ch.id)}
                   onClick={(e) => { e.stopPropagation(); onSelectChapter(ch.id); onSelectLesson(null); }}
                   onDoubleClick={(e) => { e.stopPropagation(); onStartEditing(ch.id); }}
-                  className={`group/ch w-full flex items-start justify-between gap-1 py-1.5 px-1.5 rounded-lg transition cursor-pointer ${isChSelected ? 'bg-slate-100/60 text-text-primary ring-1 ring-slate-200/50' : 'text-text-secondary hover:text-text-primary hover:bg-slate-50/30'}`}
+                  className={`group/ch w-full flex items-start justify-between gap-1 py-2 px-1.5 rounded-lg transition cursor-pointer ${isChSelected ? 'bg-slate-100/60 text-text-primary ring-1 ring-slate-200/50' : 'text-text-secondary hover:text-text-primary hover:bg-slate-50/30'}`}
                 >
                   <div className="flex items-start gap-1.5 min-w-0 flex-1">
                     <button type="button" onClick={(e) => { e.stopPropagation(); onToggleNodeExpand(ch.id); }} className="p-0.5 mt-0.5 rounded transition cursor-pointer shrink-0">
-                      <ChevronDown size={12} className={`transition shrink-0 text-slate-400 ${expandedNodeIds[ch.id] ? '' : '-rotate-90'}`} />
+                      <ChevronDown size={14} className={`transition shrink-0 text-slate-400 ${expandedNodeIds[ch.id] ? '' : '-rotate-90'}`} />
                     </button>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[9px] font-black text-primary uppercase tracking-wider leading-none mb-0.5">
+                    <div className="min-w-0 flex-1 text-[15px] font-semibold">
+                      <div className="text-[10px] font-black text-primary uppercase tracking-wider leading-none mb-0.5">
                         Chương {String(chapterIndex + 1).padStart(2, '0')}
                       </div>
                       {isChEditing ? (
@@ -196,7 +198,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                   {!isChEditing && (
                     <div className="flex items-center gap-1 opacity-0 group-hover/ch:opacity-100 transition shrink-0 pt-1">
                       <Tooltip content="Sửa tên chương">
-                        <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onStartEditing(ch.id); }} className="p-0.5 hover:bg-slate-100/50 text-slate-400 hover:text-slate-700 rounded transition"><Edit size={10} /></button>
+                        <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onStartEditing(ch.id); }} className="p-0.5 hover:bg-slate-100/50 text-slate-400 hover:text-slate-700 rounded transition"><Edit size={12} /></button>
                       </Tooltip>
                       <Tooltip content="Xóa chương">
                         <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onDeleteChapter(ch.id); }} className="p-0.5 hover:bg-slate-100/50 text-slate-400 hover:text-red-500 rounded transition"><TrashIcon size={10} /></button>
@@ -217,7 +219,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                       return (
                         <div key={lesson.id} className="space-y-0.5">
                           <div
-                            className={`group/lesson w-full flex items-center justify-between gap-1 py-1 px-2 rounded-lg text-[10px] transition font-bold cursor-pointer ${isLessonSelected ? 'bg-slate-100/60 text-text-primary ring-1 ring-slate-200/50' : isActive && !isLegacyFolder ? 'bg-primary-light text-primary font-black' : 'text-text-secondary hover:text-text-primary hover:bg-slate-50/50'}`}
+                            className={`group/lesson w-full flex items-center justify-between gap-1 py-2 px-2.5 rounded-lg text-sm transition font-bold cursor-pointer ${isLessonSelected ? 'bg-slate-100/60 text-text-primary ring-1 ring-slate-200/50' : isActive && !isLegacyFolder ? 'bg-primary-light text-primary font-black' : 'text-text-secondary hover:text-text-primary hover:bg-slate-50/50'}`}
                             draggable={!isLessonEditing}
                             onDragStart={(e) => handleLessonDragStart(e, lesson.id)}
                             onDragOver={handleDragOver}
@@ -228,28 +230,64 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                             <div className="flex items-center gap-1 min-w-0 flex-1">
                               {isLegacyFolder ? (
                                 <button type="button" onClick={(e) => { e.stopPropagation(); onToggleNodeExpand(lesson.id); }} className="p-0.5 -ml-1 rounded transition cursor-pointer shrink-0">
-                                  <ChevronDown size={11} className={`transition shrink-0 ${expandedNodeIds[lesson.id] ? '' : '-rotate-90'}`} />
+                                  <ChevronDown size={13} className={`transition shrink-0 ${expandedNodeIds[lesson.id] ? '' : '-rotate-90'}`} />
                                 </button>
                               ) : (
-                                <span className="text-[9px] font-black text-slate-300 shrink-0">{String(lessonIndex + 1).padStart(2, '0')}</span>
+                                <span className="text-[11px] font-black text-slate-300 shrink-0">{String(lessonIndex + 1).padStart(2, '0')}</span>
                               )}
                               {isLegacyFolder && <FolderIcon size={13} className="shrink-0" />}
                               {isLessonEditing ? (
                                 <InlineInput initialValue={lesson.title} onSave={(v) => onSaveEdit(lesson.id, v)} onCancel={() => onCancelEdit(lesson.id)} />
+                              ) : durationEditingId === lesson.id ? (
+                                <input
+                                  autoFocus
+                                  type="number"
+                                  min={1}
+                                  max={600}
+                                  defaultValue={lesson.estimatedDuration ?? ''}
+                                  placeholder="Phút"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      const v = (e.target as HTMLInputElement).value;
+                                      onSetLessonDuration(lesson.id, v ? Number(v) : undefined);
+                                      setDurationEditingId(null);
+                                    }
+                                    if (e.key === 'Escape') setDurationEditingId(null);
+                                  }}
+                                  onBlur={(e) => {
+                                    onSetLessonDuration(lesson.id, e.target.value ? Number(e.target.value) : undefined);
+                                    setDurationEditingId(null);
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="w-12 bg-slate-50 border border-slate-200 outline-none px-1 rounded text-[10px] font-bold text-slate-800 focus:ring-1 focus:ring-primary focus:border-primary transition"
+                                />
                               ) : (
                                 <TreeTitle title={lesson.title} />
+                              )}
+                              {!isLessonEditing && durationEditingId !== lesson.id && lesson.estimatedDuration && (
+                                <span className="text-[9px] font-bold text-slate-400 bg-slate-100 rounded px-1 py-0.5 shrink-0">{lesson.estimatedDuration}p</span>
                               )}
                             </div>
                             {!isLessonEditing && (
                               <div className="flex items-center gap-1 shrink-0">
                                 {!isLegacyFolder && (
                                   <Tooltip content={lesson.blocks.length === 0 ? 'Chưa có nội dung' : 'Đã có nội dung'}>
-                                    <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${lesson.blocks.length === 0 ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                                    <span className={`h-2 w-2 rounded-full shrink-0 ${lesson.blocks.length === 0 ? 'bg-amber-400' : 'bg-emerald-400'}`} />
                                   </Tooltip>
                                 )}
                                 <div className="flex items-center gap-1 opacity-0 group-hover/lesson:opacity-100 transition pl-1">
+                                  {!isLegacyFolder && (
+                                    <Tooltip content="Thời lượng dự kiến (phút)">
+                                      <button
+                                        onMouseDown={(e) => { e.stopPropagation(); setDurationEditingId(lesson.id); }}
+                                        className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-primary rounded transition"
+                                      >
+                                        <Clock size={10} />
+                                      </button>
+                                    </Tooltip>
+                                  )}
                                   <Tooltip content="Đổi tên">
-                                    <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onStartEditing(lesson.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-slate-700 rounded transition"><Edit size={10} /></button>
+                                    <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onStartEditing(lesson.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-slate-700 rounded transition"><Edit size={12} /></button>
                                   </Tooltip>
                                   <Tooltip content="Xóa bài học">
                                     <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onDeleteLesson(lesson.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-red-500 rounded transition"><TrashIcon size={10} /></button>
@@ -270,7 +308,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                                 return (
                                   <div key={sub.id} className="space-y-0.5">
                                     <div
-                                      className={`group/sub w-full flex items-center justify-between py-1 px-2 rounded-lg text-[10px] transition font-bold cursor-pointer ${isSubSelected || isSubActive ? 'bg-primary-light text-primary font-black' : 'text-text-secondary hover:text-text-primary hover:bg-slate-50/50'}`}
+                                      className={`group/sub w-full flex items-center justify-between py-1 px-2 rounded-lg text-xs transition font-bold cursor-pointer ${isSubSelected || isSubActive ? 'bg-primary-light text-primary font-black' : 'text-text-secondary hover:text-text-primary hover:bg-slate-50/50'}`}
                                       draggable={!isSubEditing}
                                       onDragStart={(e) => handleLessonDragStart(e, sub.id)}
                                       onDragOver={handleDragOver}
@@ -281,7 +319,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                                       <div className="flex items-center gap-1.5 truncate flex-1 min-w-0">
                                         {hasSubChildren ? (
                                           <button type="button" onClick={(e) => { e.stopPropagation(); onToggleNodeExpand(sub.id); }} className="p-0.5 -ml-1 rounded transition cursor-pointer">
-                                            <ChevronDown size={10} className={`transition ${expandedNodeIds[sub.id] ? '' : '-rotate-90'}`} />
+                                            <ChevronDown size={12} className={`transition ${expandedNodeIds[sub.id] ? '' : '-rotate-90'}`} />
                                           </button>
                                         ) : <FileIcon size={13} className="shrink-0" />}
                                         {hasSubChildren && <FolderIcon size={13} className="shrink-0" />}
@@ -294,10 +332,10 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                                       {!isSubEditing && (
                                         <div className="flex items-center gap-1 opacity-0 group-hover/sub:opacity-100 transition shrink-0 pl-1">
                                           <Tooltip content="Đổi tên">
-                                            <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onStartEditing(sub.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-slate-700 rounded transition"><Edit size={10} /></button>
+                                            <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onStartEditing(sub.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-slate-700 rounded transition"><Edit size={12} /></button>
                                           </Tooltip>
                                           <Tooltip content="Xóa mục">
-                                            <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onDeleteSubLesson(lesson.id, sub.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-red-500 rounded transition"><TrashIcon size={10} /></button>
+                                                    <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onDeleteSubLesson(lesson.id, sub.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-red-500 rounded transition"><TrashIcon size={12} /></button>
                                           </Tooltip>
                                         </div>
                                       )}
@@ -311,7 +349,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                                           return (
                                             <div
                                               key={file.id}
-                                              className={`group/file w-full flex items-center justify-between gap-1.5 py-1 px-2 rounded-lg text-[10px] font-bold text-left transition cursor-pointer ${isFileSelected || isFileActive ? 'bg-primary-light text-primary font-black' : 'text-text-secondary hover:text-text-primary hover:bg-slate-50/50'}`}
+                                              className={`group/file w-full flex items-center justify-between gap-1.5 py-1 px-2 rounded-lg text-xs font-bold text-left transition cursor-pointer ${isFileSelected || isFileActive ? 'bg-primary-light text-primary font-black' : 'text-text-secondary hover:text-text-primary hover:bg-slate-50/50'}`}
                                               draggable={!isFileEditing}
                                               onDragStart={(e) => handleLessonDragStart(e, file.id)}
                                               onDragOver={handleDragOver}
@@ -329,10 +367,10 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                                               {!isFileEditing && (
                                                 <div className="flex items-center gap-1 opacity-0 group-hover/file:opacity-100 transition shrink-0 pl-1">
                                                   <Tooltip content="Đổi tên">
-                                                    <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onStartEditing(file.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-slate-700 rounded transition"><Edit size={10} /></button>
+                                                    <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onStartEditing(file.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-slate-700 rounded transition"><Edit size={12} /></button>
                                                   </Tooltip>
                                                   <Tooltip content="Xóa mục">
-                                                    <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onDeleteSubLesson(sub.id, file.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-red-500 rounded transition"><TrashIcon size={10} /></button>
+                                                    <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onDeleteSubLesson(sub.id, file.id); }} className="p-0.5 hover:bg-slate-200/50 text-slate-400 hover:text-red-500 rounded transition"><TrashIcon size={12} /></button>
                                                   </Tooltip>
                                                 </div>
                                               )}
@@ -354,7 +392,7 @@ export const DocSidebar: React.FC<DocSidebarProps> = ({
                     <button
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={(e) => { e.stopPropagation(); onCreateLesson(ch.id); }}
-                      className="w-full flex items-center gap-1.5 py-1 px-2 text-[10px] font-bold text-slate-400 hover:text-primary hover:bg-slate-50/50 rounded-lg transition cursor-pointer"
+                      className="w-full flex items-center gap-1.5 py-2 px-2 text-xs font-bold text-slate-400 hover:text-primary hover:bg-slate-50/50 rounded-lg transition cursor-pointer"
                     >
                       <Plus size={11} /> Thêm bài học
                     </button>

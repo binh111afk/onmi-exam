@@ -1,0 +1,49 @@
+{
+  "schemaVersion": "mimosa-finding-history/v1",
+  "runId": "20260923T151138903Z-26296-7df8e12decf6",
+  "runStatus": "inconclusive",
+  "errors": [
+    "candidate-select:src/document/parsers/compiler/index.ts: candidate_limit_exceeded: 14 changed reviewable file(s) were not scanned because the limit is 20",
+    "scan:src/pages/Teacher.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "scan:src/components/teacher/doc-editor/blocks/MediaBlock.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "scan:src/components/teacher/doc-editor/DocToolbar.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "scan:src/components/teacher/doc-editor/PublishModal.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "scan:src/components/teacher/exam-editor/ExamEditorWorkspace.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "scan:src/components/teacher/exam-editor/ExamQuickOcrStep.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "scan:src/components/teacher/exam-editor/OmlGuideModal.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "scan:src/components/teacher/TeacherDashboard.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "scan:src/components/teacher/doc-editor/blocks/FormulaBlock.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT"
+  ],
+  "target": ".",
+  "revision": "31bdab1feb07eedcf28ea0a9fa157aaa81769b0f",
+  "diffHash": "7b353734bcf8e037f444a8291fa84388f3207ac797cadeed065b9eb9ae374b1d",
+  "rulesVersion": "unavailable",
+  "recordedAt": "2026-09-23T15:11:38.903Z",
+  "timing": {
+    "startedAt": "2026-09-23T15:11:36.153Z",
+    "completedAt": "2026-09-23T15:11:38.903Z",
+    "durationMs": 2750
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "modelCalls": 0,
+    "measurement": "known-zero"
+  },
+  "findings": {
+    "total": 0,
+    "bySeverity": {},
+    "byStatus": {}
+  },
+  "coverage": {
+    "status": "partial",
+    "reasonCounts": {
+      "candidate_limit_exceeded": 1,
+      "scanner_failed": 9,
+      "project_check_failed": 10
+    }
+  },
+  "evidenceBoundary": "static_only",
+  "immutableReport": ".mimosa/reports/task-review-sess_fc856221-cd20-4b3e-8008-400c300097e5-20260923T151138903Z-26296-7df8e12decf6.json"
+}

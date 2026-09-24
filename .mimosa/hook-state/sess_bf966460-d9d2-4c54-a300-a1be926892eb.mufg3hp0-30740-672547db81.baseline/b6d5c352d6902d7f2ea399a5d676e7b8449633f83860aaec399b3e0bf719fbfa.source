@@ -1,0 +1,137 @@
+import React, { useMemo, useState } from 'react';
+import { BookOpen, Clock, PlayCircle } from 'lucide-react';
+import type { Course, User } from '../types';
+import { courseProgress } from '../data/mockData';
+
+interface CoursesProps {
+  courses: Course[];
+  user: User;
+  onSelectCourse: (id: string) => void;
+}
+
+type CourseStatus = 'Đang học' | 'Khám phá' | 'Đã hoàn thành';
+
+const statusStyles: Record<CourseStatus, { badge: string; bar: string }> = {
+  'Đang học': { badge: 'bg-primary-light text-primary', bar: 'bg-primary' },
+  'Khám phá': { badge: 'bg-slate-100 text-text-secondary', bar: 'bg-slate-400' },
+  'Đã hoàn thành': { badge: 'bg-emerald-100/70 text-emerald-700', bar: 'bg-emerald-500' },
+};
+
+export const Courses: React.FC<CoursesProps> = ({ courses, user, onSelectCourse }) => {
+  const [activeTab, setActiveTab] = useState<CourseStatus>('Đang học');
+
+  const progressOf = (course: Course) => courseProgress(course, user.completedLessons);
+
+  const courseStatus = (course: Course): CourseStatus => {
+    const progress = progressOf(course);
+    if (progress.done === 0) return 'Khám phá';
+    if (progress.done === progress.total) return 'Đã hoàn thành';
+    return 'Đang học';
+  };
+
+  const tabCourses = useMemo(
+    () => courses.filter((c) => courseStatus(c) === activeTab),
+    // courseStatus phụ thuộc user.completedLessons qua progressOf
+    [courses, activeTab, user.completedLessons]
+  );
+
+  return (
+    <div className="max-w-[1320px] mx-auto px-6 lg:px-8 py-8 antialiased">
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold text-text-primary">Khóa học</h1>
+        <p className="text-sm text-text-secondary font-medium mt-1">
+          Học lý thuyết rồi luyện tập ngay để ghi nhớ lâu hơn
+        </p>
+      </header>
+
+      <div className="flex gap-2 mb-6">
+        {(['Đang học', 'Khám phá', 'Đã hoàn thành'] as CourseStatus[]).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer ${
+              activeTab === tab
+                ? 'bg-primary text-white shadow-[0_4px_12px_rgba(108,93,211,0.25)]'
+                : 'bg-white border border-slate-100 text-text-secondary hover:bg-slate-50'
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {tabCourses.length === 0 ? (
+        <div className="bg-white border border-slate-100 rounded-2xl p-10 text-center">
+          <BookOpen size={28} className="mx-auto text-slate-300 mb-3" />
+          <p className="text-xs font-bold text-text-secondary">
+            Chưa có khóa học nào trong mục này
+          </p>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {tabCourses.map((course) => {
+            const progress = progressOf(course);
+            const percent = progress.percent;
+            const status = courseStatus(course);
+            const targetLesson = progress.nextLesson ?? course.chapters.flatMap((c) => c.lessons)[0];
+
+            return (
+              <div
+                key={course.id}
+                className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-col hover:border-primary/30 transition-all duration-200"
+              >
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div>
+                    <span className={`text-[9px] font-extrabold px-2 py-1 rounded-md ${statusStyles[status].badge}`}>
+                      {status}
+                    </span>
+                    <h2 className="text-sm font-black text-text-primary mt-2">{course.title}</h2>
+                    <p className="text-[10px] text-text-secondary font-medium mt-0.5">
+                      {course.subject} • {course.grade}
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-text-secondary font-medium leading-relaxed mb-4 line-clamp-2">
+                  {course.description}
+                </p>
+
+                <div className="mb-2">
+                  <div className="flex justify-between text-[10px] font-bold text-text-secondary mb-1.5">
+                    <span>{percent}% hoàn thành</span>
+                    <span>{progress.done}/{progress.total} bài</span>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${statusStyles[status].bar}`}
+                      style={{ width: `${percent}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 text-[10px] font-bold text-text-secondary mb-4">
+                  <span className="flex items-center gap-1">
+                    <PlayCircle size={12} /> {progress.total} bài học
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <BookOpen size={12} /> {course.practiceCount} bài luyện
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock size={12} /> {course.examCount} đề thi
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => onSelectCourse(course.id)}
+                  className="mt-auto w-full py-2.5 bg-primary hover:bg-primary/90 text-white text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer"
+                >
+                  {status === 'Đã hoàn thành' ? 'Xem lại khóa học' : `Tiếp tục: ${targetLesson.title}`}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};

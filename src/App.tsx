@@ -19,6 +19,8 @@ import { ActiveExam } from './pages/ActiveExam';
 import { Result } from './pages/Result';
 import { Documents } from './pages/Documents';
 import { DocReader } from './pages/DocReader';
+import { ChapterOverview } from './pages/ChapterOverview';
+import { LessonReader } from './pages/LessonReader';
 import { Courses } from './pages/Courses';
 import { CourseDetail } from './pages/CourseDetail';
 import { LessonView } from './pages/LessonView';
@@ -100,7 +102,9 @@ const getCurrentView = (pathname: string) => {
   if (pathname === '/practice') return 'practice';
   if (pathname.startsWith('/practice/')) return 'practice-detail';
   if (pathname === '/courses' || pathname.startsWith('/courses/')) return 'courses';
-  if (pathname.startsWith('/library/')) return 'doc-reader';
+  if (/^\/library\/.+\/chapter\/\d+\/lesson\/\d+$/.test(pathname)) return 'doc-lesson';
+  if (/^\/library\/.+\/chapter\/\d+$/.test(pathname)) return 'doc-chapter';
+  if (pathname.startsWith('/library/') && pathname.split('/').length <= 4) return 'doc-reader';
   if (pathname === '/library') return 'library';
   if (pathname === '/progress') return 'progress';
   if (pathname === '/discover') return 'discover';
@@ -649,6 +653,8 @@ function AppShell() {
                 )}
               />
               <Route path="/library/:docId" element={<DocReaderRoute />} />
+              <Route path="/library/:docId/chapter/:chapterIdx" element={<ChapterOverview />} />
+              <Route path="/library/:docId/chapter/:chapterIdx/lesson/:lessonIdx" element={<LessonReader />} />
               <Route path="/help" element={<Contact />} />
               <Route path="/exams" element={<Redirect to="/practice/exams" />} />
               <Route path="/exams/:examId" element={<ExamRedirect />} />

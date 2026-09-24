@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "mimosa-hook-status/v1",
+  "recordedAt": "2026-09-23T15:11:16.337Z",
+  "sessionId": "sess_fc856221-cd20-4b3e-8008-400c300097e5",
+  "event": "PostToolUse",
+  "toolName": "Edit",
+  "file": "C:\\Users\\Lenovo\\.zcode\\cli\\memories\\projects\\omniexam-3aa6ad36ace7f477\\memory\\omniexam-ia-refactor.md",
+  "outcome": "clear",
+  "coverage": "complete",
+  "findingCount": 0,
+  "durationMs": 5,
+  "hostState": "hook_complete",
+  "reportHint": ".mimosa/reports/"
+}

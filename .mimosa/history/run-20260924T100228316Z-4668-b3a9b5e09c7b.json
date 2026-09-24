@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "mimosa-finding-history/v1",
+  "runId": "20260924T100228316Z-4668-b3a9b5e09c7b",
+  "runStatus": "inconclusive",
+  "errors": [
+    "scan:src/components/teacher/doc-editor/blocks/InteractiveBlockShell.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "scan:src/components/teacher/doc-editor/blocks/BlockRenderer.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "scan:src/components/teacher/doc-editor/DocEditorBlockList.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "scan:src/components/teacher/doc-editor/BlockWrapper.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "scan:src/components/teacher/doc-editor/blocks/ParagraphBlock.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "scan:src/components/teacher/doc-editor/blocks/HeadingBlock.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "scan:src/components/teacher/doc-editor/blocks/QuoteBlock.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "scan:src/components/teacher/doc-editor/blocks/CalloutBlock.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "scan:src/components/teacher/doc-editor/DocEditorHeader.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "scan:src/components/teacher/doc-editor/DocEditorWorkspace.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "scan:src/components/teacher/doc-editor/hooks/useEditorBlocks.ts: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+    "scan:src/components/teacher/doc-editor/blocks/table/SharedTableRenderer.tsx: scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT"
+  ],
+  "target": ".",
+  "revision": "996060ba57dca256e4c3e23f8f581f0a6459607a",
+  "diffHash": "0a69ca78bf3028a961287ae92d9ddd04e9cd3a752f53945a909e8c991f05e0d3",
+  "rulesVersion": "unavailable",
+  "recordedAt": "2026-09-24T10:02:28.316Z",
+  "timing": {
+    "startedAt": "2026-09-24T10:02:24.715Z",
+    "completedAt": "2026-09-24T10:02:28.316Z",
+    "durationMs": 3601
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "modelCalls": 0,
+    "measurement": "known-zero"
+  },
+  "findings": {
+    "total": 0,
+    "bySeverity": {},
+    "byStatus": {}
+  },
+  "coverage": {
+    "status": "partial",
+    "reasonCounts": {
+      "scanner_failed": 12,
+      "project_check_failed": 12
+    }
+  },
+  "evidenceBoundary": "static_only",
+  "immutableReport": ".mimosa/reports/task-review-sess_bf966460-d9d2-4c54-a300-a1be926892eb-20260924T100228316Z-4668-b3a9b5e09c7b.json"
+}

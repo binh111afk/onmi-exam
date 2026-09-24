@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { RefreshCw, RotateCcw, X, Video } from 'lucide-react';
 import { MaximizeIcon, MinimizeIcon, ZoomInIcon, ZoomOutIcon } from '../../AppIcons';
 import { Tooltip } from './Tooltip';
@@ -41,7 +41,6 @@ import { MatchingPreview } from './blocks/matching/MatchingPreview';
 import { Preview as FillBlankPreview } from './blocks/fillblank/Preview';
 import { Preview as DragDropPreview } from './blocks/dragdrop/Preview';
 import { Preview as SortOrderPreview } from './blocks/sortorder/Preview';
-import { usePreviewViewport } from '../hooks/usePreviewViewport';
 import type { Chapter, DocBlock, LiveTableResizeState } from '../../../types/doc-editor';
 import { CodePreview } from './blocks/code/CodePreview';
 import type { CodeLanguage } from './blocks/code/CodeTypes';
@@ -51,7 +50,6 @@ interface DocPreviewSimulatorProps {
   currentDocumentId: string;
   documentTitle: string;
   liveTableResize?: LiveTableResizeState | null;
-  variant?: 'split' | 'full';
 }
 
 const getNumberedIndex = (blocks: DocBlock[], index: number): string => {
@@ -85,21 +83,16 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
   currentDocumentId,
   documentTitle,
   liveTableResize,
-  variant = 'split',
 }) => {
-  const {
-    isPreviewFullscreenOpen: isFullscreenOpen,
-    isPreviewFullscreenClosing: isFullscreenClosing,
-    previewZoom,
-    isPreviewFitWidth: isFitWidth,
-    setIsPreviewFitWidth: setIsFitWidth,
-    previewScrollRef,
-    fullscreenPreviewScrollRef: fullscreenScrollRef,
-    openPreviewFullscreen: openFullscreen,
-    closePreviewFullscreen: closeFullscreen,
-    applyPreviewZoom: applyZoom,
-    stepPreviewZoom: stepZoom,
-  } = usePreviewViewport();
+  const previewZoomLevels = [50, 75, 100, 125, 150, 200] as const;
+  const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
+  const [isFullscreenClosing, setIsFullscreenClosing] = useState(false);
+  const [previewZoom, setPreviewZoom] = useState<50 | 75 | 100 | 125 | 150 | 200>(100);
+  const [isFitWidth, setIsFitWidth] = useState(false);
+  const previewScrollRef = useRef<HTMLDivElement>(null);
+  const fullscreenScrollRef = useRef<HTMLDivElement>(null);
+  const savedScrollTopRef = useRef(0);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentDocument = React.useMemo(() => {
     for (let chapterIndex = 0; chapterIndex < documentTree.length; chapterIndex++) {
@@ -195,6 +188,62 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
 
     return template.innerHTML;
   };
+
+  const openFullscreen = () => {
+    savedScrollTopRef.current = previewScrollRef.current?.scrollTop ?? savedScrollTopRef.current;
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    setIsFullscreenClosing(true);
+    setIsFullscreenOpen(true);
+    requestAnimationFrame(() => {
+      setIsFullscreenClosing(false);
+      if (fullscreenScrollRef.current) {
+        fullscreenScrollRef.current.scrollTop = savedScrollTopRef.current;
+      }
+    });
+  };
+
+  const closeFullscreen = () => {
+    savedScrollTopRef.current = fullscreenScrollRef.current?.scrollTop ?? savedScrollTopRef.current;
+    setIsFullscreenClosing(true);
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = setTimeout(() => {
+      setIsFullscreenOpen(false);
+      setIsFullscreenClosing(false);
+      requestAnimationFrame(() => {
+        if (previewScrollRef.current) {
+          previewScrollRef.current.scrollTop = savedScrollTopRef.current;
+        }
+      });
+    }, 200);
+  };
+
+  const applyZoom = (zoom: typeof previewZoomLevels[number]) => {
+    setPreviewZoom(zoom);
+    setIsFitWidth(false);
+  };
+
+  const stepZoom = (direction: -1 | 1) => {
+    const currentIndex = previewZoomLevels.indexOf(previewZoom);
+    const nextIndex = Math.min(previewZoomLevels.length - 1, Math.max(0, currentIndex + direction));
+    applyZoom(previewZoomLevels[nextIndex]);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isFullscreenOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeFullscreen();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreenOpen]);
 
   const renderPreviewFrame = (
     className = '',
@@ -621,7 +670,7 @@ export const DocPreviewSimulator: React.FC<DocPreviewSimulatorProps> = ({
   };
 
   return (
-    <aside className={variant === 'full' ? 'flex-1 bg-[#F8FAFC] flex flex-col overflow-hidden shrink-0 transition-all duration-300' : 'w-[460px] bg-[#F8FAFC] border-r border-slate-100 flex flex-col overflow-hidden shrink-0 transition-all duration-300'}>
+    <aside className="w-[460px] bg-[#F8FAFC] border-r border-slate-100 flex flex-col overflow-hidden shrink-0 transition-all duration-300">
       {/* Preview Simulator Header */}
       <div className="h-11 border-b border-slate-100 px-4 flex items-center justify-between shrink-0 bg-white">
         <span className="text-[10px] font-black text-[#1E293B] uppercase tracking-wider">Xem trước (Giao diện học sinh)</span>

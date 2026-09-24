@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "stop-20260924T104301411Z-31220-b3c729a66cdb",
+  "runId": "20260924T104301411Z-31220-b3c729a66cdb",
+  "runStatus": "completed",
+  "coverage": {
+    "status": "complete",
+    "reasons": []
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "Stop"
+  },
+  "revision": "996060ba57dca256e4c3e23f8f581f0a6459607a",
+  "diffHash": "68d390d442d0f5334b1429554d8aaae09503e5dcbe68ea3e8d978846554e9ed8",
+  "rulesVersion": "unavailable",
+  "sessionHash": "2fef7f43ae47f283db1a46b3490649ae84bc8f332d205e05fc4666c9ba48f044",
+  "reportRef": ".mimosa/reports/task-review-sess_bf966460-d9d2-4c54-a300-a1be926892eb-20260924T104301411Z-31220-b3c729a66cdb.json",
+  "events": [],
+  "observedFindingIds": [],
+  "verifiedFiles": [
+    {
+      "file": "src/components/teacher/doc-editor/blocks/BlockRenderer.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/teacher/doc-editor/blocks/table/TableBlock.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    }
+  ],
+  "recordedAt": "2026-09-24T10:43:02.353Z"
+}

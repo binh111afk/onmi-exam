@@ -1,0 +1,181 @@
+{
+  "schema_version": "mimosa-task-review/v2",
+  "run_id": "20260924T110058199Z-29724-9fc9c7a4551b",
+  "run_status": "completed",
+  "errors": [],
+  "coverage": {
+    "schema_version": "mimosa-hook-coverage/v1",
+    "status": "complete",
+    "scope": "hook_observed_diff",
+    "baseline": {
+      "complete": true,
+      "captured_files": 320,
+      "candidate_limit": 5000,
+      "truncated": false,
+      "enumeration_error_count": 0,
+      "snapshot_error_count": 0,
+      "compensated_target_count": 5
+    },
+    "change_tracking": {
+      "touched_observed": 5,
+      "touched_retained": 5,
+      "truncated": false,
+      "bash_mutation": true,
+      "bash_discovered": 5,
+      "bash_discovery_limit": 80,
+      "bash_discovery_truncated": false
+    },
+    "candidates": {
+      "eligible_files": 5,
+      "selected_files": 5,
+      "limit": 20,
+      "truncated": false
+    },
+    "scanning": {
+      "required_files": 5,
+      "scanned_files": 5,
+      "skipped_files": 0,
+      "failed_files": 0,
+      "project_checks_required": 0,
+      "project_checks_completed": 0
+    },
+    "notification": {
+      "eligible_findings": 0,
+      "detailed_findings": 0,
+      "detail_limit": 3,
+      "truncated": false
+    },
+    "reason_counts": {},
+    "reasons": [],
+    "reasons_truncated": false
+  },
+  "generated_at": "2026-09-24T11:00:58.199Z",
+  "session_id": "sess_bf966460-d9d2-4c54-a300-a1be926892eb",
+  "target": ".",
+  "revision": "996060ba57dca256e4c3e23f8f581f0a6459607a",
+  "rules_version": "unavailable",
+  "diff_hash": "719bf39042bc32406a9f66ceca50139de508eaec38ab4e8a61f6b55008ed4650",
+  "diff": {
+    "algorithm": "sha256",
+    "changed_file_count": 5,
+    "changed_files": [
+      {
+        "file": "src/components/teacher/doc-editor/blocks/BlockRenderer.tsx",
+        "ranges": [
+          {
+            "start": 171,
+            "end": 171
+          }
+        ],
+        "before_hash": "1f11f2e41dc6dee5b59a54b33814f5434dcf9a6ff1fad91c92c3a41cdf0db27f",
+        "after_hash": "7edf74b7d86574a21f45370793fa1b45e94d4ac1b111364a4d7a278a04d28d0d"
+      },
+      {
+        "file": "src/components/teacher/doc-editor/blocks/table/TableBlock.tsx",
+        "ranges": [
+          {
+            "start": 354,
+            "end": 371
+          }
+        ],
+        "before_hash": "ac3a5815024eaabc705c88eed96bc2896e6ce0e94dde860516b4e0ec71afbc88",
+        "after_hash": "244e18aab721f42dfb613f49bdbccad44257eea43948db4c2cd7231c92a171de"
+      },
+      {
+        "file": "src/components/teacher/doc-editor/BlockWrapper.tsx",
+        "ranges": [
+          {
+            "start": 105,
+            "end": 105
+          },
+          {
+            "start": 227,
+            "end": 228
+          }
+        ],
+        "before_hash": "895c5a78294e739c9e0bcf72bdacc2cabce6ff77164b08b79aecb20a6fd8a541",
+        "after_hash": "4a4562d8b0ffff2c2260e716cb4f912ca623716fa166c9f5459b01b50f0c3d1c"
+      },
+      {
+        "file": "src/components/teacher/doc-editor/DocEditorBlockList.tsx",
+        "ranges": [
+          {
+            "start": 78,
+            "end": 78
+          },
+          {
+            "start": 296,
+            "end": 296
+          }
+        ],
+        "before_hash": "119d4777e23bdc0a3db15df4e32a235011a5fe2186a4aed7263b0b343f612005",
+        "after_hash": "9f503742cbae543cebedb4528f1ef782563af90997e1a429fefbf98b78ae84d0"
+      },
+      {
+        "file": "src/components/teacher/doc-editor/DocEditorWorkspace.tsx",
+        "ranges": [
+          {
+            "start": 414,
+            "end": 416
+          },
+          {
+            "start": 418,
+            "end": 418
+          }
+        ],
+        "before_hash": "71fe117e7954fcb836aa58152e41f1edeb41ecce69e6ff9624e3d239bc91effc",
+        "after_hash": "f86a5596da5362d2a9016fc084cc42b400ffcf109971142760162a03ea3825f7"
+      }
+    ]
+  },
+  "timing": {
+    "started_at": "2026-09-24T11:00:56.294Z",
+    "completed_at": "2026-09-24T11:00:58.199Z",
+    "duration_ms": 1905,
+    "measurement": "hook_wall_clock"
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "model_calls": 0,
+    "measurement": "known-zero"
+  },
+  "telemetry": {
+    "schemaVersion": "mimosa-gate-telemetry/v1",
+    "profile": "gate",
+    "operation": "Stop",
+    "outcome": "complete",
+    "latencyMs": 1905,
+    "peakMemoryBytes": 153182208,
+    "memoryMeasurement": "max-observed-process-rss",
+    "scannedFiles": 5,
+    "cache": {
+      "hits": 0,
+      "misses": 0,
+      "measurement": "not-applicable"
+    },
+    "denyCount": 0,
+    "tokens": {
+      "input": 0,
+      "output": 0,
+      "total": 0,
+      "modelCalls": 0,
+      "measurement": "known-zero"
+    }
+  },
+  "finding_count": 0,
+  "rewake_finding_count": 0,
+  "evidence_boundary": {
+    "scan": "candidate",
+    "static_fix_verification": "observed_static_only",
+    "runtime_verification": "not_performed"
+  },
+  "finding_events": [],
+  "findings": [],
+  "artifacts": {
+    "immutable_report": ".mimosa/reports/task-review-sess_bf966460-d9d2-4c54-a300-a1be926892eb-20260924T110058199Z-29724-9fc9c7a4551b.json",
+    "latest_report": ".mimosa/reports/task-review-sess_bf966460-d9d2-4c54-a300-a1be926892eb.json",
+    "history_summary": ".mimosa/history/run-20260924T110058199Z-29724-9fc9c7a4551b.json"
+  }
+}

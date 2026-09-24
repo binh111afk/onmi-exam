@@ -1,0 +1,752 @@
+import { useEffect, useState } from 'react';
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useParams,
+} from 'react-router-dom';
+import { initialUser, mockExams, mockDocuments, mockLeaderboard, mockCourses, buildPracticeSet, buildAdaptiveSet, courseProgress } from './data/mockData';
+import type { User } from './types';
+import { Navbar } from './components/Navbar';
+import { Sidebar } from './components/Sidebar';
+import { Footer } from './components/Footer';
+import { Home } from './pages/Home';
+import { Exams } from './pages/Exams';
+import { ExamDetail } from './pages/ExamDetail';
+import { ActiveExam } from './pages/ActiveExam';
+import { Result } from './pages/Result';
+import { Documents } from './pages/Documents';
+import { DocReader } from './pages/DocReader';
+import { Courses } from './pages/Courses';
+import { CourseDetail } from './pages/CourseDetail';
+import { LessonView } from './pages/LessonView';
+import { Practice } from './pages/Practice';
+import { PracticeTopics } from './pages/PracticeTopics';
+import { PracticeMistakes } from './pages/PracticeMistakes';
+import { PracticeQuick } from './pages/PracticeQuick';
+import { Progress } from './pages/Progress';
+import { Discover } from './pages/Discover';
+import { Leaderboard } from './pages/Leaderboard';
+import { Login } from './pages/Login';
+import { Register } from './pages/Register';
+import { Contact } from './pages/Contact';
+import { Blog } from './pages/Blog';
+import { Profile } from './pages/Profile';
+import { Teacher } from './pages/Teacher';
+import { AssessmentTest } from './pages/AssessmentTest';
+import { DocumentBenchmark } from './pages/DocumentBenchmark';
+import { NotFound } from './pages/NotFound';
+import { OnboardingModal } from './components/OnboardingModal';
+import { AlertProvider } from './components/common/Alert';
+
+const AUTH_STORAGE_KEY = 'omni_auth_user';
+
+const viewToPath: Record<string, string> = {
+  home: '/',
+  courses: '/courses',
+  practice: '/practice',
+  'practice-exams': '/practice/exams',
+  'practice-topics': '/practice/topics',
+  'practice-mistakes': '/practice/mistakes',
+  'practice-quick': '/practice/quick',
+  progress: '/progress',
+  library: '/library',
+  help: '/help',
+  discover: '/discover',
+  leaderboard: '/leaderboard',
+  login: '/login',
+  register: '/register',
+  teacher: '/teacher',
+  blog: '/blog',
+  profile: '/profile',
+  'assessment-test': '/mbti',
+  // alias view cũ — các page hiện hữu (Home, Profile, NotFound, Footer) vẫn gọi an toàn
+  exams: '/practice/exams',
+  documents: '/library',
+  about: '/progress',
+  contact: '/help',
+};
+
+const docAliases: Record<string, string> = {
+  'biology-01': 'doc-bio-1',
+};
+
+const quickSubjects = Array.from(new Set(mockExams.map((exam) => exam.subject)));
+
+const loadInitialUser = (): User => {
+  try {
+    const saved = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (saved) {
+      return { ...initialUser, ...JSON.parse(saved), loggedIn: true };
+    }
+  } catch {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  }
+  return initialUser;
+};
+
+const getCurrentView = (pathname: string) => {
+  if (pathname === '/') return 'home';
+  if (pathname === '/login') return 'login';
+  if (pathname === '/register') return 'register';
+  if (pathname === '/mbti' || pathname === '/assessment-test') return 'assessment-test';
+  if (pathname.startsWith('/practice/') && pathname.endsWith('/take')) return 'practice-take';
+  if (pathname === '/practice/exams') return 'practice-exams';
+  if (pathname === '/practice/topics') return 'practice-topics';
+  if (pathname === '/practice/mistakes') return 'practice-mistakes';
+  if (pathname === '/practice/quick') return 'practice-quick';
+  if (pathname === '/practice') return 'practice';
+  if (pathname.startsWith('/practice/')) return 'practice-detail';
+  if (pathname === '/courses' || pathname.startsWith('/courses/')) return 'courses';
+  if (pathname.startsWith('/library/')) return 'doc-reader';
+  if (pathname === '/library') return 'library';
+  if (pathname === '/progress') return 'progress';
+  if (pathname === '/discover') return 'discover';
+  if (pathname.startsWith('/teacher')) return 'teacher';
+  if (pathname === '/leaderboard') return 'leaderboard';
+  if (pathname === '/blog') return 'blog';
+  if (pathname === '/help') return 'help';
+  if (pathname === '/profile' || pathname === '/settings') return 'profile';
+  return 'not-found';
+};
+
+const isAuthPage = (pathname: string) => pathname === '/login' || pathname === '/register';
+
+function ProtectedRoute({ user, children }: { user: User; children: React.ReactNode }) {
+  const location = useLocation();
+
+  if (!user.loggedIn) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  return <>{children}</>;
+}
+
+function AppShell() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [user, setUser] = useState<User>(() => loadInitialUser());
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  const currentView = getCurrentView(location.pathname);
+  const showHeaderFooter = !['practice-take', 'assessment-test', 'login', 'register'].includes(currentView);
+
+  useEffect(() => {
+    if (user.loggedIn) {
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+    }
+  }, [user]);
+
+  const navigateToView = (newView: string) => {
+    navigate(viewToPath[newView] || '/');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLoginSuccess = (name: string, email: string) => {
+    setUser((prev) => ({
+      ...prev,
+      name,
+      email,
+      loggedIn: true,
+      xp: prev.xp === 0 ? 1420 : prev.xp,
+      streak: prev.streak === 0 ? 5 : prev.streak,
+    }));
+
+    const isCompleted = localStorage.getItem('omni_onboarding_completed') === 'true';
+    const isDismissed = localStorage.getItem('omni_onboarding_dismissed') === 'true';
+    if (!isCompleted && !isDismissed) {
+      setShowOnboarding(true);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    setUser((prev) => ({
+      ...prev,
+      loggedIn: false,
+    }));
+    navigate('/login');
+  };
+
+  const handleRegisterSuccess = (name: string, email: string) => {
+    setUser({
+      name,
+      email,
+      loggedIn: true,
+      xp: 100,
+      streak: 1,
+      badges: ['Tan binh'],
+      completedExams: {},
+      completedLessons: {},
+      examMistakes: {},
+      savedExams: [],
+      savedDocs: [],
+      bookmarks: {},
+      notes: {},
+    });
+    setShowOnboarding(true);
+  };
+
+  const handleSaveNotes = (docId: string, notes: string) => {
+    setUser((prev) => ({
+      ...prev,
+      notes: {
+        ...prev.notes,
+        [docId]: notes,
+      },
+    }));
+  };
+
+  const handleBookmarkToggle = (docId: string, chapterIdx: number) => {
+    setUser((prev) => {
+      const currentBookmarks = prev.bookmarks[docId] || [];
+      const updated = currentBookmarks.includes(chapterIdx)
+        ? currentBookmarks.filter((x) => x !== chapterIdx)
+        : [...currentBookmarks, chapterIdx];
+
+      return {
+        ...prev,
+        bookmarks: {
+          ...prev.bookmarks,
+          [docId]: updated,
+        },
+      };
+    });
+  };
+
+  const handleSaveExamToggle = (examId: string) => {
+    setUser((prev) => {
+      const currentSaved = prev.savedExams || [];
+      const updated = currentSaved.includes(examId)
+        ? currentSaved.filter((id) => id !== examId)
+        : [...currentSaved, examId];
+
+      return {
+        ...prev,
+        savedExams: updated,
+      };
+    });
+  };
+
+  const handleFinishExam = (examId: string, score: number, xpGained: number, rawAnswers: Record<string, number>) => {
+    const exam = mockExams.find((x) => x.id === examId)
+      || buildPracticeSet(examId, user.examMistakes)
+      || (examId === 'adaptive' ? buildAdaptiveSet(user.examMistakes) : undefined);
+
+    // sanitize: chỉ persist đáp án số thật (Number.isInteger chặn NaN/undefined/placeholder)
+    const answers = Object.fromEntries(
+      Object.entries(rawAnswers).filter(([, v]) => Number.isInteger(v))
+    ) as Record<string, number>;
+
+    setUser((prev) => {
+      const nextMistakes = { ...prev.examMistakes };
+      if (exam) {
+        // upsert câu SAI hoặc BỎ TRỐNG (undefined !== correctOptionIndex) vào Mistake Book;
+        // sai lại sau khi mastered → xóa mastered (re-wrong là tín hiệu học tập), wrongCount +1 không reset
+        // examId lưu ĐỀ GỐC chứa questionId (unique 18/18) — không phải id practice set (adaptive/quick-*)
+        // để mistakes-review, adaptive weak-subject và PracticeMistakes resolve đúng (review P4 HIGH)
+        const originByQid = new Map<string, string>();
+        for (const e of mockExams) {
+          for (const q of e.questions) originByQid.set(q.id, e.id);
+        }
+        for (const q of exam.questions) {
+          if (answers[q.id] !== q.correctOptionIndex) {
+            const prevMistake = nextMistakes[q.id];
+            nextMistakes[q.id] = {
+              examId: originByQid.get(q.id) || examId,
+              topic: prevMistake?.topic || exam.subject,
+              lastWrongAt: new Date().toISOString().slice(0, 10),
+              wrongCount: (prevMistake?.wrongCount || 0) + 1,
+            };
+          }
+        }
+      }
+
+      const isNewCompletion = !prev.completedExams[examId];
+      const newXp = prev.xp + xpGained;
+      const newStreak = isNewCompletion ? prev.streak + 1 : prev.streak;
+
+      return {
+        ...prev,
+        xp: newXp,
+        streak: newStreak,
+        completedExams: {
+          ...prev.completedExams,
+          [examId]: {
+            score,
+            completedAt: new Date().toISOString(),
+          },
+        },
+        lastExamResult: {
+          examId,
+          answers,
+          score,
+          xpGained,
+          completedAt: new Date().toISOString(),
+        },
+        examMistakes: nextMistakes,
+      };
+    });
+  };
+
+  // one-way idempotent: chỉ đánh dấu đã nắm, không bỏ đánh dấu
+  const handleMasterMistake = (questionId: string) => {
+    setUser((prev) => {
+      const mistake = prev.examMistakes[questionId];
+      if (!mistake) return prev;
+      return {
+        ...prev,
+        examMistakes: {
+          ...prev.examMistakes,
+          [questionId]: { ...mistake, mastered: true },
+        },
+      };
+    });
+  };
+
+  const handleUpdateProfile = (updatedData: Partial<User>) => {
+    setUser((prev) => ({
+      ...prev,
+      ...updatedData,
+    }));
+  };
+
+  const handleSelectExam = (id: string) => {
+    navigate(`/practice/${id}`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // one-way idempotent: chỉ đánh dấu hoàn thành, không un-complete
+  const handleToggleLessonComplete = (lessonId: string) => {
+    setUser((prev) => ({
+      ...prev,
+      completedLessons: { ...prev.completedLessons, [lessonId]: true },
+    }));
+  };
+
+  const handleStartExam = (id: string) => {
+    navigate(`/practice/${id}/take`);
+  };
+
+  const handleSelectDoc = (id: string) => {
+    navigate(`/library/${id}`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSelectCourse = (id: string) => {
+    navigate(`/courses/${id}`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSelectLesson = (courseId: string, lessonId: string) => {
+    navigate(`/courses/${courseId}/lesson/${lessonId}`);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleNavigatePath = (path: string) => {
+    navigate(path);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const buildLoginSuccessHandler = () => {
+    const fromState = location.state as { from?: Location } | null;
+    const fromPath = fromState?.from
+      ? `${fromState.from.pathname}${fromState.from.search}${fromState.from.hash}`
+      : '/';
+
+    return (name: string, email: string) => {
+      handleLoginSuccess(name, email);
+      navigate(isAuthPage(fromPath) ? '/' : fromPath, { replace: true });
+    };
+  };
+
+  const buildRegisterSuccessHandler = () => {
+    const fromState = location.state as { from?: Location } | null;
+    const fromPath = fromState?.from
+      ? `${fromState.from.pathname}${fromState.from.search}${fromState.from.hash}`
+      : '/';
+
+    return (name: string, email: string) => {
+      handleRegisterSuccess(name, email);
+      navigate(isAuthPage(fromPath) ? '/' : fromPath, { replace: true });
+    };
+  };
+
+  // resolve đề: mockExams → practice set → adaptive; fallback mockExams[0] chỉ cho id không khớp pattern nào
+  const resolveExam = (examId: string) =>
+    mockExams.find((x) => x.id === examId)
+    || buildPracticeSet(examId, user.examMistakes)
+    || (examId === 'adaptive' ? buildAdaptiveSet(user.examMistakes) : undefined);
+
+  const ExamDetailRoute = () => {
+    const { examId } = useParams();
+    const activeExam = resolveExam(examId || '') || mockExams[0];
+
+    return (
+      <ExamDetail
+        exam={activeExam}
+        user={user}
+        onBack={() => navigate('/practice/exams')}
+        onStartExam={handleStartExam}
+        onSaveToggle={handleSaveExamToggle}
+        isSaved={user.savedExams.includes(activeExam.id)}
+      />
+    );
+  };
+
+  const ActiveExamRoute = () => {
+    const { examId } = useParams();
+    const activeExam = resolveExam(examId || '') || mockExams[0];
+
+    return (
+      <ActiveExam
+        exam={activeExam}
+        user={user}
+        onFinishExam={handleFinishExam}
+        onViewResult={() => navigate(`/practice/${activeExam.id}/result`)}
+        onExit={() => navigate(`/practice/${activeExam.id}`)}
+      />
+    );
+  };
+
+  const ResultRoute = () => {
+    const { practiceId = '' } = useParams();
+    const result = user.lastExamResult;
+    if (!result || result.examId !== practiceId) {
+      return <Navigate to={`/practice/${practiceId}`} replace />;
+    }
+    const exam = resolveExam(practiceId);
+    if (!exam) {
+      return <Navigate to="/practice" replace />;
+    }
+
+    // flat lookup toàn mockExams — tập exam resolve chỉ dùng title/meta; adaptive rebuild khác tập lúc thi
+    // wrongIds chỉ gồm câu ĐÃ TRẢ LỜI và sai; câu bỏ trống không liệt kê ở Result (đã chốt Gatekeeper vòng 2)
+    // nhưng vẫn nằm trong Mistake Book qua upsert — hai nơi không lọt câu nào
+    const questionById = new Map(mockExams.flatMap((e) => e.questions.map((q) => [q.id, q])));
+    const wrongIds = Object.entries(result.answers)
+      .filter(([qid, opt]) => {
+        const q = questionById.get(qid);
+        return q && q.correctOptionIndex !== opt;
+      })
+      .map(([qid]) => qid);
+    const weakTopics = Array.from(
+      new Set(wrongIds.map((qid) => user.examMistakes[qid]?.topic).filter((t): t is string => Boolean(t)))
+    );
+    const continueCourse = mockCourses
+      .map((c) => ({ course: c, progress: courseProgress(c, user.completedLessons) }))
+      .filter((x) => x.progress.percent > 0 && x.progress.percent < 100 && x.course.subject === exam.subject)
+      .sort((a, b) => b.progress.percent - a.progress.percent)[0]?.course;
+
+    return (
+      <Result
+        exam={exam}
+        result={result}
+        weakTopics={weakTopics.length > 0 ? weakTopics : [exam.subject]}
+        continuePath={continueCourse ? `/courses/${continueCourse.id}` : '/courses'}
+        onNavigatePath={handleNavigatePath}
+      />
+    );
+  };
+
+  const DocReaderRoute = () => {
+    const { docId = '' } = useParams();
+    const resolvedDocId = docAliases[docId] || docId;
+    const activeDoc = mockDocuments.find((x) => x.id === resolvedDocId) || mockDocuments[0];
+    const relatedExams = mockExams.filter((x) => x.subject === activeDoc.subject);
+    const relatedDocs = mockDocuments.filter((x) => x.subject === activeDoc.subject && x.id !== activeDoc.id);
+
+    return (
+      <DocReader
+        doc={activeDoc}
+        user={user}
+        onBack={() => navigate('/library')}
+        onSaveNotes={handleSaveNotes}
+        onBookmarkToggle={handleBookmarkToggle}
+        relatedExams={relatedExams}
+        relatedDocs={relatedDocs}
+        onSelectDoc={handleSelectDoc}
+        onSelectExam={handleSelectExam}
+      />
+    );
+  };
+
+  const CourseDetailRoute = () => {
+    const { courseId } = useParams();
+    const activeCourse = mockCourses.find((c) => c.id === courseId) || mockCourses[0];
+
+    return (
+      <CourseDetail
+        course={activeCourse}
+        user={user}
+        exams={mockExams}
+        documents={mockDocuments}
+        onSelectLesson={handleSelectLesson}
+        onBack={() => navigate('/courses')}
+        onStartPractice={() => navigate('/practice')}
+        onStartExam={handleStartExam}
+        onSelectDoc={handleSelectDoc}
+      />
+    );
+  };
+
+  const LessonViewRoute = () => {
+    const { courseId = '', lessonId = '' } = useParams();
+    const activeCourse = mockCourses.find((c) => c.id === courseId) || mockCourses[0];
+    const activeLesson = activeCourse.chapters.flatMap((ch) => ch.lessons).find((l) => l.id === lessonId)
+      || activeCourse.chapters[0].lessons[0];
+
+    return (
+      <LessonView
+        course={activeCourse}
+        lesson={activeLesson}
+        isCompleted={Boolean(user.completedLessons[activeLesson.id])}
+        onBack={() => navigate(`/courses/${activeCourse.id}`)}
+        onSelectLesson={handleSelectLesson}
+        onToggleLessonComplete={handleToggleLessonComplete}
+        onNavigatePath={handleNavigatePath}
+      />
+    );
+  };
+
+  const Redirect = ({ to }: { to: string }) => <Navigate to={to} replace />;
+
+  const ExamRedirect = () => {
+    const { examId } = useParams();
+    return <Redirect to={`/practice/${examId}`} />;
+  };
+
+  const ExamTakeRedirect = () => {
+    const { examId } = useParams();
+    return <Redirect to={`/practice/${examId}/take`} />;
+  };
+
+  const DocRedirect = () => {
+    const { docId } = useParams();
+    return <Redirect to={`/library/${docId}`} />;
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-bg-base transition-colors duration-default selection:bg-primary-light selection:text-primary">
+      {showHeaderFooter && (
+        <Navbar
+          currentView={currentView}
+          onViewChange={navigateToView}
+          user={user}
+          onLogout={handleLogout}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
+      )}
+
+      <div className="flex-1 w-full flex overflow-hidden">
+        {showHeaderFooter && currentView !== 'not-found' && location.pathname !== '/teacher/document/new' && location.pathname !== '/teacher/document/editor' && (
+          <Sidebar currentView={currentView} onViewChange={navigateToView} user={user} />
+        )}
+
+        <div className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-50/50 flex flex-col h-[calc(100vh-3.5rem)] lg:h-screen">
+          <div className="flex-1">
+            <Routes>
+              <Route
+                path="/"
+                element={(
+                  <Home
+                    user={user}
+                    onViewChange={navigateToView}
+                    courses={mockCourses}
+                    mistakes={Object.values(user.examMistakes)}
+                    onSelectCourse={handleSelectCourse}
+                    onSelectLesson={handleSelectLesson}
+                    onNavigatePath={handleNavigatePath}
+                  />
+                )}
+              />
+              <Route path="/courses" element={<Courses courses={mockCourses} user={user} onSelectCourse={handleSelectCourse} />} />
+              <Route path="/courses/:courseId" element={<CourseDetailRoute />} />
+              <Route path="/courses/:courseId/lesson/:lessonId" element={<LessonViewRoute />} />
+              <Route path="/practice" element={<Practice hasMistakes={Object.values(user.examMistakes).some((m) => !m.mastered)} onSelect={handleNavigatePath} />} />
+              <Route
+                path="/practice/exams"
+                element={(
+                  <Exams
+                    exams={mockExams}
+                    onSelectExam={handleSelectExam}
+                    onStartExam={handleStartExam}
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                  />
+                )}
+              />
+              <Route
+                path="/practice/topics"
+                element={<PracticeTopics exams={mockExams} onSelectTopic={handleSelectExam} onBack={() => navigate('/practice')} />}
+              />
+              <Route
+                path="/practice/mistakes"
+                element={(
+                  <PracticeMistakes
+                    mistakes={Object.entries(user.examMistakes).map(([questionId, m]) => ({ ...m, questionId }))}
+                    exams={mockExams}
+                    user={user}
+                    onMaster={handleMasterMistake}
+                    onReviewAll={handleSelectExam}
+                    onBack={() => navigate('/practice')}
+                  />
+                )}
+              />
+              <Route
+                path="/practice/quick"
+                element={(
+                  <PracticeQuick
+                    subjects={quickSubjects}
+                    onStart={handleSelectExam}
+                    onBack={() => navigate('/practice')}
+                  />
+                )}
+              />
+              <Route path="/practice/:practiceId" element={<ExamDetailRoute />} />
+              <Route
+                path="/practice/:practiceId/result"
+                element={(
+                  <ProtectedRoute user={user}>
+                    <ResultRoute />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/practice/:practiceId/take"
+                element={(
+                  <ProtectedRoute user={user}>
+                    <ActiveExamRoute />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/progress"
+                element={(
+                  <Progress
+                    user={user}
+                    courses={mockCourses}
+                    exams={mockExams}
+                    onSelectCourse={handleSelectCourse}
+                    onNavigatePath={handleNavigatePath}
+                    onSelectExam={handleSelectExam}
+                  />
+                )}
+              />
+              <Route
+                path="/library"
+                element={(
+                  <Documents
+                    documents={mockDocuments}
+                    onSelectDoc={handleSelectDoc}
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                  />
+                )}
+              />
+              <Route path="/library/:docId" element={<DocReaderRoute />} />
+              <Route path="/help" element={<Contact />} />
+              <Route path="/exams" element={<Redirect to="/practice/exams" />} />
+              <Route path="/exams/:examId" element={<ExamRedirect />} />
+              <Route path="/exams/:examId/take" element={<ExamTakeRedirect />} />
+              <Route path="/documents" element={<Redirect to="/library" />} />
+              <Route path="/documents/:docId" element={<DocRedirect />} />
+              <Route path="/roadmap" element={<Redirect to="/progress" />} />
+              <Route path="/about" element={<Redirect to="/progress" />} />
+              <Route path="/contact" element={<Redirect to="/help" />} />
+              <Route path="/discover" element={<Discover onViewChange={navigateToView} />} />
+              <Route path="/leaderboard" element={<Leaderboard entries={mockLeaderboard} />} />
+              <Route path="/login" element={<Login onLoginSuccess={buildLoginSuccessHandler()} onViewChange={navigateToView} />} />
+              <Route path="/register" element={<Register onRegisterSuccess={buildRegisterSuccessHandler()} onViewChange={navigateToView} />} />
+              <Route
+                path="/teacher/document/new"
+                element={(
+                  <ProtectedRoute user={user}>
+                    <Teacher />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/teacher/document/editor"
+                element={(
+                  <ProtectedRoute user={user}>
+                    <Teacher />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/teacher"
+                element={(
+                  <ProtectedRoute user={user}>
+                    <Teacher />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/teacher/:mode"
+                element={(
+                  <ProtectedRoute user={user}>
+                    <Teacher />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route path="/blog" element={<Blog />} />
+              <Route
+                path="/profile"
+                element={(
+                  <ProtectedRoute user={user}>
+                    <Profile user={user} onUpdateProfile={handleUpdateProfile} onViewChange={navigateToView} onLogout={handleLogout} />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/settings"
+                element={(
+                  <ProtectedRoute user={user}>
+                    <Profile user={user} onUpdateProfile={handleUpdateProfile} onViewChange={navigateToView} onLogout={handleLogout} />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route path="/mbti" element={<AssessmentTest onBackToHome={() => navigate('/')} />} />
+              <Route path="/assessment-test" element={<AssessmentTest onBackToHome={() => navigate('/')} />} />
+              <Route path="/admin/document-benchmark" element={<ProtectedRoute user={user}><DocumentBenchmark /></ProtectedRoute>} />
+              <Route path="*" element={<NotFound onViewChange={navigateToView} />} />
+            </Routes>
+          </div>
+
+          {showHeaderFooter && currentView !== 'not-found' && currentView !== 'teacher' && <Footer onViewChange={navigateToView} />}
+        </div>
+      </div>
+
+      {showOnboarding && (
+        <OnboardingModal
+          onStart={() => {
+            setShowOnboarding(false);
+            navigate('/mbti');
+          }}
+          onDismiss={() => {
+            setShowOnboarding(false);
+            localStorage.setItem('omni_onboarding_dismissed', 'true');
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <BrowserRouter>
+      <AlertProvider>
+        <AppShell />
+      </AlertProvider>
+    </BrowserRouter>
+  );
+}
+
+export default App;

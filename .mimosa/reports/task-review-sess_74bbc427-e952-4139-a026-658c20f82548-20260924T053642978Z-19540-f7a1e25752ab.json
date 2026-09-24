@@ -1,0 +1,217 @@
+{
+  "schema_version": "mimosa-task-review/v2",
+  "run_id": "20260924T053642978Z-19540-f7a1e25752ab",
+  "run_status": "inconclusive",
+  "errors": [
+    {
+      "stage": "scan",
+      "target": "src/components/teacher/hooks/usePreviewViewport.ts",
+      "reason": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "src/components/teacher/exam-editor/hooks/useExamViewportZoom.ts",
+      "reason": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "src/components/teacher/doc-editor/DocPreviewSimulator.tsx",
+      "reason": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT"
+    }
+  ],
+  "coverage": {
+    "schema_version": "mimosa-hook-coverage/v1",
+    "status": "partial",
+    "scope": "hook_observed_diff",
+    "baseline": {
+      "complete": true,
+      "captured_files": 320,
+      "candidate_limit": 5000,
+      "truncated": false,
+      "enumeration_error_count": 0,
+      "snapshot_error_count": 0,
+      "compensated_target_count": 3
+    },
+    "change_tracking": {
+      "touched_observed": 3,
+      "touched_retained": 3,
+      "truncated": false,
+      "bash_mutation": true,
+      "bash_discovered": 3,
+      "bash_discovery_limit": 80,
+      "bash_discovery_truncated": false
+    },
+    "candidates": {
+      "eligible_files": 3,
+      "selected_files": 3,
+      "limit": 20,
+      "truncated": false
+    },
+    "scanning": {
+      "required_files": 3,
+      "scanned_files": 0,
+      "skipped_files": 0,
+      "failed_files": 3,
+      "project_checks_required": 0,
+      "project_checks_completed": 0
+    },
+    "notification": {
+      "eligible_findings": 0,
+      "detailed_findings": 0,
+      "detail_limit": 3,
+      "truncated": false
+    },
+    "reason_counts": {
+      "scanner_failed": 3,
+      "project_check_failed": 3
+    },
+    "reasons": [
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/hooks/usePreviewViewport.ts",
+        "detail": "spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/exam-editor/hooks/useExamViewportZoom.ts",
+        "detail": "spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/doc-editor/DocPreviewSimulator.tsx",
+        "detail": "spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/hooks/usePreviewViewport.ts",
+        "detail": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/exam-editor/hooks/useExamViewportZoom.ts",
+        "detail": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/doc-editor/DocPreviewSimulator.tsx",
+        "detail": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      }
+    ],
+    "reasons_truncated": false
+  },
+  "generated_at": "2026-09-24T05:36:42.978Z",
+  "session_id": "sess_74bbc427-e952-4139-a026-658c20f82548",
+  "target": ".",
+  "revision": "31bdab1feb07eedcf28ea0a9fa157aaa81769b0f",
+  "rules_version": "unavailable",
+  "diff_hash": "a12969d136ba17c8dc5d30bfc5a36440625dc8b008321d79a515db583b12fa37",
+  "diff": {
+    "algorithm": "sha256",
+    "changed_file_count": 3,
+    "changed_files": [
+      {
+        "file": "src/components/teacher/doc-editor/DocPreviewSimulator.tsx",
+        "ranges": [
+          {
+            "start": 1,
+            "end": 1
+          },
+          {
+            "start": 44,
+            "end": 44
+          },
+          {
+            "start": 90,
+            "end": 102
+          }
+        ],
+        "before_hash": "1af7be4694dbccdb556f3e92bf14c28637d93c5345d0af9f969bcd8a4043db94",
+        "after_hash": "fb74854a3158526042e60eb6f91b2101b82cb6ce2c7d8a180eb9a312a868ce67"
+      },
+      {
+        "file": "src/components/teacher/exam-editor/hooks/useExamViewportZoom.ts",
+        "ranges": [
+          {
+            "start": 1,
+            "end": 3
+          }
+        ],
+        "before_hash": "0d4d2c08b36450b98113cf541d58c5813cfee3403650703457c8a01df9bc3d16",
+        "after_hash": "34352413abe5b23365ee3766adedbb6c23868fea59b2d6b5a2a2f8017b949619"
+      },
+      {
+        "file": "src/components/teacher/hooks/usePreviewViewport.ts",
+        "ranges": [
+          {
+            "start": 1,
+            "end": 91
+          }
+        ],
+        "before_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "after_hash": "a0b1f608b78a774639bb737eda2ac2e7c96dbd76d1381f843163f14a572cc78f"
+      }
+    ]
+  },
+  "timing": {
+    "started_at": "2026-09-24T05:36:39.980Z",
+    "completed_at": "2026-09-24T05:36:42.978Z",
+    "duration_ms": 2998,
+    "measurement": "hook_wall_clock"
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "model_calls": 0,
+    "measurement": "known-zero"
+  },
+  "telemetry": {
+    "schemaVersion": "mimosa-gate-telemetry/v1",
+    "profile": "gate",
+    "operation": "Stop",
+    "outcome": "partial/INCONCLUSIVE",
+    "latencyMs": 2998,
+    "peakMemoryBytes": 109436928,
+    "memoryMeasurement": "max-observed-process-rss",
+    "scannedFiles": 0,
+    "cache": {
+      "hits": 0,
+      "misses": 0,
+      "measurement": "not-applicable"
+    },
+    "denyCount": 0,
+    "tokens": {
+      "input": 0,
+      "output": 0,
+      "total": 0,
+      "modelCalls": 0,
+      "measurement": "known-zero"
+    }
+  },
+  "finding_count": 0,
+  "rewake_finding_count": 0,
+  "evidence_boundary": {
+    "scan": "candidate",
+    "static_fix_verification": "observed_static_only",
+    "runtime_verification": "not_performed"
+  },
+  "finding_events": [],
+  "findings": [],
+  "artifacts": {
+    "immutable_report": ".mimosa/reports/task-review-sess_74bbc427-e952-4139-a026-658c20f82548-20260924T053642978Z-19540-f7a1e25752ab.json",
+    "latest_report": ".mimosa/reports/task-review-sess_74bbc427-e952-4139-a026-658c20f82548.json",
+    "history_summary": ".mimosa/history/run-20260924T053642978Z-19540-f7a1e25752ab.json"
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "mimosa-finding-ledger-batch/v1",
+  "batchId": "stop-20260924T080004430Z-5636-f60ed7d37565",
+  "runId": "20260924T080004430Z-5636-f60ed7d37565",
+  "runStatus": "completed",
+  "coverage": {
+    "status": "complete",
+    "reasons": []
+  },
+  "source": {
+    "component": "zcode-hook",
+    "operationId": "Stop"
+  },
+  "revision": "996060ba57dca256e4c3e23f8f581f0a6459607a",
+  "diffHash": "382efd0a0157b15a2615f9a58b87cb32b1c7ac5dd6328d3290090812a94535b5",
+  "rulesVersion": "unavailable",
+  "sessionHash": "2fef7f43ae47f283db1a46b3490649ae84bc8f332d205e05fc4666c9ba48f044",
+  "reportRef": ".mimosa/reports/task-review-sess_bf966460-d9d2-4c54-a300-a1be926892eb-20260924T080004430Z-5636-f60ed7d37565.json",
+  "events": [],
+  "observedFindingIds": [],
+  "verifiedFiles": [
+    {
+      "file": "src/components/teacher/doc-editor/DocSidebar.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/teacher/doc-editor/DocEditorHeader.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/teacher/doc-editor/DocToolbar.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/teacher/doc-editor/DocPreviewSimulator.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/teacher/doc-editor/DocEditorBlockList.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    },
+    {
+      "file": "src/components/teacher/doc-editor/DocEditorWorkspace.tsx",
+      "direct": "complete",
+      "projectContext": "partial"
+    }
+  ],
+  "recordedAt": "2026-09-24T08:00:04.963Z"
+}

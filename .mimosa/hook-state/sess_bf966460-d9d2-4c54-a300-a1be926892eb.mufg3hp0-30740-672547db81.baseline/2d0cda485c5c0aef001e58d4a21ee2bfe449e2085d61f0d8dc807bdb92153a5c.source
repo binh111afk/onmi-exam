@@ -1,0 +1,95 @@
+import React from 'react';
+import { ArrowRight, BookMarked, FileText, ListChecks, Sparkles, Zap } from 'lucide-react';
+
+interface PracticeProps {
+  hasMistakes: boolean;
+  onSelect: (path: string) => void;
+}
+
+const sections = [
+  {
+    path: '/practice/exams',
+    icon: FileText,
+    title: 'Đề thi',
+    description: 'Làm một đề hoàn chỉnh có tính thời gian như thi thật',
+    accent: 'bg-primary-light text-primary',
+  },
+  {
+    path: '/practice/topics',
+    icon: ListChecks,
+    title: 'Theo chủ đề',
+    description: 'Luyện kiến thức cụ thể theo từng chủ đề môn học',
+    accent: 'bg-blue-50 text-blue-600',
+  },
+  {
+    path: '/practice/mistakes',
+    icon: BookMarked,
+    title: 'Câu sai',
+    description: 'Ôn lại những câu bạn từng làm sai để không lặp lại',
+    accent: 'bg-amber-50 text-amber-600',
+  },
+  {
+    path: '/practice/quick',
+    icon: Zap,
+    title: 'Luyện nhanh',
+    description: '10–20 câu ngắn để giữ nhịp mỗi ngày',
+    accent: 'bg-emerald-50 text-emerald-600',
+  },
+];
+
+export const Practice: React.FC<PracticeProps> = ({ hasMistakes, onSelect }) => {
+  return (
+    <div className="max-w-[1320px] mx-auto px-6 lg:px-8 py-8 antialiased">
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold text-text-primary">Luyện tập</h1>
+        <p className="text-sm text-text-secondary font-medium mt-1">
+          Chọn hình thức luyện phù hợp — đề thi chỉ là một trong nhiều cách luyện
+        </p>
+      </header>
+
+      {hasMistakes && (
+        <button
+          onClick={() => onSelect('/practice/adaptive')}
+          className="w-full bg-gradient-to-br from-primary to-[#8F85F3] text-white rounded-2xl p-6 mb-6 flex items-start gap-4 text-left transition-all duration-200 cursor-pointer group hover:-translate-y-0.5"
+        >
+          <div className="h-11 w-11 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <Sparkles size={20} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-black">Luyện theo năng lực của bạn</h2>
+            <p className="text-xs font-medium leading-relaxed mt-1 opacity-90">
+              Omni chọn bài phù hợp: ôn nền tảng, luyện mức hiện tại và thử thách nhẹ
+            </p>
+          </div>
+          <ArrowRight size={16} className="shrink-0 mt-1 opacity-80 group-hover:translate-x-0.5 transition-transform" />
+        </button>
+      )}
+
+      <div className="grid md:grid-cols-2 gap-5">
+        {sections.map((section) => {
+          const Icon = section.icon;
+          return (
+            <button
+              key={section.path}
+              onClick={() => onSelect(section.path)}
+              className="bg-white border border-slate-100 hover:border-primary/30 rounded-2xl p-6 min-h-[104px] flex items-start gap-4 text-left transition-all duration-200 cursor-pointer group"
+            >
+              <div className={`h-11 w-11 rounded-xl flex items-center justify-center shrink-0 ${section.accent}`}>
+                <Icon size={20} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-base font-black text-text-primary group-hover:text-primary transition-colors">
+                  {section.title}
+                </h2>
+                <p className="text-xs text-text-secondary font-medium leading-relaxed mt-1">
+                  {section.description}
+                </p>
+              </div>
+              <ArrowRight size={16} className="text-slate-300 group-hover:text-primary shrink-0 transition-colors mt-1" />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};

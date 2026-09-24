@@ -1,0 +1,238 @@
+{
+  "schema_version": "mimosa-task-review/v2",
+  "run_id": "20260924T101552435Z-21908-1f7ab7432676",
+  "run_status": "inconclusive",
+  "errors": [
+    {
+      "stage": "scan",
+      "target": "src/components/teacher/doc-editor/DocEditorWorkspace.tsx",
+      "reason": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT"
+    },
+    {
+      "stage": "scan",
+      "target": "src/components/teacher/doc-editor/hooks/useEditorBlocks.ts",
+      "reason": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT"
+    },
+    {
+      "stage": "supply-chain-check",
+      "target": ".",
+      "reason": "stop_budget_exhausted: focused supply-chain check was not run before the gate budget"
+    }
+  ],
+  "coverage": {
+    "schema_version": "mimosa-hook-coverage/v1",
+    "status": "partial",
+    "scope": "hook_observed_diff",
+    "baseline": {
+      "complete": true,
+      "captured_files": 320,
+      "candidate_limit": 5000,
+      "truncated": false,
+      "enumeration_error_count": 0,
+      "snapshot_error_count": 0,
+      "compensated_target_count": 4
+    },
+    "change_tracking": {
+      "touched_observed": 2,
+      "touched_retained": 2,
+      "truncated": false,
+      "bash_mutation": true,
+      "bash_discovered": 4,
+      "bash_discovery_limit": 80,
+      "bash_discovery_truncated": false
+    },
+    "candidates": {
+      "eligible_files": 4,
+      "selected_files": 4,
+      "limit": 20,
+      "truncated": false
+    },
+    "scanning": {
+      "required_files": 2,
+      "scanned_files": 0,
+      "skipped_files": 0,
+      "failed_files": 2,
+      "project_checks_required": 1,
+      "project_checks_completed": 0
+    },
+    "notification": {
+      "eligible_findings": 0,
+      "detailed_findings": 0,
+      "detail_limit": 3,
+      "truncated": false
+    },
+    "reason_counts": {
+      "scanner_failed": 2,
+      "stop_budget_exhausted": 1,
+      "project_check_failed": 3
+    },
+    "reasons": [
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/doc-editor/DocEditorWorkspace.tsx",
+        "detail": "spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "scanner_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/doc-editor/hooks/useEditorBlocks.ts",
+        "detail": "spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "stop_budget_exhausted",
+        "stage": "supply-chain-check",
+        "target": ".",
+        "detail": "focused supply-chain check was not run before the gate budget",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/doc-editor/DocEditorWorkspace.tsx",
+        "detail": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "scan",
+        "target": "src/components/teacher/doc-editor/hooks/useEditorBlocks.ts",
+        "detail": "scanner_failed: spawnSync C:\\Program Files\\nodejs\\node.exe ETIMEDOUT",
+        "affects_completion": true
+      },
+      {
+        "code": "project_check_failed",
+        "stage": "supply-chain-check",
+        "target": ".",
+        "detail": "stop_budget_exhausted: focused supply-chain check was not run before the gate budget",
+        "affects_completion": true
+      }
+    ],
+    "reasons_truncated": false
+  },
+  "generated_at": "2026-09-24T10:15:52.435Z",
+  "session_id": "sess_bf966460-d9d2-4c54-a300-a1be926892eb",
+  "target": ".",
+  "revision": "996060ba57dca256e4c3e23f8f581f0a6459607a",
+  "rules_version": "unavailable",
+  "diff_hash": "d7e20ad24b3021b84df0fbaff52f146b8ae70a607b968f122e67529cda3bbd95",
+  "diff": {
+    "algorithm": "sha256",
+    "changed_file_count": 3,
+    "changed_files": [
+      {
+        "file": "package-lock.json",
+        "ranges": [
+          {
+            "start": 11,
+            "end": 91
+          }
+        ],
+        "before_hash": "f3c6aa5bc8e1063450035bf8592816d35aa19ac54d0e7222330ea7eb2c5a0ddc",
+        "after_hash": "68e3c5b8f1d8d2c27304fed91198387d03710234561d305fb3437ce8894b77da"
+      },
+      {
+        "file": "src/components/teacher/doc-editor/DocEditorWorkspace.tsx",
+        "ranges": [
+          {
+            "start": 7,
+            "end": 14
+          },
+          {
+            "start": 18,
+            "end": 18
+          },
+          {
+            "start": 207,
+            "end": 207
+          },
+          {
+            "start": 391,
+            "end": 391
+          },
+          {
+            "start": 488,
+            "end": 488
+          },
+          {
+            "start": 490,
+            "end": 490
+          },
+          {
+            "start": 796,
+            "end": 796
+          },
+          {
+            "start": 979,
+            "end": 1008
+          }
+        ],
+        "before_hash": "0a4257bdba625d0a7b812dd09fd83cc51d0106ff498782a2411648793dcf9715",
+        "after_hash": "71fe117e7954fcb836aa58152e41f1edeb41ecce69e6ff9624e3d239bc91effc"
+      },
+      {
+        "file": "src/components/teacher/doc-editor/hooks/useEditorBlocks.ts",
+        "ranges": [
+          {
+            "start": 65,
+            "end": 65
+          }
+        ],
+        "before_hash": "f013f495fcecb0a1c1c25a8caf731a67fe43faa50287afdfb0017315098a9c4f",
+        "after_hash": "ea0f6557b8e5139d858ab5eae288b177615396dbf2dd18b44a716078a42aa79e"
+      }
+    ]
+  },
+  "timing": {
+    "started_at": "2026-09-24T10:15:49.041Z",
+    "completed_at": "2026-09-24T10:15:52.435Z",
+    "duration_ms": 3394,
+    "measurement": "hook_wall_clock"
+  },
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "total": 0,
+    "model_calls": 0,
+    "measurement": "known-zero"
+  },
+  "telemetry": {
+    "schemaVersion": "mimosa-gate-telemetry/v1",
+    "profile": "gate",
+    "operation": "Stop",
+    "outcome": "partial/INCONCLUSIVE",
+    "latencyMs": 3394,
+    "peakMemoryBytes": 109355008,
+    "memoryMeasurement": "max-observed-process-rss",
+    "scannedFiles": 0,
+    "cache": {
+      "hits": 0,
+      "misses": 0,
+      "measurement": "not-applicable"
+    },
+    "denyCount": 0,
+    "tokens": {
+      "input": 0,
+      "output": 0,
+      "total": 0,
+      "modelCalls": 0,
+      "measurement": "known-zero"
+    }
+  },
+  "finding_count": 0,
+  "rewake_finding_count": 0,
+  "evidence_boundary": {
+    "scan": "candidate",
+    "static_fix_verification": "observed_static_only",
+    "runtime_verification": "not_performed"
+  },
+  "finding_events": [],
+  "findings": [],
+  "artifacts": {
+    "immutable_report": ".mimosa/reports/task-review-sess_bf966460-d9d2-4c54-a300-a1be926892eb-20260924T101552435Z-21908-1f7ab7432676.json",
+    "latest_report": ".mimosa/reports/task-review-sess_bf966460-d9d2-4c54-a300-a1be926892eb.json",
+    "history_summary": ".mimosa/history/run-20260924T101552435Z-21908-1f7ab7432676.json"
+  }
+}

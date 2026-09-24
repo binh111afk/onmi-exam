@@ -1,0 +1,131 @@
+import React, { useMemo } from 'react';
+import { ArrowLeft, RotateCcw, BookMarked, CheckCircle2 } from 'lucide-react';
+import type { Exam, MistakeWithId, User } from '../types';
+
+interface PracticeMistakesProps {
+  mistakes: MistakeWithId[];
+  exams: Exam[];
+  user: User;
+  onMaster: (questionId: string) => void;
+  onReviewAll: (practiceId: string) => void;
+  onBack: () => void;
+}
+
+type MistakeState = 'Chưa ôn' | 'Đang cải thiện' | 'Đã nắm vững';
+
+const mistakeState = (m: MistakeWithId): MistakeState => {
+  if (m.mastered) return 'Đã nắm vững';
+  if (m.wrongCount >= 2) return 'Đang cải thiện';
+  return 'Chưa ôn';
+};
+
+const stateStyles: Record<MistakeState, string> = {
+  'Chưa ôn': 'bg-slate-100 text-text-secondary',
+  'Đang cải thiện': 'bg-amber-50 text-amber-700',
+  'Đã nắm vững': 'bg-emerald-100/70 text-emerald-700',
+};
+
+export const PracticeMistakes: React.FC<PracticeMistakesProps> = ({ mistakes, exams, user, onMaster, onReviewAll, onBack }) => {
+  const byTopic = useMemo(() => {
+    const resolve = (examId: string, questionId: string) => {
+      const exam = exams.find((e) => e.id === examId);
+      const question = exam?.questions.find((q) => q.id === questionId);
+      return exam && question ? { exam, question } : undefined;
+    };
+
+    const groups: Record<string, MistakeWithId[]> = {};
+    for (const mistake of mistakes) {
+      if (resolve(mistake.examId, mistake.questionId)) {
+        (groups[mistake.topic] ||= []).push(mistake);
+      }
+    }
+    return groups;
+  }, [mistakes, exams]);
+
+  const topics = Object.keys(byTopic);
+  // chỉ đếm câu chưa mastered VÀ resolve được trong exams — khớp với buildPracticeSet('mistakes-review')
+  const toReview = mistakes.filter(
+    (m) => !m.mastered && exams.find((e) => e.id === m.examId)?.questions.some((q) => q.id === m.questionId)
+  );
+  const toReviewCount = toReview.length;
+  // header chỉ đếm topic còn câu chưa mastered (khớp ngữ nghĩa với toReviewCount)
+  const activeTopicCount = new Set(toReview.map((m) => m.topic)).size;
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-8 antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-primary transition-colors cursor-pointer mb-5"
+      >
+        <ArrowLeft size={14} /> Luyện tập
+      </button>
+
+      <header className="bg-white border border-slate-100 rounded-2xl p-6 mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-black text-text-primary">Câu sai của bạn</h1>
+          <p className="text-xs text-text-secondary font-medium mt-1">
+            {toReviewCount} câu cần ôn, chia theo {activeTopicCount} chủ đề
+            {user.loggedIn ? '' : ' (đăng nhập để lưu tiến độ)'}
+          </p>
+        </div>
+        {toReviewCount > 0 && (
+          <button
+            onClick={() => onReviewAll('mistakes-review')}
+            className="flex items-center gap-1.5 px-5 py-2.5 bg-primary hover:bg-primary/90 text-white text-xs font-bold rounded-xl transition-all duration-200 cursor-pointer"
+          >
+            <RotateCcw size={13} /> Ôn tất cả
+          </button>
+        )}
+      </header>
+
+      {topics.length === 0 ? (
+        <div className="bg-white border border-slate-100 rounded-2xl p-10 text-center">
+          <BookMarked size={28} className="mx-auto text-slate-300 mb-3" />
+          <p className="text-xs font-bold text-text-secondary">Chưa có câu sai nào được ghi nhận</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {topics.map((topic) => (
+            <section key={topic} className="bg-white border border-slate-100 rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-black text-text-primary">{topic}</h2>
+                <span className="text-[10px] font-extrabold text-text-secondary bg-slate-50 px-2 py-1 rounded-md">
+                  {byTopic[topic].length} câu
+                </span>
+              </div>
+              <div className="space-y-2">
+                {byTopic[topic].map((item) => {
+                  const resolved = exams.find((e) => e.id === item.examId)?.questions.find((q) => q.id === item.questionId);
+                  const state = mistakeState(item);
+                  return (
+                    <div key={item.questionId} className="px-4 py-3 bg-slate-50 rounded-xl">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-bold text-text-primary line-clamp-2">{resolved?.text}</p>
+                          <div className="text-[10px] text-text-secondary font-medium mt-1 flex items-center gap-2 flex-wrap">
+                            <span className={`font-extrabold px-1.5 py-0.5 rounded ${stateStyles[state]}`}>{state}</span>
+                            <span className="truncate max-w-full">{exams.find((e) => e.id === item.examId)?.title}</span>
+                            <span>• sai {item.wrongCount} lần</span>
+                            <span>• gần nhất {item.lastWrongAt}</span>
+                          </div>
+                        </div>
+                        {!item.mastered && (
+                          <button
+                            onClick={() => onMaster(item.questionId)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-lg cursor-pointer transition-all duration-200 shrink-0"
+                          >
+                            <CheckCircle2 size={11} /> Đã nắm vững
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
