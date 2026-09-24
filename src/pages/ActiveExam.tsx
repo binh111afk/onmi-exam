@@ -5,7 +5,8 @@ import type { Exam, User } from '../types';
 interface ActiveExamProps {
   exam: Exam;
   user: User;
-  onFinishExam: (examId: string, score: number, xpGained: number) => void;
+  onFinishExam: (examId: string, score: number, xpGained: number, answers: Record<string, number>) => void;
+  onViewResult?: () => void;
   onExit: () => void;
 }
 
@@ -58,6 +59,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
   exam,
   user,
   onFinishExam,
+  onViewResult,
   onExit,
 }) => {
   const savedSession: any = loadExamSession(exam.id);
@@ -232,7 +234,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
     setIsSubmitted(true);
     localStorage.removeItem(getExamSessionKey(exam.id));
     const xpReward = Math.round((correctCount / totalQuestions) * 100);
-    onFinishExam(exam.id, calculatedScore, xpReward);
+    onFinishExam(exam.id, calculatedScore, xpReward, answers);
   };
 
   const answeredCount = Object.keys(answers).length;
@@ -251,16 +253,62 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
     };
   }, [answers, paddedQuestions, totalQuestions]);
 
+  // Máy tính: evaluator thuần (whitelist ký tự + recursive descent) — không dùng new Function/eval
+  const evaluateExpression = (raw: string): number | null => {
+    const src = raw.replace(/x/g, '*').replace(/:/g, '/');
+    if (!/^[0-9+\-*/().\s]+$/.test(src)) return null;
+    let pos = 0;
+    const peek = () => src[pos];
+    const parseExpr = (): number => {
+      let value = parseTerm();
+      while (peek() === '+' || peek() === '-') {
+        const op = src[pos++];
+        const rhs = parseTerm();
+        value = op === '+' ? value + rhs : value - rhs;
+      }
+      return value;
+    };
+    const parseTerm = (): number => {
+      let value = parseFactor();
+      while (peek() === '*' || peek() === '/') {
+        const op = src[pos++];
+        const rhs = parseFactor();
+        value = op === '*' ? value * rhs : value / rhs;
+      }
+      return value;
+    };
+    const parseFactor = (): number => {
+      if (peek() === '+') { pos++; return parseFactor(); }
+      if (peek() === '-') { pos++; return -parseFactor(); }
+      if (peek() === '(') {
+        pos++;
+        const value = parseExpr();
+        if (peek() !== ')') throw new Error('bad');
+        pos++;
+        return value;
+      }
+      const start = pos;
+      while (pos < src.length && /[0-9.]/.test(src[pos])) pos++;
+      if (start === pos) throw new Error('bad');
+      const num = parseFloat(src.slice(start, pos));
+      if (Number.isNaN(num)) throw new Error('bad');
+      return num;
+    };
+    try {
+      const value = parseExpr();
+      if (pos !== src.length || !Number.isFinite(value)) return null;
+      return value;
+    } catch {
+      return null;
+    }
+  };
+
   const handleCalcPress = (btn: string) => {
     if (btn === 'C') {
       setCalcDisplay('');
     } else if (btn === '=') {
-      try {
-        const result = new Function(`return ${calcDisplay.replace(/x/g, '*').replace(/:/g, '/')}`)();
-        setCalcDisplay(String(result));
-      } catch {
-        setCalcDisplay('Lỗi');
-      }
+      const result = evaluateExpression(calcDisplay);
+      setCalcDisplay(result === null ? 'Lỗi' : String(result));
     } else {
       setCalcDisplay(prev => prev + btn);
     }
@@ -282,9 +330,9 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
         {/* Legend */}
         <div className="grid grid-cols-2 gap-2 text-[10px] text-[#64748B] font-bold mb-4 bg-slate-50 p-2.5 rounded-2xl border border-slate-100">
           <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-slate-200"></span><span>Chưa làm</span></div>
-          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#10B981]"></span><span>Đã làm</span></div>
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-success"></span><span>Đã làm</span></div>
           <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]"></span><span>Đánh dấu</span></div>
-          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#8B5CF6]"></span><span>Xem lại</span></div>
+          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-primary"></span><span>Xem lại</span></div>
         </div>
 
         {/* Question grid — click scrolls to that question */}
@@ -298,10 +346,10 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
                 const isBookmarkedQ = bookmarked.includes(q.id);
                 const isReview = reviewLater.includes(q.id);
                 let btnClass = 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white';
-                if (isAnswered) btnClass = 'border-[#10B981] text-[#10B981] bg-emerald-50/10';
+                if (isAnswered) btnClass = 'border-success text-success bg-emerald-50/10';
                 if (isBookmarkedQ) btnClass = 'border-[#F59E0B] text-[#F59E0B] bg-amber-50/10';
-                if (isReview) btnClass = 'bg-[#8B5CF6]/10 border-[#8B5CF6] text-[#8B5CF6]';
-                if (isActive) btnClass = 'border-[#6366F1] ring-2 ring-indigo-100 text-[#6366F1] bg-indigo-50/10 font-bold';
+                if (isReview) btnClass = 'bg-primary/10 border-primary text-primary';
+                if (isActive) btnClass = 'border-primary ring-2 ring-indigo-100 text-primary bg-indigo-50/10 font-bold';
                 return (
                   <button key={q.id} onClick={() => { scrollToQuestion(idx); if (isDrawer) setIsLeftDrawerOpen(false); }}
                     className={`aspect-square rounded-xl border text-[11px] font-bold flex items-center justify-center transition-all cursor-pointer ${btnClass}`}>
@@ -321,10 +369,10 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
                 const isBookmarkedQ = bookmarked.includes(q.id);
                 const isReview = reviewLater.includes(q.id);
                 let btnClass = 'border-slate-200 hover:border-slate-300 text-slate-700 bg-white';
-                if (isAnswered) btnClass = 'border-[#10B981] text-[#10B981] bg-emerald-50/10';
+                if (isAnswered) btnClass = 'border-success text-success bg-emerald-50/10';
                 if (isBookmarkedQ) btnClass = 'border-[#F59E0B] text-[#F59E0B] bg-amber-50/10';
-                if (isReview) btnClass = 'bg-[#8B5CF6]/10 border-[#8B5CF6] text-[#8B5CF6]';
-                if (isActive) btnClass = 'border-[#6366F1] ring-2 ring-indigo-100 text-[#6366F1] bg-indigo-50/10 font-bold';
+                if (isReview) btnClass = 'bg-primary/10 border-primary text-primary';
+                if (isActive) btnClass = 'border-primary ring-2 ring-indigo-100 text-primary bg-indigo-50/10 font-bold';
                 return (
                   <button key={q.id} onClick={() => { scrollToQuestion(realIdx); if (isDrawer) setIsLeftDrawerOpen(false); }}
                     className={`aspect-square rounded-xl border text-[11px] font-bold flex items-center justify-center transition-all cursor-pointer ${btnClass}`}>
@@ -339,7 +387,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
 
       {!isDrawer && (
         <button onClick={() => setIsSidebarCollapsed(true)}
-          className="p-3.5 border-t border-slate-100 text-left text-xs font-semibold text-[#64748B] hover:text-[#6366F1] flex items-center gap-1.5 transition-colors cursor-pointer w-full bg-slate-50/30">
+          className="p-3.5 border-t border-slate-100 text-left text-xs font-semibold text-[#64748B] hover:text-primary flex items-center gap-1.5 transition-colors cursor-pointer w-full bg-slate-50/30">
           <ChevronLeft size={14} />Thu gọn
         </button>
       )}
@@ -354,7 +402,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
         <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-sm text-center flex flex-col items-center">
           <div className="flex items-center justify-between w-full pb-1.5 border-b border-slate-50 mb-3">
             <h3 className="text-xs font-black text-[#1E293B] uppercase tracking-wider flex items-center gap-1.5">
-              <Clock size={14} className="text-[#6366F1]" />Thời gian làm bài
+              <Clock size={14} className="text-primary" />Thời gian làm bài
             </h3>
             {isDrawer && (
               <button onClick={() => setIsRightDrawerOpen(false)} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 cursor-pointer">
@@ -365,7 +413,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
           <div className="relative w-36 h-36 flex items-center justify-center">
             <svg className="w-full h-full transform -rotate-90">
               <circle cx="72" cy="72" r="55" className="stroke-[#EEF2FF]" strokeWidth="10" fill="transparent" />
-              <circle cx="72" cy="72" r="55" className="stroke-[#6366F1] transition-all duration-1000" strokeWidth="10" fill="transparent"
+              <circle cx="72" cy="72" r="55" className="stroke-primary transition-all duration-1000" strokeWidth="10" fill="transparent"
                 strokeDasharray={2 * Math.PI * 55}
                 strokeDashoffset={2 * Math.PI * 55 * (1 - timeLeft / (exam.durationMinutes * 60))}
                 strokeLinecap="round" />
@@ -384,10 +432,10 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
         <div className="bg-white border border-slate-100 rounded-3xl p-4 shadow-sm">
           <div className="flex justify-between items-center text-xs font-bold text-[#1E293B] mb-2">
             <span>Tiến độ bài làm</span>
-            <span className="text-[#6366F1]">{progressPercentage}%</span>
+            <span className="text-primary">{progressPercentage}%</span>
           </div>
           <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-3">
-            <div className="h-full bg-[#6366F1] transition-all duration-300" style={{ width: `${progressPercentage}%` }} />
+            <div className="h-full bg-primary transition-all duration-300" style={{ width: `${progressPercentage}%` }} />
           </div>
           <div className="text-[11px] text-[#64748B] font-bold mb-3">{answeredCount} / {totalQuestions} câu đã làm</div>
           <div className="space-y-2 border-t border-slate-50 pt-2.5">
@@ -395,7 +443,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
               { label: 'Đã làm', color: '#10B981', count: answeredCount },
               { label: 'Chưa làm', color: '#CBD5E1', count: unansweredCount },
               { label: 'Đánh dấu', color: '#F59E0B', count: bookmarked.length },
-              { label: 'Xem lại', color: '#8B5CF6', count: reviewLater.length },
+              { label: 'Xem lại', color: '#6C5DD3', count: reviewLater.length },
             ].map(item => (
               <div key={item.label} className="flex justify-between items-center text-xs">
                 <div className="flex items-center gap-2">
@@ -419,9 +467,9 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
           ].map(({ id, Icon, label }) => (
             <button key={id}
               onClick={() => { setActiveTool(activeTool === id ? null : id); if (isDrawer) setIsRightDrawerOpen(false); }}
-              className={`w-full flex items-center justify-between p-2 rounded-xl text-left text-xs font-bold transition-all cursor-pointer ${activeTool === id ? 'bg-indigo-50/60 text-[#6366F1]' : 'hover:bg-slate-50 text-slate-600'}`}>
+              className={`w-full flex items-center justify-between p-2 rounded-xl text-left text-xs font-bold transition-all cursor-pointer ${activeTool === id ? 'bg-indigo-50/60 text-primary' : 'hover:bg-slate-50 text-slate-600'}`}>
               <div className="flex items-center gap-2">
-                <Icon size={14} className={activeTool === id ? 'text-[#6366F1]' : 'text-slate-400'} />
+                <Icon size={14} className={activeTool === id ? 'text-primary' : 'text-slate-400'} />
                 <span>{label}</span>
               </div>
               <ChevronRight size={13} className="text-slate-400" />
@@ -433,7 +481,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
       {/* Submit */}
       <div className="p-5 border-t border-slate-100 bg-slate-50/30">
         <button onClick={() => { handleSubmit(); if (isDrawer) setIsRightDrawerOpen(false); }}
-          className="w-full py-3 bg-[#6366F1] hover:bg-[#4F46E5] rounded-2xl text-white font-black text-xs cursor-pointer shadow-md shadow-indigo-100 flex items-center justify-center gap-1.5 transition-all">
+          className="w-full py-3 bg-primary hover:bg-[#4F46E5] rounded-2xl text-white font-black text-xs cursor-pointer shadow-md shadow-indigo-100 flex items-center justify-center gap-1.5 transition-all">
           <CheckCircle2 size={14} />Nộp bài thi trắc nghiệm
         </button>
       </div>
@@ -478,20 +526,20 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
               <span className="hidden sm:inline">Thí sinh: <strong className="text-[#1E293B]">{user.name}</strong></span>
               <span className="hidden sm:inline">•</span>
               <span>50 câu</span><span>•</span><span>90 phút</span><span>•</span>
-              <span className="bg-[#EEF2FF] text-[#6366F1] font-bold px-1.5 py-0.5 rounded-md text-[8px] sm:text-[10px] uppercase">Đang làm bài</span>
+              <span className="bg-[#EEF2FF] text-primary font-bold px-1.5 py-0.5 rounded-md text-[8px] sm:text-[10px] uppercase">Đang làm bài</span>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setIsRightDrawerOpen(true)}
-            className="lg:hidden p-2 rounded-xl bg-slate-50 text-[#6366F1] hover:bg-indigo-50 transition-colors cursor-pointer flex items-center gap-1 font-bold text-xs">
+            className="lg:hidden p-2 rounded-xl bg-slate-50 text-primary hover:bg-indigo-50 transition-colors cursor-pointer flex items-center gap-1 font-bold text-xs">
             <Clock size={14} /><span>{formatTime(timeLeft)}</span>
           </button>
           <button className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors hidden sm:flex">
             <Sun size={15} />
           </button>
           <button onClick={() => { if (isSubmitted) onExit(); else handleSubmit(); }}
-            className="px-3 py-1.5 sm:px-4 sm:py-2 border border-indigo-100 text-[#6366F1] hover:bg-indigo-50 font-bold text-xs rounded-xl flex items-center gap-1 transition-colors cursor-pointer">
+            className="px-3 py-1.5 sm:px-4 sm:py-2 border border-indigo-100 text-primary hover:bg-indigo-50 font-bold text-xs rounded-xl flex items-center gap-1 transition-colors cursor-pointer">
             <CheckCircle2 size={13} /><span className="hidden sm:inline">Nộp bài</span>
           </button>
           <button onClick={() => { if (isSubmitted) onExit(); else setShowExitConfirm(true); }}
@@ -522,7 +570,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
         {/* Expand button when sidebar collapsed */}
         {isSidebarCollapsed && (
           <button onClick={() => setIsSidebarCollapsed(false)}
-            className="absolute left-4 top-20 z-20 px-3 py-1.5 bg-white border border-slate-200 rounded-xl shadow-md text-xs font-bold text-[#6366F1] flex items-center gap-1 hover:bg-slate-50 transition-colors cursor-pointer hidden lg:flex">
+            className="absolute left-4 top-20 z-20 px-3 py-1.5 bg-white border border-slate-200 rounded-xl shadow-md text-xs font-bold text-primary flex items-center gap-1 hover:bg-slate-50 transition-colors cursor-pointer hidden lg:flex">
             Danh sách câu hỏi<ChevronRight size={14} />
           </button>
         )}
@@ -562,12 +610,12 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
                   </div>
                   <div className="bg-slate-50 rounded-2xl p-5 grid grid-cols-3 gap-4 border border-slate-100">
                     <div><div className="text-2xl font-bold text-[#1E293B]">{stats.score.toFixed(1)}</div><div className="text-[10px] text-[#64748B]">Điểm số</div></div>
-                    <div><div className="text-2xl font-bold text-[#10B981]">{stats.correct}</div><div className="text-[10px] text-[#64748B]">Chính xác</div></div>
+                    <div><div className="text-2xl font-bold text-success">{stats.correct}</div><div className="text-[10px] text-[#64748B]">Chính xác</div></div>
                     <div><div className="text-2xl font-bold text-rose-600">{stats.incorrect}</div><div className="text-[10px] text-[#64748B]">Sai sót</div></div>
                   </div>
                   {stats.score >= 5.0 ? (
-                    <div className="p-3.5 bg-indigo-50/50 text-[#6366F1] rounded-2xl text-xs font-semibold border border-indigo-100/50 flex items-center justify-center gap-2">
-                      <Sparkles size={16} className="fill-[#6366F1] text-[#6366F1] shrink-0" />
+                    <div className="p-3.5 bg-indigo-50/50 text-primary rounded-2xl text-xs font-semibold border border-indigo-100/50 flex items-center justify-center gap-2">
+                      <Sparkles size={16} className="fill-primary text-primary shrink-0" />
                       <span>Chúc mừng! Bạn tích lũy thành công <strong>+{Math.round((stats.correct / totalQuestions) * 100)} XP</strong> và duy trì chuỗi học tập.</span>
                     </div>
                   ) : (
@@ -576,7 +624,10 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
                     </div>
                   )}
                   <div className="flex flex-col sm:flex-row gap-3 pt-3">
-                    <button onClick={() => setShowReview(true)} className="w-full sm:flex-1 py-2.5 bg-[#6366F1] hover:bg-[#4F46E5] text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer">Xem chi tiết lời giải</button>
+                    <button onClick={() => setShowReview(true)} className="w-full sm:flex-1 py-2.5 bg-primary hover:bg-[#4F46E5] text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer">Xem chi tiết lời giải</button>
+                    {onViewResult && (
+                      <button onClick={onViewResult} className="w-full sm:flex-1 py-2.5 bg-primary hover:bg-primary-hover text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer">Xem kết quả &amp; ôn luyện</button>
+                    )}
                     <button onClick={onExit} className="w-full sm:flex-1 py-2.5 border border-slate-200 text-[#1E293B] text-xs font-bold rounded-xl hover:bg-slate-50 transition-all cursor-pointer">Quay về kho đề thi</button>
                   </div>
                 </div>
@@ -668,7 +719,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
                             <button
                               onClick={() => toggleReviewLater(q.id)}
                               className={`p-1.5 rounded-lg border text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors ${
-                                isReviewQ ? 'border-[#8B5CF6] bg-purple-50 text-[#8B5CF6]' : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                                isReviewQ ? 'border-primary bg-purple-50 text-primary' : 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-100'
                               }`}
                               title="Xem lại sau"
                             >
@@ -699,8 +750,8 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
                               let badgeClass = 'bg-slate-100 text-[#64748B] border border-slate-200';
 
                               if (isSelected && !isSubmitted) {
-                                optClass = 'border-[#6366F1] bg-[#6366F1]/5';
-                                badgeClass = 'bg-[#6366F1] text-white border-[#6366F1]';
+                                optClass = 'border-primary bg-primary/5';
+                                badgeClass = 'bg-primary text-white border-primary';
                               }
                               if (isCorrect) {
                                 optClass = 'border-emerald-300 bg-emerald-50';
@@ -723,7 +774,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
                                   </span>
                                   <span className="font-semibold text-slate-700 leading-relaxed">{opt}</span>
                                   {isSelected && !isSubmitted && (
-                                    <div className="ml-auto w-5 h-5 rounded-full bg-[#6366F1] flex items-center justify-center text-white shrink-0">
+                                    <div className="ml-auto w-5 h-5 rounded-full bg-primary flex items-center justify-center text-white shrink-0">
                                       <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
                                         <polyline points="20 6 9 17 4 12" />
                                       </svg>
@@ -738,7 +789,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
                           {(isSubmitted || showReview) && (
                             <div className="mt-4 p-4 bg-indigo-50/40 border border-indigo-100 rounded-2xl">
                               <div className="flex items-center gap-1.5 mb-2">
-                                <BookOpen size={14} className="text-[#6366F1]" />
+                                <BookOpen size={14} className="text-primary" />
                                 <span className="text-xs font-black text-[#1E293B]">Lời giải chi tiết</span>
                               </div>
                               <p className="text-[11px] text-[#475569] leading-relaxed pl-5 border-l-2 border-indigo-200">
@@ -754,9 +805,9 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
                                 onClick={() => {
                                   // Toggle hint per-question using a subtle expand - here we use a global show solution per-q
                                 }}
-                                className="text-xs font-bold text-[#6366F1] flex items-center gap-1.5 hover:underline cursor-pointer opacity-60 hover:opacity-100 transition-opacity"
+                                className="text-xs font-bold text-primary flex items-center gap-1.5 hover:underline cursor-pointer opacity-60 hover:opacity-100 transition-opacity"
                               >
-                                <Lightbulb size={13} className="text-[#6366F1] fill-indigo-50" />
+                                <Lightbulb size={13} className="text-primary fill-indigo-50" />
                                 Gợi ý: {q.hint}
                               </button>
                             </div>
@@ -773,13 +824,14 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
                     <div className="bg-white rounded-3xl border border-slate-100 shadow-sm px-8 py-6 text-center space-y-4">
                       <div className="text-sm font-black text-[#1E293B]">Bạn đã trả lời {answeredCount}/{totalQuestions} câu</div>
                       {unansweredCount > 0 && (
-                        <div className="text-xs text-amber-600 font-bold bg-amber-50 border border-amber-100 rounded-2xl px-4 py-2">
-                          ⚠️ Còn {unansweredCount} câu chưa được trả lời. Bạn có chắc muốn nộp bài không?
+                        <div className="text-xs text-amber-600 font-bold bg-amber-50 border border-amber-100 rounded-2xl px-4 py-2 flex items-center gap-1.5">
+                          <AlertTriangle size={12} className="shrink-0" />
+                          Còn {unansweredCount} câu chưa được trả lời. Bạn có chắc muốn nộp bài không?
                         </div>
                       )}
                       <button
                         onClick={handleSubmit}
-                        className="px-8 py-3 bg-[#6366F1] hover:bg-[#4F46E5] rounded-2xl text-white font-black text-sm cursor-pointer shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 transition-all mx-auto"
+                        className="px-8 py-3 bg-primary hover:bg-[#4F46E5] rounded-2xl text-white font-black text-sm cursor-pointer shadow-lg shadow-indigo-200 flex items-center justify-center gap-2 transition-all mx-auto"
                       >
                         <CheckCircle2 size={16} />
                         Nộp bài thi
@@ -812,7 +864,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
       {showScrollTop && (
         <button
           onClick={() => scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="fixed bottom-6 right-80 z-20 w-10 h-10 bg-[#6366F1] hover:bg-[#4F46E5] text-white rounded-full shadow-lg shadow-indigo-200 flex items-center justify-center transition-all animate-fadeIn cursor-pointer hidden lg:flex"
+          className="fixed bottom-6 right-80 z-20 w-10 h-10 bg-primary hover:bg-[#4F46E5] text-white rounded-full shadow-lg shadow-indigo-200 flex items-center justify-center transition-all animate-fadeIn cursor-pointer hidden lg:flex"
           title="Lên đầu trang"
         >
           <ArrowUp size={18} />
@@ -829,7 +881,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
 
             {activeTool === 'calculator' && (
               <div>
-                <h3 className="font-black text-sm text-[#1E293B] mb-4 flex items-center gap-1.5"><Calculator size={16} className="text-[#6366F1]" />Máy tính bỏ túi</h3>
+                <h3 className="font-black text-sm text-[#1E293B] mb-4 flex items-center gap-1.5"><Calculator size={16} className="text-primary" />Máy tính bỏ túi</h3>
                 <div className="bg-slate-100 rounded-2xl p-4 mb-4 text-right text-lg font-black text-[#1E293B] break-all min-h-12 flex items-center justify-end border border-slate-200/50">{calcDisplay || '0'}</div>
                 <div className="grid grid-cols-4 gap-2">
                   {['C', '(', ')', ':', '7', '8', '9', 'x', '4', '5', '6', '-', '1', '2', '3', '+', '0', '.', '=', ''].map((btn, bIdx) => {
@@ -837,7 +889,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
                     const isOperator = ['+', '-', 'x', ':', '=', 'C', '(', ')'].includes(btn);
                     return (
                       <button key={bIdx} onClick={() => handleCalcPress(btn)}
-                        className={`py-3.5 rounded-xl font-bold text-xs flex items-center justify-center cursor-pointer transition-all active:scale-95 ${btn === '=' ? 'bg-[#6366F1] text-white shadow-sm shadow-indigo-200' : isOperator ? 'bg-slate-100 text-[#6366F1] hover:bg-slate-200' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/30'}`}>
+                        className={`py-3.5 rounded-xl font-bold text-xs flex items-center justify-center cursor-pointer transition-all active:scale-95 ${btn === '=' ? 'bg-primary text-white shadow-sm shadow-indigo-200' : isOperator ? 'bg-slate-100 text-primary hover:bg-slate-200' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/30'}`}>
                         {btn}
                       </button>
                     );
@@ -848,7 +900,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
 
             {activeTool === 'formulas' && (
               <div>
-                <h3 className="font-black text-sm text-[#1E293B] mb-4 flex items-center gap-1.5"><Book size={16} className="text-[#6366F1]" />Công thức trọng tâm</h3>
+                <h3 className="font-black text-sm text-[#1E293B] mb-4 flex items-center gap-1.5"><Book size={16} className="text-primary" />Công thức trọng tâm</h3>
                 <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1 text-xs text-[#475569] leading-relaxed">
                   {[
                     { title: '1. Đạo hàm & Nguyên hàm', items: ["(x^n)' = n . x^(n-1)", "(sin x)' = cos x", "∫ x^n dx = [x^(n+1)] / (n+1) + C"] },
@@ -866,7 +918,7 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
 
             {activeTool === 'periodic' && (
               <div>
-                <h3 className="font-black text-sm text-[#1E293B] mb-4 flex items-center gap-1.5"><Columns size={16} className="text-[#6366F1]" />Bảng tuần hoàn thu gọn</h3>
+                <h3 className="font-black text-sm text-[#1E293B] mb-4 flex items-center gap-1.5"><Columns size={16} className="text-primary" />Bảng tuần hoàn thu gọn</h3>
                 <div className="grid grid-cols-5 gap-2 max-h-[60vh] overflow-y-auto pr-1">
                   {[
                     { n: 1, s: 'H', m: 1.008, c: 'bg-red-50 text-red-600' }, { n: 2, s: 'He', m: 4.003, c: 'bg-blue-50 text-blue-600' },
@@ -890,12 +942,12 @@ export const ActiveExam: React.FC<ActiveExamProps> = ({
 
             {activeTool === 'scratchpad' && (
               <div>
-                <h3 className="font-black text-sm text-[#1E293B] mb-4 flex items-center gap-1.5"><FileText size={16} className="text-[#6366F1]" />Giấy nháp kỹ thuật số</h3>
+                <h3 className="font-black text-sm text-[#1E293B] mb-4 flex items-center gap-1.5"><FileText size={16} className="text-primary" />Giấy nháp kỹ thuật số</h3>
                 <textarea
                   value={scratchText}
                   onChange={e => setScratchText(e.target.value)}
                   placeholder="Ghi chú nhanh, các phép tính nháp hoặc công thức tính toán tại đây..."
-                  className="w-full h-44 p-4 border border-[#E2E8F0] rounded-2xl text-xs text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100 focus:border-[#6366F1] resize-none"
+                  className="w-full h-44 p-4 border border-[#E2E8F0] rounded-2xl text-xs text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100 focus:border-primary resize-none"
                 />
               </div>
             )}
