@@ -35,7 +35,7 @@ export const TimelineSettings: React.FC<TimelineSettingsProps> = ({
     spacing: 'cozy',
     nodeStyle: 'circle',
     connectorStyle: 'solid',
-    themeColor: '#6366f1',
+    themeColor: '#6C5DD3',
     ...settings
   });
 
@@ -48,7 +48,7 @@ export const TimelineSettings: React.FC<TimelineSettingsProps> = ({
         spacing: 'cozy',
         nodeStyle: 'circle',
         connectorStyle: 'solid',
-        themeColor: '#6366f1',
+        themeColor: '#6C5DD3',
         ...settings
       });
     }

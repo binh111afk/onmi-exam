@@ -13,7 +13,7 @@ export const Preview: React.FC<PreviewProps> = ({ block }) => {
   if (!content) return null;
 
   const { paragraphs, blanks, settings } = content;
-  const themeColor = settings.themeColor || '#8B5CF6';
+  const themeColor = settings.themeColor || '#6C5DD3';
 
   // State for student answers
   const [answers, setAnswers] = useState<Record<string, string>>({});

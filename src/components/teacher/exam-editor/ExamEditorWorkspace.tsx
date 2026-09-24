@@ -1,17 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
+  AlertTriangle,
   Check,
   CheckCircle2,
   X,
-  ChevronRight,
-  ChevronLeft,
   ArrowLeft,
   RefreshCw,
   Link,
   Copy,
   ExternalLink,
   Maximize2,
-  Minimize2,
   ZoomIn,
   ZoomOut,
   Send,
@@ -23,7 +21,7 @@ import { ExamSidebar } from './ExamSidebar';
 import { QuestionBankWorkspace } from './QuestionBankWorkspace';
 import { OmlPreviewPaper } from '../../ExamEditor/OmlRenderer/OmlPreviewPaper';
 import { OmlGuideModal } from './OmlGuideModal';
-import { PreviewIcon, NewExamIcon, OmlCodeIcon, QuickComposeIcon, QuestionBankIcon, GuideIcon, SaveIcon } from '../../AppIcons';
+import { NewExamIcon, OmlCodeIcon, QuickComposeIcon, QuestionBankIcon, GuideIcon, SaveIcon } from '../../AppIcons';
 import { useAlert } from '../../common/Alert';
 
 // Hooks & Sub-components
@@ -104,7 +102,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   const [copied, setCopied] = useState(false);
   const [quickStep, setQuickStep] = useState<1 | 2>(1);
   const [isOcrLoading, setIsOcrLoading] = useState(false);
-  const [showLivePreview, setShowLivePreview] = useState(true);
+  const [editorView, setEditorView] = useState<'compose' | 'split' | 'preview'>('split');
   const [showLeftSidebar, setShowLeftSidebar] = useState(true);
 
   // Local OCR upload file state
@@ -221,18 +219,14 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
   // Hooks integration
   const {
     isPreviewFullscreenOpen,
-    setIsPreviewFullscreenOpen,
     isPreviewFullscreenClosing,
-    setIsPreviewFullscreenClosing,
     previewZoom,
-    setPreviewZoom,
     isPreviewFitWidth,
     setIsPreviewFitWidth,
     previewScrollRef,
     fullscreenPreviewScrollRef,
     openPreviewFullscreen,
     closePreviewFullscreen,
-    applyPreviewZoom,
     stepPreviewZoom,
   } = useExamViewportZoom();
 
@@ -259,7 +253,6 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
     lastSavedTime,
     setLastSavedTime,
     showRestoreDialog,
-    setShowRestoreDialog,
     showConfirmNewDialog,
     setShowConfirmNewDialog,
     pendingDraft,
@@ -440,15 +433,6 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
     };
     document.head.appendChild(script);
   }, []);
-
-  const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
-    if (lineNumbersRef.current) {
-      lineNumbersRef.current.scrollTop = e.currentTarget.scrollTop;
-    }
-    if (preRef.current) {
-      preRef.current.scrollTop = e.currentTarget.scrollTop;
-    }
-  };
 
   const handleQuickScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
     if (quickLineNumbersRef.current) {
@@ -875,7 +859,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                   )}
                   {saveStatus === 'error' && (
                     <>
-                      <span className="text-red-500">⚠️</span>
+                      <AlertTriangle size={12} className="text-red-500" />
                       <span className="text-red-500">Không thể lưu bản nháp</span>
                     </>
                   )}
@@ -894,15 +878,24 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
               >
                 <SaveIcon className="text-slate-700" /> Lưu
               </button>
-              <button
-                onClick={() => setShowLivePreview(!showLivePreview)}
-                className={`px-3.5 py-1.5 border text-[10px] font-bold rounded-xl flex items-center gap-1 transition cursor-pointer font-sans shadow-sm ${showLivePreview
-                  ? 'border-primary bg-primary text-white hover:bg-primary/90'
-                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                  }`}
-              >
-                <PreviewIcon size={12} /> Xem thử đề
-              </button>
+              <div className="flex items-center gap-1 border border-slate-200 rounded-xl p-0.5 text-[10px] font-bold text-slate-500 select-none bg-slate-50/50 font-sans">
+                {([
+                  { id: 'compose', label: 'Soạn thảo' },
+                  { id: 'split', label: 'Chia đôi' },
+                  { id: 'preview', label: 'Xem trước' },
+                ] as const).map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setEditorView(tab.id)}
+                    className={`px-3 py-1 rounded-lg transition cursor-pointer whitespace-nowrap ${editorView === tab.id
+                      ? 'bg-white text-primary shadow-sm font-black'
+                      : 'hover:text-slate-800 hover:bg-slate-100/50'
+                      }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </header>
         )}
@@ -949,13 +942,14 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
         {examSubView === 'edit' && creationMethod === 'code' && (
           <div className="flex-1 flex overflow-hidden animate-fadeIn min-h-0">
-            {/* LEFT COLUMN: Code Editor */}
-            <div className={`${showLivePreview ? 'w-1/2 border-r border-slate-100' : 'w-full'} bg-white flex flex-col overflow-hidden transition-all duration-300 min-h-0`}>
+            {/* LEFT COLUMN: Code Editor (ẩn khi preview full) */}
+            {editorView !== 'preview' && (
+            <div className={`${editorView === 'split' ? 'w-1/2 border-r border-slate-100' : 'w-full'} bg-white flex flex-col overflow-hidden transition-all duration-300 min-h-0`}>
               {/* CROSS TAB CONFLICT BANNER */}
               {isCrossTabConflict && (
                 <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center justify-between text-amber-800 text-[10px] font-bold shrink-0 animate-fadeIn select-none">
                   <div className="flex items-center gap-1.5">
-                    <span>⚠️</span>
+                    <AlertTriangle size={12} />
                     <span>Bản nháp đã được cập nhật ở một cửa sổ khác.</span>
                   </div>
                   <button
@@ -1104,7 +1098,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                     <div>
                       <div className="text-[10px] font-black text-emerald-600 flex items-center gap-1 justify-end">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        ✓ Biên dịch thành công
+                        <Check size={10} /> Biên dịch thành công
                       </div>
                       <div className="text-[8px] text-slate-404 font-bold -mt-0.5">Không phát hiện lỗi.</div>
                     </div>
@@ -1119,7 +1113,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                     <div>
                       <div className="text-[10px] font-black text-red-550 flex items-center gap-1 justify-end">
                         <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                        ✕ Không thể biên dịch
+                        <X size={10} /> Không thể biên dịch
                       </div>
                       <div className="text-[8px] text-red-400 font-bold -mt-0.5">
                         {validationErrors.length} lỗi {validationErrors[0]?.type === 'syntax' ? 'cú pháp JSON' : 'cấu trúc OML'} (Click xem chi tiết)
@@ -1129,9 +1123,10 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                 )}
               </div>
             </div>
+            )}
 
             {/* RIGHT COLUMN: OML Live Preview */}
-            {showLivePreview && renderExamPreviewColumn('Xem trước đề thi')}
+            {editorView !== 'compose' && renderExamPreviewColumn('Xem trước đề thi')}
           </div>
         )}
 
@@ -1153,7 +1148,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
             setExamJsonCode={setOcrTempCode}
             showLeftSidebar={showLeftSidebar}
             setShowLeftSidebar={setShowLeftSidebar}
-            showLivePreview={showLivePreview}
+            showLivePreview={editorView !== 'compose'}
             fileInputRef={fileInputRef}
             jsonFileInputRef={jsonFileInputRef}
             quickLineNumbersRef={quickLineNumbersRef}
@@ -1194,7 +1189,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
               <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-5">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-xs font-black text-[#10B981] uppercase tracking-wider">Đề thi sẵn sàng xuất bản</span>
+                  <span className="text-xs font-black text-success uppercase tracking-wider">Đề thi sẵn sàng xuất bản</span>
                 </div>
 
                 <div className="space-y-3.5">
@@ -1278,7 +1273,7 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
 
             {/* Copy toast indicator */}
             {copied && (
-              <div className="fixed bottom-6 right-6 bg-[#10B981] text-white px-5 py-3 rounded-2xl shadow-xl shadow-emerald-100/20 text-xs font-black flex items-center gap-2 animate-bounce z-50">
+              <div className="fixed bottom-6 right-6 bg-success text-white px-5 py-3 rounded-2xl shadow-xl shadow-emerald-100/20 text-xs font-black flex items-center gap-2 animate-bounce z-50">
                 <CheckCircle2 size={16} className="stroke-[2.5]" />
                 <span>Đã sao chép liên kết vào bộ nhớ tạm!</span>
               </div>
@@ -1377,8 +1372,8 @@ export const ExamEditorWorkspace: React.FC<ExamEditorWorkspaceProps> = ({
                     {validationDialog.title}
                   </h3>
                   <div className="text-[11px] text-slate-550 font-bold space-y-1">
-                    <p className="text-emerald-600 font-black">✓ JSON hợp lệ</p>
-                    <p className="text-emerald-600 font-black">✓ OML hợp lệ</p>
+                    <p className="text-emerald-600 font-black flex items-center gap-1"><Check size={11} />JSON hợp lệ</p>
+                    <p className="text-emerald-600 font-black flex items-center gap-1"><Check size={11} />OML hợp lệ</p>
                     <p className="text-slate-700">{validationDialog.metadata?.questionCount ?? 0} câu hỏi</p>
                     <p className="text-slate-400">0 lỗi</p>
                   </div>

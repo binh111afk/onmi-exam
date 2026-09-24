@@ -15,5 +15,5 @@ export const createDefaultStep = (id: string) => ({
   id,
   title: '',
   description: '',
-  color: '#8b5cf6'
+  color: '#6C5DD3'
 });

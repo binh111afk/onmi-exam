@@ -318,16 +318,16 @@ export const Exams: React.FC<ExamsProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="max-w-[1320px] mx-auto px-6 lg:px-8 py-8 antialiased">
 
       {/* ── HEADER ROW ── */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-black text-[#1E293B] flex items-center gap-2">
+          <h1 className="text-3xl font-bold text-[#1E293B] flex items-center gap-2">
             Kho đề thi trắc nghiệm
             <span className="text-[#818CF8]">✨</span>
           </h1>
-          <p className="text-xs text-[#64748B] mt-1">Tập trung luyện tập với hàng ngàn đề thi thử chọn lọc, cập nhật liên tục.</p>
+          <p className="text-sm text-[#64748B] mt-1">Tập trung luyện tập với hàng ngàn đề thi thử chọn lọc, cập nhật liên tục.</p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
           {/* Search */}
@@ -338,7 +338,7 @@ export const Exams: React.FC<ExamsProps> = ({
               placeholder="Tìm kiếm đề, môn học..."
               value={searchQuery}
               onChange={e => onSearchChange(e.target.value)}
-              className="pl-9 pr-4 py-2.5 bg-white border border-[#E2E8F0]/80 rounded-xl text-xs text-[#1E293B] placeholder-slate-400 outline-none w-full focus:ring-2 focus:ring-indigo-100 focus:border-[#6366F1] shadow-sm transition-all"
+              className="pl-9 pr-4 py-2.5 bg-white border border-[#E2E8F0]/80 rounded-xl text-xs text-[#1E293B] placeholder-slate-400 outline-none w-full focus:ring-2 focus:ring-indigo-100 focus:border-primary shadow-sm transition-all"
             />
           </div>
           {/* Sort */}
@@ -368,7 +368,7 @@ export const Exams: React.FC<ExamsProps> = ({
               key={cat}
               onClick={() => { setActiveCategory(cat); setCurrentPage(1); }}
               className={`flex items-center gap-2 px-4.5 py-2.5 rounded-full text-xs font-bold cursor-pointer transition-all select-none border ${active
-                  ? 'bg-[#6366F1] text-white border-[#6366F1] shadow-md shadow-indigo-100'
+                  ? 'bg-primary text-white border-primary shadow-md shadow-indigo-100'
                   : 'bg-white text-slate-500 border-[#E2E8F0] hover:text-[#1E293B] hover:border-slate-300'
                 }`}
             >
@@ -423,7 +423,7 @@ export const Exams: React.FC<ExamsProps> = ({
                     key={page}
                     onClick={() => setCurrentPage(page)}
                     className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer ${currentPage === page
-                        ? 'bg-[#6366F1] text-white shadow-md shadow-indigo-200'
+                        ? 'bg-primary text-white shadow-md shadow-indigo-200'
                         : 'bg-white border border-[#E2E8F0] text-[#1E293B] hover:bg-slate-50'
                       }`}
                   >
@@ -457,7 +457,7 @@ export const Exams: React.FC<ExamsProps> = ({
             <span className="text-[13px] font-bold text-[#1E293B]">Bộ lọc đề thi</span>
             <button
               onClick={handleReset}
-              className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-[#6366F1] bg-none border-none cursor-pointer font-bold transition-colors"
+              className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-primary bg-none border-none cursor-pointer font-bold transition-colors"
             >
               <RefreshCw size={11} /> Đặt lại
             </button>
@@ -482,7 +482,7 @@ export const Exams: React.FC<ExamsProps> = ({
 
           <button
             onClick={() => setCurrentPage(1)}
-            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] hover:from-[#4F46E5] hover:to-[#7C3AED] text-white font-bold text-xs border-none cursor-pointer flex items-center justify-center gap-2 mt-4 shadow-sm hover:shadow transition-all"
+            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-primary to-primary hover:from-[#4F46E5] hover:to-[#7C3AED] text-white font-bold text-xs border-none cursor-pointer flex items-center justify-center gap-2 mt-4 shadow-sm hover:shadow transition-all"
           >
             <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" /></svg>
             Áp dụng bộ lọc

@@ -764,7 +764,7 @@ export const AssessmentTest: React.FC<AssessmentTestProps> = ({ onBackToHome }) 
                         cy="32" 
                         r={radius} 
                         fill="none" 
-                        stroke="#6366F1" 
+                        stroke="#6C5DD3" 
                         strokeWidth="6" 
                         strokeDasharray={circumference}
                         strokeDashoffset={strokeDashoffset}
@@ -1079,7 +1079,7 @@ export const AssessmentTest: React.FC<AssessmentTestProps> = ({ onBackToHome }) 
                     <ul className="space-y-1.5 pl-1.5 text-[10px] font-bold text-slate-600">
                       {mbtiDetails.strengths.map((str, idx) => (
                         <li key={idx} className="flex items-start gap-1.5 leading-relaxed">
-                          <span className="text-emerald-500 pt-0.5">✓</span>
+                          <Check size={12} className="text-emerald-500 shrink-0 pt-0.5" />
                           <span>{str}</span>
                         </li>
                       ))}
@@ -1138,8 +1138,8 @@ export const AssessmentTest: React.FC<AssessmentTestProps> = ({ onBackToHome }) 
 
                   <polygon 
                     points={polygonPoints} 
-                    fill="rgba(99, 102, 241, 0.15)" 
-                    stroke="#6366F1" 
+                    fill="rgba(108, 93, 211, 0.15)"
+                    stroke="#6C5DD3" 
                     strokeWidth="2.5" 
                     strokeLinejoin="round"
                   />
@@ -1167,7 +1167,7 @@ export const AssessmentTest: React.FC<AssessmentTestProps> = ({ onBackToHome }) 
 
                     return (
                       <g key={idx}>
-                        <circle cx={c.x} cy={c.y} r="3.5" fill="#6366F1" stroke="white" strokeWidth="1.5" />
+                        <circle cx={c.x} cy={c.y} r="3.5" fill="#6C5DD3" stroke="white" strokeWidth="1.5" />
                         <text 
                           x={tx} 
                           y={ty + 3} 

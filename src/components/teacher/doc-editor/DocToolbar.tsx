@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { Tooltip } from './Tooltip';
 import type { DocBlock } from '../../../types/doc-editor';
-import { UndoLeftIcon, UndoRightIcon, AltArrowDownIcon, TextColorIcon } from '../../AppIcons';
+import { UndoLeftIcon, UndoRightIcon, TextColorIcon } from '../../AppIcons';
 import { useFormattingState } from './FormattingStateProvider';
 
 interface DocToolbarProps {

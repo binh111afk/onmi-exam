@@ -1,3 +1,15 @@
+import type { OmlContextBlock } from './oml';
+
+export interface ExamMistake {
+  examId: string;
+  topic: string;
+  lastWrongAt: string;
+  wrongCount: number;
+  mastered?: true;
+}
+
+export type MistakeWithId = ExamMistake & { questionId: string };
+
 export interface User {
   name: string;
   email: string;
@@ -7,6 +19,15 @@ export interface User {
   lastActiveDate?: string;
   badges: string[];
   completedExams: Record<string, { score: number; completedAt: string }>;
+  completedLessons: Record<string, true>; // lessonId -> true (nguồn duy nhất của tiến độ bài học)
+  lastExamResult?: {
+    examId: string;
+    answers: Record<string, number>; // questionId -> optionIndex (đã sanitize, chỉ giữ đáp án có thật)
+    score: number;
+    xpGained: number;
+    completedAt: string;
+  };
+  examMistakes: Record<string, ExamMistake>; // key = questionId — nguồn duy nhất của Mistake Book
   savedExams: string[]; // List of Exam IDs
   savedDocs: string[]; // List of Doc IDs
   bookmarks: Record<string, number[]>; // docId -> list of chapter indexes
@@ -69,4 +90,28 @@ export interface LeaderboardEntry {
   xp: number;
   streak: number;
   badges: string[];
+}
+
+export interface CourseLesson {
+  id: string;
+  title: string;
+  durationMinutes: number;
+  blocks: OmlContextBlock[];
+}
+
+export interface CourseChapter {
+  id: string;
+  title: string;
+  lessons: CourseLesson[];
+}
+
+export interface Course {
+  id: string;
+  title: string;
+  subject: string;
+  grade: string;
+  description: string;
+  practiceCount: number;
+  examCount: number;
+  chapters: CourseChapter[];
 }

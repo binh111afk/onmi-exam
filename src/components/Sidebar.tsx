@@ -1,14 +1,5 @@
 import React from 'react';
-import { ChevronRight, GraduationCap } from 'lucide-react';
-import {
-  SidebarHomeIcon,
-  SidebarExamsIcon,
-  SidebarDocsIcon,
-  SidebarRoadmapIcon,
-  SidebarLeaderboardIcon,
-  SidebarBlogIcon,
-  SidebarContactIcon,
-} from './AppIcons';
+import { BookOpen, ChevronRight, Compass, GraduationCap, Home, Target, TrendingUp } from 'lucide-react';
 import { Logo } from './Logo';
 import type { User } from '../types';
 
@@ -18,17 +9,46 @@ interface SidebarProps {
   user: User;
 }
 
+const sidebarGroups: { label: string; items: { label: string; view: string; icon: React.ElementType }[] }[] = [
+  {
+    label: 'HỌC TẬP',
+    items: [
+      { label: 'Tổng quan', view: 'home', icon: Home },
+      { label: 'Khóa học', view: 'courses', icon: BookOpen },
+      { label: 'Luyện tập', view: 'practice', icon: Target },
+    ],
+  },
+  {
+    label: 'TIẾN ĐỘ',
+    items: [
+      { label: 'Tiến độ', view: 'progress', icon: TrendingUp },
+    ],
+  },
+  {
+    label: 'KHÁM PHÁ',
+    items: [
+      { label: 'Khám phá', view: 'discover', icon: Compass },
+    ],
+  },
+];
+
+const activeViews: Record<string, string> = {
+  home: 'home',
+  courses: 'courses',
+  'course-detail': 'courses',
+  practice: 'practice',
+  'practice-exams': 'practice',
+  'practice-topics': 'practice',
+  'practice-mistakes': 'practice',
+  'practice-quick': 'practice',
+  'practice-detail': 'practice',
+  'practice-take': 'practice',
+  progress: 'progress',
+  discover: 'discover',
+};
+
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, user }) => {
-  const sidebarItems = [
-    { label: 'Trang chủ', view: 'home', icon: SidebarHomeIcon },
-    { label: 'Đề thi trắc nghiệm', view: 'exams', icon: SidebarExamsIcon },
-    { label: 'Tài liệu tự học', view: 'documents', icon: SidebarDocsIcon },
-    { label: 'Lộ trình cá nhân', view: 'about', icon: SidebarRoadmapIcon },
-    { label: 'Giáo viên', view: 'teacher', icon: GraduationCap },
-    { label: 'Bảng xếp hạng', view: 'leaderboard', icon: SidebarLeaderboardIcon },
-    { label: 'Blog', view: 'blog', icon: SidebarBlogIcon, isNew: true },
-    { label: 'Liên hệ hỗ trợ', view: 'contact', icon: SidebarContactIcon },
-  ];
+  const activeItem = activeViews[currentView] || currentView;
 
   return (
     <aside className="hidden lg:flex w-64 bg-white border-r border-slate-100 p-6 flex-col h-screen sticky top-0 overflow-y-auto shrink-0 select-none justify-between">
@@ -39,35 +59,51 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, use
           <Logo onViewChange={onViewChange} />
         </div>
 
-        {/* Main Navigation Items */}
-        <div className="space-y-1.5">
-          {sidebarItems.map((item, idx) => {
-            const Icon = item.icon;
-            const isActive = currentView === item.view ||
-              (item.view === 'exams' && currentView === 'exam-detail') ||
-              (item.view === 'documents' && currentView === 'doc-reader');
+        {/* Main Navigation Groups */}
+        <div className="space-y-5">
+          {sidebarGroups.map((group) => (
+            <div key={group.label}>
+              <p className="px-4 text-[9px] font-extrabold tracking-widest text-text-muted mb-2">{group.label}</p>
+              <div className="space-y-1.5">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeItem === item.view;
 
-            return (
+                  return (
+                    <button
+                      key={item.view}
+                      onClick={() => onViewChange(item.view)}
+                      className={`w-full flex items-center justify-between px-4 py-3.5 text-xs font-bold rounded-2xl transition-all duration-200 cursor-pointer ${isActive
+                          ? 'bg-primary-light text-primary shadow-[0_4px_12px_rgba(108,93,211,0.08)]'
+                          : 'text-text-secondary hover:bg-slate-50 hover:text-text-primary'
+                        }`}
+                    >
+                      <div className="flex items-center gap-3.5">
+                        <Icon size={18} className={isActive ? 'text-primary' : 'text-slate-400'} />
+                        <span>{item.label}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          <div>
+            <p className="px-4 text-[9px] font-extrabold tracking-widest text-text-muted mb-2">GIÁO VIÊN</p>
+            <div className="space-y-1.5">
               <button
-                key={idx}
-                onClick={() => onViewChange(item.view)}
-                className={`w-full flex items-center justify-between px-4 py-3.5 text-xs font-bold rounded-2xl transition-all duration-200 cursor-pointer ${isActive
+                onClick={() => onViewChange('teacher')}
+                className={`w-full flex items-center gap-3.5 px-4 py-3.5 text-xs font-bold rounded-2xl transition-all duration-200 cursor-pointer ${currentView === 'teacher'
                     ? 'bg-primary-light text-primary shadow-[0_4px_12px_rgba(108,93,211,0.08)]'
                     : 'text-text-secondary hover:bg-slate-50 hover:text-text-primary'
                   }`}
               >
-                <div className="flex items-center gap-3.5">
-                  <Icon size={18} className={isActive ? 'text-primary' : 'text-slate-400'} />
-                  <span>{item.label}</span>
-                </div>
-                {item.isNew && (
-                  <span className="text-[8px] font-extrabold bg-[#FFF0F2] text-accent px-1.5 py-0.5 rounded border border-accent/20 scale-90">
-                    MỚI
-                  </span>
-                )}
+                <GraduationCap size={18} className={currentView === 'teacher' ? 'text-primary' : 'text-slate-400'} />
+                <span>Teacher Studio</span>
               </button>
-            );
-          })}
+            </div>
+          </div>
         </div>
       </div>
 

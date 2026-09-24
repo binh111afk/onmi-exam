@@ -11,7 +11,7 @@ export const createNewDiagramContent = (): DiagramContent => {
     settings: {
       layout: 'horizontal',
       arrowStyle: 'straight',
-      themeColor: '#6366f1'
+      themeColor: '#6C5DD3'
     }
   };
 };
@@ -20,5 +20,5 @@ export const createDefaultNode = (id: string): DiagramNode => ({
   id,
   title: '',
   description: '',
-  color: '#6366f1'
+  color: '#6C5DD3'
 });

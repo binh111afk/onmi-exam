@@ -113,12 +113,12 @@ const mockPopularPosts = [
 const MiniThumbnail: React.FC<{ type: 'calendar' | 'brain' | 'checklist'; bg: string }> = ({ type, bg }) => (
   <div className={`w-11 h-11 rounded-lg shrink-0 ${bg} flex items-center justify-center overflow-hidden`}>
     {type === 'calendar' && (
-      <svg viewBox="0 0 48 48" className="w-6 h-6" fill="none" stroke="#6366F1" strokeWidth="2">
+      <svg viewBox="0 0 48 48" className="w-6 h-6" fill="none" stroke="#6C5DD3" strokeWidth="2">
         <rect x="4" y="8" width="40" height="36" rx="6" strokeWidth="2" />
         <line x1="4" y1="18" x2="44" y2="18" />
-        <circle cx="16" cy="28" r="2" fill="#6366F1" />
-        <circle cx="24" cy="28" r="2" fill="#6366F1" />
-        <circle cx="32" cy="28" r="2" fill="#6366F1" />
+        <circle cx="16" cy="28" r="2" fill="#6C5DD3" />
+        <circle cx="24" cy="28" r="2" fill="#6C5DD3" />
+        <circle cx="32" cy="28" r="2" fill="#6C5DD3" />
         <line x1="16" y1="10" x2="16" y2="6" strokeWidth="2.5" strokeLinecap="round" />
         <line x1="32" y1="10" x2="32" y2="6" strokeWidth="2.5" strokeLinecap="round" />
       </svg>
@@ -169,21 +169,21 @@ const CardThumbnail: React.FC<{ type: 'calendar' | 'brain' | 'checklist'; bg: st
   <div className={`w-full h-full ${bg} flex items-center justify-center`}>
     {type === 'calendar' && (
       <svg viewBox="0 0 120 90" className="w-16 h-16" fill="none">
-        <rect x="15" y="10" width="90" height="70" rx="10" stroke="#6366F1" strokeWidth="2.5" />
-        <line x1="15" y1="28" x2="105" y2="28" stroke="#6366F1" strokeWidth="2" />
-        <circle cx="38" cy="45" r="3" fill="#6366F1" />
-        <circle cx="60" cy="45" r="3" fill="#6366F1" />
-        <circle cx="82" cy="45" r="3" fill="#6366F1" />
-        <circle cx="38" cy="62" r="3" fill="#6366F1" />
-        <circle cx="60" cy="62" r="3" fill="#6366F1" />
+        <rect x="15" y="10" width="90" height="70" rx="10" stroke="#6C5DD3" strokeWidth="2.5" />
+        <line x1="15" y1="28" x2="105" y2="28" stroke="#6C5DD3" strokeWidth="2" />
+        <circle cx="38" cy="45" r="3" fill="#6C5DD3" />
+        <circle cx="60" cy="45" r="3" fill="#6C5DD3" />
+        <circle cx="82" cy="45" r="3" fill="#6C5DD3" />
+        <circle cx="38" cy="62" r="3" fill="#6C5DD3" />
+        <circle cx="60" cy="62" r="3" fill="#6C5DD3" />
         <circle cx="82" cy="62" r="3" fill="#A5B4FC" />
-        <line x1="37" y1="2" x2="37" y2="18" stroke="#6366F1" strokeWidth="3" strokeLinecap="round" />
-        <line x1="83" y1="2" x2="83" y2="18" stroke="#6366F1" strokeWidth="3" strokeLinecap="round" />
+        <line x1="37" y1="2" x2="37" y2="18" stroke="#6C5DD3" strokeWidth="3" strokeLinecap="round" />
+        <line x1="83" y1="2" x2="83" y2="18" stroke="#6C5DD3" strokeWidth="3" strokeLinecap="round" />
         {/* Clock icon */}
         <circle cx="95" cy="72" r="14" fill="white" />
-        <circle cx="95" cy="72" r="11" stroke="#6366F1" strokeWidth="2.5" fill="none" />
-        <line x1="95" y1="72" x2="95" y2="64" stroke="#6366F1" strokeWidth="2.5" strokeLinecap="round" />
-        <line x1="95" y1="72" x2="102" y2="72" stroke="#6366F1" strokeWidth="2.5" strokeLinecap="round" />
+        <circle cx="95" cy="72" r="11" stroke="#6C5DD3" strokeWidth="2.5" fill="none" />
+        <line x1="95" y1="72" x2="95" y2="64" stroke="#6C5DD3" strokeWidth="2.5" strokeLinecap="round" />
+        <line x1="95" y1="72" x2="102" y2="72" stroke="#6C5DD3" strokeWidth="2.5" strokeLinecap="round" />
       </svg>
     )}
     {type === 'brain' && (
@@ -250,7 +250,7 @@ export const Blog: React.FC = () => {
       <div className="max-w-[760px] mx-auto px-4 py-8 space-y-6">
         <button
           onClick={() => setSelectedPostId(null)}
-          className="flex items-center gap-1.5 text-sm font-medium text-[#64748B] hover:text-[#6366F1] transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 text-sm font-medium text-[#64748B] hover:text-primary transition-colors cursor-pointer"
         >
           <ArrowLeft size={16} />
           <span>Quay lại Blog</span>
@@ -277,7 +277,7 @@ export const Blog: React.FC = () => {
           <span>Bản quyền thuộc về Onmi Exam. Vui lòng ghi rõ nguồn khi chia sẻ.</span>
           <button
             onClick={() => alert('Đã sao chép link bài viết.')}
-            className="flex items-center gap-1 text-[#6366F1] font-medium hover:underline cursor-pointer"
+            className="flex items-center gap-1 text-primary font-medium hover:underline cursor-pointer"
           >
             <Share2 size={12} /> Chia sẻ
           </button>
@@ -288,7 +288,7 @@ export const Blog: React.FC = () => {
 
   // ── MAIN BLOG LISTING ────────────────────────────────────────────────────────
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 antialiased" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="max-w-7xl mx-auto px-4 py-8 antialiased">
 
       {/* ── HEADER ── */}
       <header className="mb-8">
@@ -314,7 +314,7 @@ export const Blog: React.FC = () => {
               onClick={() => setActiveCategory(cat.name)}
               className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-colors cursor-pointer ${
                 isActive
-                  ? 'bg-[#6366F1] text-white hover:bg-indigo-600'
+                  ? 'bg-primary text-white hover:bg-indigo-600'
                   : 'bg-white text-[#64748B] border border-[#E2E8F0] hover:bg-gray-50'
               }`}
             >
@@ -366,7 +366,7 @@ export const Blog: React.FC = () => {
                             </div>
                             <button
                               onClick={(e) => toggleBookmark(post.id, e)}
-                              className={`transition-colors cursor-pointer ${isBookmarked ? 'text-[#6366F1]' : 'text-gray-400 hover:text-gray-600'}`}
+                              className={`transition-colors cursor-pointer ${isBookmarked ? 'text-primary' : 'text-gray-400 hover:text-gray-600'}`}
                             >
                               <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill={isBookmarked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
                                 <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
@@ -375,7 +375,7 @@ export const Blog: React.FC = () => {
                           </div>
 
                           {/* Title (smaller text) */}
-                          <h2 className="text-sm font-black mb-1 text-[#1E293B] group-hover:text-[#6366F1] transition-colors leading-snug">
+                          <h2 className="text-sm font-black mb-1 text-[#1E293B] group-hover:text-primary transition-colors leading-snug">
                             {post.title}
                           </h2>
 
@@ -396,7 +396,7 @@ export const Blog: React.FC = () => {
                             </div>
                             <span className="text-[11px] font-medium text-text-secondary">{post.views}</span>
                           </div>
-                          <span className="text-[#6366F1] font-bold text-xs flex items-center gap-1 group-hover:underline">
+                          <span className="text-primary font-bold text-xs flex items-center gap-1 group-hover:underline">
                             Đọc chi tiết
                             <svg viewBox="0 0 16 16" className="w-2.5 h-2.5" fill="currentColor">
                               <path d="M1 8a.5.5 0 01.5-.5h11.793l-3.147-3.146a.5.5 0 01.708-.708l4 4a.5.5 0 010 .708l-4 4a.5.5 0 01-.708-.708L13.293 8.5H1.5A.5.5 0 011 8z" />
@@ -422,7 +422,7 @@ export const Blog: React.FC = () => {
                   <path d="M15 8a.5.5 0 00-.5-.5H2.707l3.147-3.146a.5.5 0 10-.708-.708l-4 4a.5.5 0 000 .708l4 4a.5.5 0 00.708-.708L2.707 8.5H14.5A.5.5 0 0015 8z" />
                 </svg>
               </button>
-              <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#6366F1] text-white text-xs font-bold shadow-md shadow-indigo-200 cursor-pointer">1</button>
+              <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-primary text-white text-xs font-bold shadow-md shadow-indigo-200 cursor-pointer">1</button>
               <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-[#E2E8F0] text-[#1E293B] text-xs font-bold hover:bg-gray-50 transition-colors cursor-pointer">2</button>
               <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-[#E2E8F0] text-[#1E293B] text-xs font-bold hover:bg-gray-50 transition-colors cursor-pointer">3</button>
               <span className="w-8 h-8 flex items-center justify-center text-xs text-[#64748B]">...</span>
@@ -447,7 +447,7 @@ export const Blog: React.FC = () => {
               <h3 className="font-bold text-sm text-[#1E293B]">Chủ đề nổi bật</h3>
               <button
                 onClick={() => alert('Xem tất cả chủ đề')}
-                className="text-[#6366F1] text-[11px] hover:underline cursor-pointer"
+                className="text-primary text-[11px] hover:underline cursor-pointer"
               >
                 Xem tất cả
               </button>
@@ -463,7 +463,7 @@ export const Blog: React.FC = () => {
                       <div className={`w-6.5 h-6.5 rounded-full flex items-center justify-center transition-colors ${topic.color} ${topic.hoverColor} text-xs`}>
                         {topic.icon}
                       </div>
-                      <span className="font-semibold text-[#1E293B] group-hover:text-[#6366F1] transition-colors text-xs">
+                      <span className="font-semibold text-[#1E293B] group-hover:text-primary transition-colors text-xs">
                         # {topic.name}
                       </span>
                     </div>
@@ -545,7 +545,7 @@ export const Blog: React.FC = () => {
                 >
                   <MiniThumbnail type={item.thumbnailType} bg={item.thumbnailBg} />
                   <div className="flex flex-col justify-center flex-1 min-w-0">
-                    <h4 className="text-[11px] font-semibold text-[#1E293B] leading-snug group-hover:text-[#6366F1] transition-colors mb-0.5 line-clamp-2">
+                    <h4 className="text-[11px] font-semibold text-[#1E293B] leading-snug group-hover:text-primary transition-colors mb-0.5 line-clamp-2">
                       {item.title}
                     </h4>
                     <span className="text-[9px] text-text-secondary">{item.views}</span>

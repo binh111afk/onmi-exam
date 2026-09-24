@@ -10,7 +10,7 @@ interface MatchingPreviewProps {
 export const MatchingPreview: React.FC<MatchingPreviewProps> = ({ content }) => {
   const pairs = content.pairs || [];
   const settings = content.settings || {};
-  const themeColor = settings.themeColor || '#6366f1';
+  const themeColor = settings.themeColor || '#6C5DD3';
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [shuffledRight, setShuffledRight] = useState<MatchingPair[]>([]);

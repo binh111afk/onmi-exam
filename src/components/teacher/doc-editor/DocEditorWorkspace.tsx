@@ -1,20 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
-  FileCheck2,
-  Brain,
-  ImageIcon,
-  Table as TableIcon,
-  Activity,
-  HelpCircle,
-  Award,
-  Video,
+  ChevronLeft,
+  ChevronRight,
+  PenLine,
+  Plus,
   RefreshCw,
-  Code2,
 } from 'lucide-react';
 import { DocSidebar } from './DocSidebar';
 import { DocToolbar } from './DocToolbar';
 import { DocPreviewSimulator } from './DocPreviewSimulator';
-import { Tooltip } from './Tooltip';
 import { useAlert } from '../../common/Alert';
 import type { Chapter, Lesson, DocSetupMetadata } from '../../../types/doc-editor';
 import { FormattingStateProvider } from './FormattingStateProvider';
@@ -72,7 +66,7 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
   onChangeMetadata
 }) => {
   const { showAlert } = useAlert();
-  const [showPreview, setShowPreview] = useState(true);
+  const [editorView, setEditorView] = useState<'compose' | 'split' | 'preview'>('compose');
   const documentTree = useDocumentTree(initialChaptersData || initialChapters);
   
   // Derive a unique and stable documentId from metadata
@@ -256,6 +250,28 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
   const canEditActiveLesson = Boolean(activeLesson && !activeLesson.isFolder);
   const currentBlocks = useMemo(() => canEditActiveLesson && activeLesson ? activeLesson.blocks : [], [activeLesson, canEditActiveLesson]);
 
+  // Thứ tự bài học dùng chung một nguồn truth với DocSidebar (walk chapters → lessons → subLessons);
+  // lọc isFolder để prev/next không rơi vào folder (folder không soạn thảo được — bottom nav sẽ dead-end)
+  const orderedLessons = useMemo(() => {
+    const walk = (lessons: Lesson[]): Lesson[] =>
+      lessons.flatMap(l => {
+        const children = l.subLessons?.length ? walk(l.subLessons) : [];
+        return l.isFolder ? children : [l, ...children];
+      });
+    return chapters.flatMap(ch => walk(ch.lessons));
+  }, [chapters]);
+  const activeLessonIndex = orderedLessons.findIndex(l => l.id === activeLessonId);
+  const prevLesson = activeLessonIndex > 0 ? orderedLessons[activeLessonIndex - 1] : undefined;
+  const nextLesson = activeLessonIndex >= 0 && activeLessonIndex < orderedLessons.length - 1 ? orderedLessons[activeLessonIndex + 1] : undefined;
+
+  const activeChapterTitle = useMemo(() => {
+    const hasLesson = (lessons: Lesson[]): boolean =>
+      lessons.some(l => l.id === activeLessonId || (l.subLessons ? hasLesson(l.subLessons) : false));
+    return chapters.find(ch => hasLesson(ch.lessons))?.title ?? 'Chương';
+  }, [chapters, activeLessonId]);
+  const courseTitle = metadata?.name || 'Tài liệu';
+  const lessonTitle = activeLesson?.title || 'Bài học chưa đặt tên';
+
   const patchLessonFn = useCallback(
     (lessonMapper: (lesson: Lesson) => Lesson) => (lesson: Lesson): Lesson => {
       const mapped = lesson.id === activeLessonId ? lessonMapper(lesson) : lesson;
@@ -353,7 +369,6 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
     handleSelectSlashCommand,
     insertBlockAbove,
     handleSelectOtherBlock,
-    handleSideToolClick,
     focusBlock,
     handleBodyDrop,
   } = blocksState;
@@ -391,15 +406,12 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
     handleCreateChapter,
     handleDeleteChapter,
     handleCreateLesson,
-    handleCreateSubLesson,
-    handleCreateDocumentInFolder,
     handleDeleteSubLesson,
     handleDeleteLesson,
     handleSaveEdit,
     handleCancelEdit,
     handleMoveLesson,
     handleChapterReorder,
-    handleDepthExceeded,
   } = useEditorSidebarActions({
     documentTree,
     activeLessonId,
@@ -772,8 +784,11 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
             setMode={setMode}
             isDirty={isDirty}
             lastSavedTime={lastSavedTime}
-            showPreview={showPreview}
-            setShowPreview={setShowPreview}
+            editorView={editorView}
+            setEditorView={setEditorView}
+            courseTitle={courseTitle}
+            chapterTitle={activeChapterTitle}
+            lessonTitle={lessonTitle}
             onOpenGuide={() => setIsGuideOpen(true)}
             onSave={handleSave}
             onNext={handleNext}
@@ -801,19 +816,16 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
               onCancelEdit={handleCancelEdit}
               onCreateChapter={handleCreateChapter}
               onCreateLesson={handleCreateLesson}
-              onCreateSubLesson={handleCreateSubLesson}
-              onCreateDocumentInFolder={handleCreateDocumentInFolder}
               onDeleteChapter={handleDeleteChapter}
               onDeleteLesson={handleDeleteLesson}
               onDeleteSubLesson={handleDeleteSubLesson}
               onMoveLesson={handleMoveLesson}
               onChapterReorder={handleChapterReorder}
-              onDepthExceeded={handleDepthExceeded}
-              metadata={metadata}
             />
 
-            {/* 2. CENTER PANEL: Rich Editor Workspace */}
-            <main className="flex-1 bg-white border-r border-slate-100 flex flex-col overflow-hidden">
+            {/* 2. CENTER PANEL: Rich Editor Workspace (ẩn khi preview full) */}
+            {editorView !== 'preview' && (
+            <main className="flex-1 bg-white border-r border-slate-100 flex flex-col overflow-hidden min-w-0">
 
               {/* Rich Editor Toolbar */}
               {canEditActiveLesson && (
@@ -838,6 +850,23 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
               )}
 
               {canEditActiveLesson ? (
+                currentBlocks.length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center bg-white gap-3 px-6 text-center select-none">
+                    <div className="w-12 h-12 rounded-2xl bg-primary-light text-primary flex items-center justify-center">
+                      <PenLine size={20} />
+                    </div>
+                    <h3 className="text-sm font-black text-text-primary">Bài học chưa có nội dung</h3>
+                    <p className="text-xs text-text-secondary font-medium">Bấm nút bên dưới để tạo khối đầu tiên</p>
+                    <button
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => insertBlockBelow(-1)}
+                      className="px-4 py-2 bg-primary hover:bg-primary-hover text-white text-xs font-black rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-md shadow-indigo-150"
+                    >
+                      <Plus size={14} /> Thêm nội dung
+                    </button>
+                    <p className="text-[10px] text-slate-400 font-bold">Sau khi có khối, nhập / để mở menu block</p>
+                  </div>
+                ) : (
                 <>
                   {/* Editable Block Content List */}
                   <DocEditorBlockList
@@ -894,66 +923,61 @@ export const DocEditorWorkspace: React.FC<DocEditorWorkspaceProps> = ({
                     Nhấn Enter để thêm dòng mới, Tab để thụt lề, Backspace để xóa/gộp dòng, "/" để mở menu block
                   </div>
                 </>
+                )
               ) : (
                 <div className="flex-1 flex items-center justify-center bg-white text-[11px] font-bold text-text-muted select-none">
                   Chọn một file để soạn thảo nội dung
                 </div>
               )}
 
-              <PublishModal
-                isOpen={showPublishModal}
-                onClose={() => setShowPublishModal(false)}
-                activeLesson={activeLesson}
-                onPublishConfirm={handlePublish}
-                metadata={metadata}
-                onChangeMetadata={onChangeMetadata}
-              />
-
-              <DocGuideModal
-                isOpen={isGuideOpen}
-                onClose={() => setIsGuideOpen(false)}
-              />
+              {canEditActiveLesson && (
+                <div className="h-10 border-t border-slate-100 px-4 sm:px-6 flex items-center justify-between bg-white shrink-0 select-none">
+                  <button
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => prevLesson && handleLessonSelect(prevLesson.id)}
+                    disabled={!prevLesson}
+                    className="flex items-center gap-1 text-xs font-bold text-text-secondary hover:text-primary disabled:opacity-40 disabled:hover:text-text-secondary disabled:cursor-default transition cursor-pointer"
+                  >
+                    <ChevronLeft size={14} /> Bài trước
+                  </button>
+                  <button
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => nextLesson && handleLessonSelect(nextLesson.id)}
+                    disabled={!nextLesson}
+                    className="flex items-center gap-1 text-xs font-bold text-text-secondary hover:text-primary disabled:opacity-40 disabled:hover:text-text-secondary disabled:cursor-default transition cursor-pointer"
+                  >
+                    Bài tiếp theo <ChevronRight size={14} />
+                  </button>
+                </div>
+              )}
             </main>
+            )}
 
-            {/* 3. RIGHT SIDEBAR: Live Student Preview Simulator */}
-            {showPreview && (
+            {/* 3. PREVIEW: split (460px) hoặc full width */}
+            {editorView !== 'compose' && (
               <DocPreviewSimulator
                 documentTree={chapters}
                 currentDocumentId={activeLessonId}
                 documentTitle={metadata ? `${metadata.subject} ${metadata.grade.replace(/Lop\s+/i, '').replace(/L\u1edbp\s+/i, '')}` : ''}
                 liveTableResize={liveTableResize}
+                variant={editorView === 'preview' ? 'full' : 'split'}
               />
             )}
 
-            {/* 4. FAR-RIGHT NARROW TOOLBAR */}
-            {canEditActiveLesson && (
-              <aside className="w-16 bg-white border-l border-slate-100 flex flex-col items-center py-4 justify-between shrink-0 select-none overflow-y-auto">
-                <div className="w-full space-y-4 flex flex-col items-center">
-                  {[
-                    { icon: <FileCheck2 size={16} />, label: 'Block' },
-                    { icon: <Brain size={16} />, label: 'AI' },
-                    { icon: <ImageIcon size={16} />, label: 'Ảnh' },
-                    { icon: <TableIcon size={16} />, label: 'Bảng' },
-                    { icon: <Activity size={16} />, label: 'Công thức' },
-                    { icon: <HelpCircle size={16} />, label: 'Quiz' },
-                    { icon: <Award size={16} />, label: 'Flashcard' },
-                    { icon: <Video size={16} />, label: 'Media' },
-                    { icon: <Code2 size={16} />, label: 'Code' },
-                    { icon: <HelpCircle size={16} />, label: 'Khác' },
-                  ].map((tool, i) => (
-                    <Tooltip key={i} content={tool.label}>
-                      <button
-                        onClick={() => handleSideToolClick(tool.label)}
-                        className="w-12 h-12 flex flex-col items-center justify-center text-slate-400 hover:text-primary hover:bg-primary-light rounded-xl transition cursor-pointer select-none"
-                      >
-                        {tool.icon}
-                        <span className="text-[7px] font-bold mt-1 text-slate-500">{tool.label}</span>
-                      </button>
-                    </Tooltip>
-                  ))}
-                </div>
-              </aside>
-            )}
+            {/* Modals phải nằm ngoài gate editorView — header (Lưu/Tiếp theo) vẫn hiển thị ở mode preview */}
+            <PublishModal
+              isOpen={showPublishModal}
+              onClose={() => setShowPublishModal(false)}
+              activeLesson={activeLesson}
+              onPublishConfirm={handlePublish}
+              metadata={metadata}
+              onChangeMetadata={onChangeMetadata}
+            />
+
+            <DocGuideModal
+              isOpen={isGuideOpen}
+              onClose={() => setIsGuideOpen(false)}
+            />
 
             {/* ── RESTORE DRAFT DIALOG ── */}
             {showRestoreDialog && pendingDraft && (

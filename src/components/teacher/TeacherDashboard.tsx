@@ -1,16 +1,14 @@
 import React, { useState } from 'react';
 import { Select } from '../Select';
 import { 
-  ChevronRight, 
-  Search, 
-  ChevronDown, 
-  ArrowUpDown, 
-  Eye, 
-  Copy, 
-  MoreVertical, 
-  ChevronLeft, 
-  HelpCircle, 
-  Filter
+  ChevronRight,
+  Search,
+  ChevronDown,
+  Eye,
+  Copy,
+  MoreVertical,
+  ChevronLeft,
+  HelpCircle,
 } from 'lucide-react';
 
 interface TeacherDashboardProps {
@@ -510,7 +508,7 @@ export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     <td className="py-3.5 px-4 text-xs font-bold text-slate-600">{item.duration}</td>
                     <td className="py-3.5 px-4 select-none">
                       <span className={`inline-block px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase border ${
-                        item.difficulty === 'easy' ? 'bg-[#ECFDF5] text-[#10B981] border-[#D1FAE5]' :
+                        item.difficulty === 'easy' ? 'bg-[#ECFDF5] text-success border-[#D1FAE5]' :
                         item.difficulty === 'hard' ? 'bg-[#EFF6FF] text-[#3B82F6] border-[#DBEAFE]' :
                         'bg-[#FFF7ED] text-[#F97316] border-[#FFEDD5]'
                       }`}>

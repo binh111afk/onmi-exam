@@ -46,7 +46,7 @@ export const MatchingBlockComponent: React.FC<MatchingBlockProps> = ({
     }
   }, [block, idx, isActive, onUpdateBlock]);
 
-  const themeColor = settings.themeColor || '#6366f1';
+  const themeColor = settings.themeColor || '#6C5DD3';
 
   return (
     <div

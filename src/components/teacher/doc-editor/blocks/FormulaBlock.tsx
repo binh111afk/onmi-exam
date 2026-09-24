@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, ToggleLeft, ToggleRight, HelpCircle } from 'lucide-react';
-import { BlockWrapperContext } from '../BlockWrapper';
 import type { DocBlock } from '../../../../types/doc-editor';
 
 interface FormulaBlockProps {
@@ -185,9 +184,7 @@ export const FormulaBlockComponent: React.FC<FormulaBlockProps> = ({
   setActiveBlockIndex,
   onUpdateBlock,
   handleKeyDown,
-  showUniversalToolbar,
 }) => {
-  const wrapperContext = useContext(BlockWrapperContext);
   const [katexLoaded, setKatexLoaded] = useState(!!(window as any).katex);
   const [showPicker, setShowPicker] = useState(false);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);

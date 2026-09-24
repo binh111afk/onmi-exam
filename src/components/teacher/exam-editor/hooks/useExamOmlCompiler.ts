@@ -10,7 +10,6 @@ interface UseExamOmlCompilerProps {
 
 export const useExamOmlCompiler = ({
   examJsonCode,
-  setExamJsonCode,
   textareaRef,
   quickTextareaRef,
 }: UseExamOmlCompilerProps) => {

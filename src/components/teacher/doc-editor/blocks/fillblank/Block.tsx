@@ -134,7 +134,7 @@ export const FillBlankBlockComponent: React.FC<BlockProps> = ({
 
       if (isInsideOurEditor && paragraphId) {
         const span = document.createElement('span');
-        const themeColor = settings.themeColor || '#8B5CF6';
+        const themeColor = settings.themeColor || '#6C5DD3';
         
         span.className = 'fillblank-inline inline-block mx-1 px-2.5 py-0.5 border border-purple-300 bg-purple-50 text-purple-700 font-bold rounded-lg cursor-pointer empty:before:content-[attr(placeholder)] empty:before:text-slate-350 empty:before:pointer-events-none';
         span.style.borderColor = `${themeColor}60`;
@@ -287,7 +287,7 @@ export const FillBlankBlockComponent: React.FC<BlockProps> = ({
   };
 
   const activeBlank = activeBlankId ? blanks[activeBlankId] : null;
-  const themeColor = settings.themeColor || '#8B5CF6';
+  const themeColor = settings.themeColor || '#6C5DD3';
 
   return (
     <div

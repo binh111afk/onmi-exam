@@ -8,7 +8,7 @@ export const createNewCompareContent = (): CompareContent => {
       { id: crypto.randomUUID(), title: '', content: '' }
     ],
     settings: {
-      themeColor: '#6366f1'
+      themeColor: '#6C5DD3'
     }
   };
 };

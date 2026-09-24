@@ -77,8 +77,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               value={searchQuery}
               onChange={(e) => {
                 onSearchChange(e.target.value);
-                if (currentView !== 'exams' && currentView !== 'documents') {
-                  onViewChange('exams');
+                if (currentView !== 'practice-exams' && currentView !== 'library') {
+                  onViewChange('practice-exams');
                 }
               }}
               className="pl-9 pr-4 py-2.5 bg-slate-55 border border-slate-100 rounded-xl text-xs"
@@ -87,13 +87,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           <div className="grid grid-cols-2 gap-2">
             {[
-              { label: 'Trang chủ', view: 'home' },
-              { label: 'Đề thi', view: 'exams' },
-              { label: 'Tài liệu', view: 'documents' },
-              { label: 'Lộ trình', view: 'about' },
-              { label: 'Xếp hạng', view: 'leaderboard' },
-              { label: 'Blog', view: 'blog' },
-              { label: 'Liên hệ', view: 'contact' },
+              { label: 'Tổng quan', view: 'home' },
+              { label: 'Khóa học', view: 'courses' },
+              { label: 'Luyện tập', view: 'practice' },
+              { label: 'Tiến độ', view: 'progress' },
+              { label: 'Khám phá', view: 'discover' },
             ].map((item, idx) => (
               <button
                 key={idx}

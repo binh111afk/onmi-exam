@@ -9,7 +9,7 @@ interface DiagramPreviewProps {
 export const DiagramPreview: React.FC<DiagramPreviewProps> = ({ content }) => {
   const nodes = content.nodes || [];
   const settings = content.settings || {};
-  const { layout, arrowStyle, themeColor = '#6366f1' } = settings;
+  const { layout, arrowStyle, themeColor = '#6C5DD3' } = settings;
 
   if (nodes.length === 0) {
     return (

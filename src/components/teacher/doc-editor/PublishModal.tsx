@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Send,
@@ -11,7 +11,6 @@ import {
   QrCode,
   Eye,
   EyeOff,
-  Calendar,
   Info,
   CheckCircle2,
   Rocket,
@@ -19,7 +18,6 @@ import {
   BookOpen,
   FileText,
   Activity,
-  Image as ImageIcon
 } from 'lucide-react';
 import { Checkbox } from '../../Checkbox';
 import { Select } from '../../Select';

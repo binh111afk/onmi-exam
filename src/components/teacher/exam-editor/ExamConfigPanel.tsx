@@ -3,7 +3,6 @@ import { Select } from '../../Select';
 import {
   CheckCircle2,
   FileText,
-  ChevronDown,
   Sliders,
   Shuffle,
   RefreshCw,
@@ -136,7 +135,7 @@ export const ExamConfigPanel: React.FC<ExamConfigPanelProps> = ({
         {/* Right side status & action */}
         <div className="flex items-center gap-2.5">
           {/* Auto Save Status */}
-          <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#10B981] font-sans mr-2">
+          <div className="flex items-center gap-1.5 text-[10px] font-bold text-success font-sans mr-2">
             <CheckCircle2 size={13} className="text-emerald-500 stroke-[2.5]" />
             <span>Đã tự động lưu {lastSavedTime ? formatSavedTime(lastSavedTime) : 'mới đây'}</span>
           </div>

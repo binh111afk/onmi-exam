@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useContext, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Video, AlertTriangle, RefreshCw, Upload, Link as LinkIcon, X } from 'lucide-react';
+import { Video, RefreshCw, Upload, Link as LinkIcon, X } from 'lucide-react';
 import type { DocBlock } from '../../../../types/doc-editor';
 import { useAlert } from '../../../common/Alert';
 import { BlockWrapperContext } from '../BlockWrapper';

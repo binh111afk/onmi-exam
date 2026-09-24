@@ -29,7 +29,7 @@ export const createDefaultFillBlankContent = (): FillBlankContent => ({
     acceptMultipleAnswers: true,
     blankStyle: 'underline',
     maxAttempts: 3,
-    themeColor: '#8B5CF6'
+    themeColor: '#6C5DD3'
   }
 });
 

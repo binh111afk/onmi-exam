@@ -32,7 +32,7 @@ export const FlowSettings: React.FC<FlowSettingsProps> = ({
     stepNumbering: 'numbers',
     cardStyle: 'bordered',
     stepSpacing: 'normal',
-    themeColor: '#6366f1',
+    themeColor: '#6C5DD3',
     ...settings
   });
 
@@ -43,7 +43,7 @@ export const FlowSettings: React.FC<FlowSettingsProps> = ({
         stepNumbering: 'numbers',
         cardStyle: 'bordered',
         stepSpacing: 'normal',
-        themeColor: '#6366f1',
+        themeColor: '#6C5DD3',
         ...settings
       });
     }

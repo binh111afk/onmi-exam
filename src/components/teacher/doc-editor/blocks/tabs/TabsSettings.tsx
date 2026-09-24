@@ -31,7 +31,7 @@ export const TabsSettings: React.FC<TabsSettingsProps> = ({
   onUpdateSettings,
 }) => {
   const [localSettings, setLocalSettings] = useState<TabsSettingsType>({
-    themeColor: '#6366f1',
+    themeColor: '#6C5DD3',
     defaultActiveTab: '',
     tabStyle: 'underline',
     position: 'top',
@@ -44,7 +44,7 @@ export const TabsSettings: React.FC<TabsSettingsProps> = ({
   useEffect(() => {
     if (isOpen) {
       setLocalSettings({
-        themeColor: '#6366f1',
+        themeColor: '#6C5DD3',
         defaultActiveTab: '',
         tabStyle: 'underline',
         position: 'top',

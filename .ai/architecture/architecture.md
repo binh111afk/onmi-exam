@@ -42,7 +42,7 @@ App.tsx
 │   ├── Documents.tsx → DocReader.tsx
 │   │     └── Chapter navigation, bookmarks, notes
 │   ├── Leaderboard.tsx — ranking tables
-│   ├── Roadmap.tsx — learning path visualization
+│   ├── Progress.tsx — actionable progress (mastery + history)
 │   ├── AssessmentTest.tsx — MBTI test + results
 │   └── Profile.tsx — user profile, stats, history
 │
@@ -53,7 +53,6 @@ App.tsx
                 ├── ExamSidebar.tsx — tab navigation + question list
                 ├── OmlGuideModal.tsx — OML reference modal
                 ├── QuestionBankWorkspace.tsx — question picker
-                ├── ExamLivePreview.tsx — live OML preview
                 └── OmlRenderer/
                       ├── parser.ts — OML JSON parsing + validation
                       ├── OmlBlockRouter.tsx — block type → component
@@ -252,7 +251,6 @@ src/
     ├── Navbar.tsx
     ├── Sidebar.tsx
     ├── Footer.tsx
-    ├── ExamCard.tsx
     ├── DocCard.tsx
     ├── ExamEditor/
     │   └── OmlRenderer/     — OML rendering pipeline

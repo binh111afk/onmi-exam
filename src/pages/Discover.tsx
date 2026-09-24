@@ -1,0 +1,76 @@
+import React from 'react';
+import { ArrowRight, Brain, LifeBuoy, Newspaper, Trophy } from 'lucide-react';
+
+interface DiscoverProps {
+  onViewChange: (view: string) => void;
+}
+
+const sections = [
+  {
+    view: 'assessment-test',
+    icon: Brain,
+    title: 'MBTI & Hướng nghiệp',
+    description: 'Trắc nghiệm tính cách MBTI và gợi ý định hướng nghề nghiệp phù hợp',
+    accent: 'bg-[#EEF2FF] text-primary',
+  },
+  {
+    view: 'leaderboard',
+    icon: Trophy,
+    title: 'Bảng xếp hạng',
+    description: 'Xem thứ hạng tuần và thành tích của các học viên trên toàn hệ thống',
+    accent: 'bg-amber-50 text-amber-600',
+  },
+  {
+    view: 'blog',
+    icon: Newspaper,
+    title: 'Blog',
+    description: 'Bài viết về phương pháp học, kinh nghiệm ôn thi và thông báo mới',
+    accent: 'bg-blue-50 text-blue-600',
+  },
+  {
+    view: 'help',
+    icon: LifeBuoy,
+    title: 'Trợ giúp',
+    description: 'Báo lỗi, góp ý hoặc liên hệ đội ngũ hỗ trợ khi cần',
+    accent: 'bg-emerald-50 text-emerald-600',
+  },
+];
+
+export const Discover: React.FC<DiscoverProps> = ({ onViewChange }) => {
+  return (
+    <div className="max-w-[1320px] mx-auto px-6 lg:px-8 py-8 antialiased">
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold text-text-primary">Khám phá</h1>
+        <p className="text-sm text-text-secondary font-medium mt-1">
+          Những tính năng bổ sung cho hành trình học của bạn
+        </p>
+      </header>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        {sections.map((section) => {
+          const Icon = section.icon;
+          return (
+            <button
+              key={section.view}
+              onClick={() => onViewChange(section.view)}
+              className="bg-white border border-slate-100 hover:border-primary/30 rounded-2xl p-6 flex items-start gap-4 text-left transition-all duration-200 cursor-pointer group"
+            >
+              <div className={`h-11 w-11 rounded-xl flex items-center justify-center shrink-0 ${section.accent}`}>
+                <Icon size={20} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-sm font-black text-text-primary group-hover:text-primary transition-colors">
+                  {section.title}
+                </h2>
+                <p className="text-[11px] text-text-secondary font-medium leading-relaxed mt-1">
+                  {section.description}
+                </p>
+              </div>
+              <ArrowRight size={16} className="text-slate-300 group-hover:text-primary shrink-0 transition-colors mt-1" />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};

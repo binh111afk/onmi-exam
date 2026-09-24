@@ -9,7 +9,7 @@ export const createNewMatchingContent = (): MatchingContent => {
       { id: crypto.randomUUID(), leftText: '', rightText: '' }
     ],
     settings: {
-      themeColor: '#6366f1'
+      themeColor: '#6C5DD3'
     }
   };
 };

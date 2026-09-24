@@ -56,7 +56,7 @@ export const TabsBlockComponent: React.FC<TabsBlockProps> = ({
 
   const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0];
   const activeIndex = tabs.findIndex(t => t.id === (activeTabId || ''));
-  const themeColor = settings.themeColor || '#6366f1';
+  const themeColor = settings.themeColor || '#6C5DD3';
 
   return (
     <div

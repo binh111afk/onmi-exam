@@ -69,7 +69,7 @@ export const TimelinePreview: React.FC<TimelinePreviewProps> = ({
     return (
       <div
         className={`w-8 h-8 flex items-center justify-center text-white shadow-sm shrink-0 border-2 border-white ${nodeRadiusClass}`}
-        style={{ backgroundColor: color || '#6366f1' }}
+        style={{ backgroundColor: color || '#6C5DD3' }}
       >
         <IconComp size={14} />
       </div>
@@ -77,7 +77,7 @@ export const TimelinePreview: React.FC<TimelinePreviewProps> = ({
   };
 
   const renderDateBadge = (date?: string, color?: string, extraClassName = '') => {
-    const badgeColor = color || '#6366f1';
+    const badgeColor = color || '#6C5DD3';
     return (
       <span
         className={`text-[9px] font-black text-white px-2.5 py-1 rounded-full shadow-sm select-none tracking-wide uppercase ${extraClassName}`}

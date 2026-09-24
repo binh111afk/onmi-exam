@@ -16,6 +16,6 @@ export const createDefaultEvent = (id: string) => ({
   title: '',
   description: '',
   date: '',
-  color: '#6366f1',
+  color: '#6C5DD3',
   icon: 'Clock'
 });

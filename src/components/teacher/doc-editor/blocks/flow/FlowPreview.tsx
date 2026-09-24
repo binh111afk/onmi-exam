@@ -24,7 +24,7 @@ export const FlowPreview: React.FC<FlowPreviewProps> = ({
     );
   }
 
-  const themeColor = settings.themeColor || '#6366f1';
+  const themeColor = settings.themeColor || '#6C5DD3';
 
   const getStepLabel = (index: number) => {
     const numbering = settings.stepNumbering || 'numbers';

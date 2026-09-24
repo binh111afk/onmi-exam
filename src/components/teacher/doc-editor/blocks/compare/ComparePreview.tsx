@@ -9,7 +9,7 @@ interface ComparePreviewProps {
 export const ComparePreview: React.FC<ComparePreviewProps> = ({ content }) => {
   const columns = content.columns || [];
   const settings = content.settings || {};
-  const themeColor = settings.themeColor || '#6366f1';
+  const themeColor = settings.themeColor || '#6C5DD3';
 
   if (columns.length === 0) {
     return (

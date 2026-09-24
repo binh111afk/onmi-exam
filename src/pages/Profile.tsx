@@ -527,7 +527,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, onUpdateProfile, onViewC
                   <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full text-emerald-50 fill-emerald-50/60" stroke="#10B981" strokeWidth="3">
                     <polygon points="50,5 93,30 93,80 50,95 7,80 7,30" />
                   </svg>
-                  <CheckCircle2 size={18} className="text-[#10B981] relative z-10" />
+                  <CheckCircle2 size={18} className="text-success relative z-10" />
                 </div>
                 <div className="text-[8.5px] font-black text-text-primary mt-2">Học tập bền bỉ</div>
                 <div className="text-[7.5px] text-text-secondary mt-0.5">Top 15%</div>

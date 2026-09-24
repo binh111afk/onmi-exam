@@ -28,7 +28,7 @@ export const MatchingSettings: React.FC<MatchingSettingsProps> = ({
   onUpdateSettings,
 }) => {
   const [localSettings, setLocalSettings] = useState<MatchingSettingsType>({
-    themeColor: '#6366f1',
+    themeColor: '#6C5DD3',
     shuffleAnswers: true,
     allowRetries: true,
     showScore: true,
@@ -41,7 +41,7 @@ export const MatchingSettings: React.FC<MatchingSettingsProps> = ({
   useEffect(() => {
     if (isOpen) {
       setLocalSettings({
-        themeColor: '#6366f1',
+        themeColor: '#6C5DD3',
         shuffleAnswers: true,
         allowRetries: true,
         showScore: true,

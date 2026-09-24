@@ -29,7 +29,7 @@ export const CompareSettings: React.FC<CompareSettingsProps> = ({
   onUpdateSettings,
 }) => {
   const [localSettings, setLocalSettings] = useState<CompareSettingsType>({
-    themeColor: '#6366f1',
+    themeColor: '#6C5DD3',
     cardStyle: 'bordered',
     showBorder: true,
     equalHeight: true,
@@ -42,7 +42,7 @@ export const CompareSettings: React.FC<CompareSettingsProps> = ({
   useEffect(() => {
     if (isOpen) {
       setLocalSettings({
-        themeColor: '#6366f1',
+        themeColor: '#6C5DD3',
         cardStyle: 'bordered',
         showBorder: true,
         equalHeight: true,

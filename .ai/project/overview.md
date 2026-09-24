@@ -98,11 +98,11 @@ A full MBTI-style personality and career aptitude test with 60+ questions, scori
 **Files:**
 - `src/pages/AssessmentTest.tsx` (67KB)
 
-### 6. Learning Roadmap (`/roadmap`)
-Visual learning path with subject tracks, milestones, and progress tracking.
+### 6. Progress (`/progress`) — thay Roadmap (IA refactor P5)
+Actionable progress: tổng quan theo môn, khóa học đang học, mastery kiến thức (từ câu sai), lịch sử làm bài.
 
 **Files:**
-- `src/pages/Roadmap.tsx` (35KB)
+- `src/pages/Progress.tsx` (Roadmap.tsx đã xóa trong dead-code cleanup)
 
 ### 7. EXP & Gamification System
 - XP earned from completing exams
@@ -145,21 +145,32 @@ All routes are defined in `src/App.tsx`:
 | Path | Component | Auth Required |
 |---|---|---|
 | `/` | `Home` | No |
-| `/exams` | `Exams` | No |
-| `/exams/:id` | `ExamDetail` | No |
-| `/exams/:id/take` | `ActiveExam` | Yes |
-| `/documents` | `Documents` | No |
-| `/documents/:id` | `DocReader` | No |
+| `/courses` | `Courses` | No |
+| `/courses/:courseId` | `CourseDetail` | No |
+| `/courses/:courseId/lesson/:lessonId` | `LessonView` | No |
+| `/practice` | `Practice` | No |
+| `/practice/exams` | `Exams` | No |
+| `/practice/topics` | `PracticeTopics` | No |
+| `/practice/mistakes` | `PracticeMistakes` | No |
+| `/practice/quick` | `PracticeQuick` | No |
+| `/practice/:practiceId` | `ExamDetail` | No |
+| `/practice/:practiceId/take` | `ActiveExam` | Yes |
+| `/progress` | `Progress` (derive từ user state: completedLessons/examMistakes/completedExams) | No |
+| `/library` | `Documents` | No |
+| `/library/:docId` | `DocReader` | No |
 | `/leaderboard` | `Leaderboard` | No |
-| `/roadmap` | `Roadmap` | No |
+| `/roadmap` | Redirect → `/progress` | — |
 | `/mbti` | `AssessmentTest` | No |
 | `/teacher` | `Teacher` | Yes |
 | `/teacher/exam-editor` | `Teacher` → ExamEditorWorkspace | Yes |
 | `/blog` | `Blog` | No |
-| `/contact` | `Contact` | No |
+| `/help` | `Contact` | No |
+| `/contact` | Redirect → `/help` | — |
 | `/profile` | `Profile` | Yes |
 | `/login` | `Login` | No |
 | `/register` | `Register` | No |
+
+Legacy redirects: `/exams*` → `/practice/*`, `/documents*` → `/library/*`, `/roadmap` + `/about` → `/progress`, `/contact` → `/help`.
 
 ---
 

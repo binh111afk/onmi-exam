@@ -314,14 +314,14 @@ export const QuestionBankWorkspace: React.FC = () => {
                   onClick={() => setSelectedQuestionId(q.id)}
                   className={`p-4 bg-white border rounded-xl transition duration-150 cursor-pointer relative flex gap-3 ${
                     isSelected 
-                      ? 'border-[#6366F1] ring-1 ring-[#6366F1]/10' 
+                      ? 'border-primary ring-1 ring-primary/10' 
                       : 'border-slate-200 hover:border-slate-350 hover:bg-white/80'
                   }`}
                 >
                   {/* Custom Checkbox */}
                   <div className="pt-0.5 shrink-0">
                     <div className={`w-4.5 h-4.5 rounded-md border flex items-center justify-center transition-colors ${
-                      isSelected ? 'border-[#6366F1] bg-[#6366F1] text-white' : 'border-slate-300 bg-white'
+                      isSelected ? 'border-primary bg-primary text-white' : 'border-slate-300 bg-white'
                     }`}>
                       {isSelected && (
                         <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 stroke-[4.5]" fill="none" stroke="currentColor">

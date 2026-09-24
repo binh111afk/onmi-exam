@@ -1,14 +1,16 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, BookOpen, HelpCircle, FileText, Users, BarChart3 } from 'lucide-react';
 import { TeacherDashboard } from '../components/teacher/TeacherDashboard';
+import { TeacherClasses } from '../components/teacher/TeacherClasses';
+import { TeacherAnalytics } from '../components/teacher/TeacherAnalytics';
 import { DocEditorWorkspace } from '../components/teacher/doc-editor/DocEditorWorkspace';
-import type { Chapter, Lesson, DocSetupMetadata } from '../types/doc-editor';
+import type { Chapter, DocSetupMetadata } from '../types/doc-editor';
 import { FileUploaderWorkspace } from '../components/teacher/file-uploader/FileUploaderWorkspace';
 import { ExamEditorWorkspace } from '../components/teacher/exam-editor/ExamEditorWorkspace';
-import { useAlert } from '../components/common/Alert';
-import { PublishModal } from '../components/teacher/doc-editor/PublishModal';
+import { mockClassAnalytics } from '../data/mockData';
 
-type TeacherMode = 'dashboard' | 'editor' | 'upload' | 'exam-editor';
+type TeacherMode = 'dashboard' | 'editor' | 'upload' | 'exam-editor' | 'classes' | 'analytics';
 type ExamSubView = 'edit' | 'config' | 'publish';
 type ExamTab = 'code' | 'quick' | 'bank';
 type ViewportMode = 'desktop' | 'tablet' | 'mobile';
@@ -28,12 +30,13 @@ const loadTeacherExamWorkspace = () => {
 export const Teacher: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { showAlert } = useAlert();
 
   const getModeFromPath = (path: string): TeacherMode => {
     if (path === '/teacher/document/new' || path === '/teacher/document/editor') return 'editor';
     if (path === '/teacher/upload') return 'upload';
     if (path === '/teacher/exam-editor') return 'exam-editor';
+    if (path === '/teacher/classes') return 'classes';
+    if (path === '/teacher/analytics') return 'analytics';
     return 'dashboard';
   };
 
@@ -276,6 +279,39 @@ export const Teacher: React.FC = () => {
     setMode('upload');
   };
 
+  // analyticsExamId: mặc định đề đầu tiên trong mockClassAnalytics (refresh về mặc định là chủ đích mock phase)
+  const [analyticsExamId, setAnalyticsExamId] = useState<string>(() => mockClassAnalytics[0]?.examId || '');
+
+  const teacherNavItems: { label: string; icon: React.ElementType; active: (m: TeacherMode) => boolean; onClick: () => void }[] = [
+    { label: 'Dashboard', icon: LayoutDashboard, active: (m) => m === 'dashboard', onClick: () => setMode('dashboard') },
+    { label: 'Khóa học', icon: BookOpen, active: (m) => m === 'editor', onClick: () => setMode('editor') },
+    { label: 'Ngân hàng câu hỏi', icon: HelpCircle, active: (m) => m === 'exam-editor' && examTab === 'bank', onClick: () => { setExamTab('bank'); setMode('exam-editor'); } },
+    { label: 'Đề thi', icon: FileText, active: (m) => m === 'exam-editor' && examTab !== 'bank', onClick: () => { setExamTab('code'); setMode('exam-editor'); } },
+    { label: 'Lớp học', icon: Users, active: (m) => m === 'classes', onClick: () => setMode('classes') },
+    { label: 'Analytics', icon: BarChart3, active: (m) => m === 'analytics', onClick: () => setMode('analytics') },
+  ];
+
+  const renderTeacherNav = () => (
+    <nav className="bg-white border-b border-slate-100 px-4 sm:px-6 py-3 flex items-center gap-1.5 overflow-x-auto select-none">
+      {teacherNavItems.map((item) => {
+        const Icon = item.icon;
+        const isActive = item.active(mode);
+        return (
+          <button
+            key={item.label}
+            onClick={item.onClick}
+            className={`flex items-center gap-1.5 px-3.5 py-2 text-[11px] font-bold rounded-xl transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 ${isActive
+                ? 'bg-primary text-white shadow-[0_4px_12px_rgba(108,93,211,0.25)]'
+                : 'text-text-secondary hover:bg-slate-50 hover:text-text-primary'
+              }`}
+          >
+            <Icon size={13} /> {item.label}
+          </button>
+        );
+      })}
+    </nav>
+  );
+
   // Render workspace based on active mode
   if (mode === 'editor') {
     return (
@@ -316,12 +352,39 @@ export const Teacher: React.FC = () => {
     );
   }
 
+  if (mode === 'classes') {
+    return (
+      <div>
+        {renderTeacherNav()}
+        <TeacherClasses
+          onSelectExam={(examId) => {
+            setAnalyticsExamId(examId);
+            setMode('analytics');
+          }}
+          onBack={() => setMode('dashboard')}
+        />
+      </div>
+    );
+  }
+
+  if (mode === 'analytics') {
+    return (
+      <div>
+        {renderTeacherNav()}
+        <TeacherAnalytics examId={analyticsExamId} onBack={() => setMode('classes')} />
+      </div>
+    );
+  }
+
   // Dashboard landing view (3 action cards)
   return (
-    <TeacherDashboard 
-      setMode={setMode} 
-      onStartSelfCompose={handleStartSelfCompose}
-      onUploadFile={handleUploadFile}
-    />
+    <div>
+      {renderTeacherNav()}
+      <TeacherDashboard
+        setMode={setMode}
+        onStartSelfCompose={handleStartSelfCompose}
+        onUploadFile={handleUploadFile}
+      />
+    </div>
   );
 };

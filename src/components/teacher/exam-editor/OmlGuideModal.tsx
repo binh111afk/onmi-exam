@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Copy, Check, Info, Code, FileText, Sparkles } from 'lucide-react';
+import { X, Copy, Check, Info, Sparkles } from 'lucide-react';
 import { OmlBlockRouter } from '../../ExamEditor/OmlRenderer/OmlBlockRouter';
 
 interface OmlGuideModalProps {
@@ -438,7 +438,7 @@ export const OmlGuideModal: React.FC<OmlGuideModalProps> = ({ isOpen, onClose })
                     </div>
                   </div>
                   <div className="flex gap-3">
-                    <div className="w-6 h-6 rounded-lg bg-indigo-50 text-primary flex items-center justify-center shrink-0 font-bold text-xs">✓</div>
+                    <div className="w-6 h-6 rounded-lg bg-indigo-50 text-primary flex items-center justify-center shrink-0 font-bold text-xs"><Check size={12} /></div>
                     <div className="text-xs">
                       <h4 className="font-bold text-slate-700">Yêu cầu Biên dịch thành công</h4>
                       <p className="text-slate-500">Preview đề thi và Danh sách câu hỏi Sidebar chỉ được làm mới khi toàn bộ JSON và định dạng Schema OML không chứa bất kỳ lỗi nào.</p>

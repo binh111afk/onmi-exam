@@ -36,7 +36,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
     acceptMultipleAnswers: settings.acceptMultipleAnswers ?? true,
     blankStyle: settings.blankStyle ?? 'underline',
     maxAttempts: settings.maxAttempts ?? 3,
-    themeColor: settings.themeColor ?? '#8b5cf6',
+    themeColor: settings.themeColor ?? '#6C5DD3',
   });
 
   useEffect(() => {
@@ -50,7 +50,7 @@ export const SettingsDialog: React.FC<SettingsDialogProps> = ({
         acceptMultipleAnswers: settings.acceptMultipleAnswers ?? true,
         blankStyle: settings.blankStyle ?? 'underline',
         maxAttempts: settings.maxAttempts ?? 3,
-        themeColor: settings.themeColor ?? '#8b5cf6',
+        themeColor: settings.themeColor ?? '#6C5DD3',
       });
     }
   }, [isOpen, settings]);

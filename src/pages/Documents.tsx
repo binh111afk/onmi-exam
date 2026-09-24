@@ -35,7 +35,7 @@ export const Documents: React.FC<DocumentsProps> = ({
   const subjects = [
     { label: 'Tất cả', count: 1248, value: 'All', icon: LayoutGrid, bg: 'bg-[#6C5DD3]/10 text-[#6C5DD3] border-[#6C5DD3]/20' },
     { label: 'Toán học', count: 1024, value: 'Toán học', icon: Calculator, bg: 'bg-[#0091FF]/10 text-[#0091FF] border-[#0091FF]/20' },
-    { label: 'Vật lý', count: 718, value: 'Vật lý', icon: Atom, bg: 'bg-[#10B981]/10 text-[#10B981] border-[#10B981]/20' },
+    { label: 'Vật lý', count: 718, value: 'Vật lý', icon: Atom, bg: 'bg-success/10 text-success border-success/20' },
     { label: 'Hóa học', count: 634, value: 'Hóa học', icon: Beaker, bg: 'bg-[#14B8A6]/10 text-[#14B8A6] border-[#14B8A6]/20' },
     { label: 'Ngữ văn', count: 512, value: 'Ngữ văn', icon: PenTool, bg: 'bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/20' },
     { label: 'Tiếng Anh', count: 897, value: 'Tiếng Anh', icon: Globe, bg: 'bg-[#FF758F]/10 text-[#FF758F] border-[#FF758F]/20' },

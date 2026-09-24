@@ -33,7 +33,7 @@ export const DiagramSettings: React.FC<DiagramSettingsProps> = ({
     nodeSpacing: 'normal',
     showArrows: true,
     showDescriptions: true,
-    themeColor: '#6366f1',
+    themeColor: '#6C5DD3',
     ...settings
   });
 
@@ -44,7 +44,7 @@ export const DiagramSettings: React.FC<DiagramSettingsProps> = ({
         nodeSpacing: 'normal',
         showArrows: true,
         showDescriptions: true,
-        themeColor: '#6366f1',
+        themeColor: '#6C5DD3',
         ...settings
       });
     }

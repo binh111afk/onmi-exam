@@ -142,7 +142,7 @@ const ColResizeHandle: React.FC<ColResizeHandleProps> = ({ colIdx, resize }) => 
         zIndex:         30,
         userSelect:     'none',
         pointerEvents:  'auto',
-        backgroundColor: isActive ? '#6366F1' : undefined,
+        backgroundColor: isActive ? '#6C5DD3' : undefined,
         opacity:         isActive ? 1 : undefined,
       }}
       className={!isActive ? 'opacity-0 hover:opacity-100 hover:bg-indigo-400/40 transition-opacity' : ''}
@@ -252,7 +252,7 @@ export const SharedTableRenderer: React.FC<SharedTableRendererProps> = ({
                     backgroundColor: isHeader ? (cellStyles.bg || TABLE_HEADER_BG) : (cellStyles.bg || 'white'),
                     position:        'relative',
                     ...(isSelected && isEditable
-                      ? { outline: '2px solid #6366F1', outlineOffset: '-1px' }
+                      ? { outline: '2px solid #6C5DD3', outlineOffset: '-1px' }
                       : {}),
                   };
 
@@ -299,7 +299,7 @@ export const SharedTableRenderer: React.FC<SharedTableRendererProps> = ({
                             zIndex:         30,
                             userSelect:     'none',
                             pointerEvents:  'auto',
-                            backgroundColor: activeResizingRow === rIdx ? '#6366F1' : undefined,
+                            backgroundColor: activeResizingRow === rIdx ? '#6C5DD3' : undefined,
                             opacity:         activeResizingRow === rIdx ? 1 : undefined,
                           }}
                           className={

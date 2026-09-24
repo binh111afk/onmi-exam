@@ -186,7 +186,7 @@ export const createDefaultBlock = (
         version: 1,
         columns: [],
         settings: {
-          themeColor: '#6366f1',
+          themeColor: '#6C5DD3',
         },
       };
       return {
@@ -206,7 +206,7 @@ export const createDefaultBlock = (
         settings: {
           layout: 'horizontal' as const,
           arrowStyle: 'straight' as const,
-          themeColor: '#6366f1',
+          themeColor: '#6C5DD3',
         },
       };
       return {
@@ -224,7 +224,7 @@ export const createDefaultBlock = (
         version: 1,
         pairs: [],
         settings: {
-          themeColor: '#6366f1',
+          themeColor: '#6C5DD3',
         },
       };
       return {

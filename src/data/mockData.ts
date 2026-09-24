@@ -1,4 +1,4 @@
-import type { Exam, Document, LeaderboardEntry, User } from '../types';
+import type { Exam, Document, LeaderboardEntry, User, Course, CourseLesson, ExamMistake, Question } from '../types';
 
 export const initialUser: User = {
   name: 'Đặng Minh Khôi',
@@ -9,6 +9,26 @@ export const initialUser: User = {
   badges: ['Lý thuyết gia', 'Siêu chiến binh', 'Học tập bền bỉ'],
   completedExams: {
     'exam-math-1': { score: 9.0, completedAt: '2026-06-29T15:30:00Z' }
+  },
+  // seed demo: 5/7 bài Toán 12 đã học (user cũ thiếu key này tự nhận seed qua merge spread)
+  completedLessons: {
+    'le-m12-1-1': true,
+    'le-m12-1-2': true,
+    'le-m12-1-3': true,
+    'le-m12-2-1': true,
+    'le-m12-2-2': true,
+  },
+  // seed demo Mistake Book (key = questionId, đều tồn tại thật trong mockExams)
+  examMistakes: {
+    'q-m1-2': { examId: 'exam-math-1', topic: 'Mũ và Logarit', lastWrongAt: '2026-09-20', wrongCount: 2 },
+    'q-m1-3': { examId: 'exam-math-1', topic: 'Hàm số và đồ thị', lastWrongAt: '2026-09-20', wrongCount: 1 },
+    'q-m1-1': { examId: 'exam-math-1', topic: 'Hàm số và đồ thị', lastWrongAt: '2026-09-18', wrongCount: 1 },
+    'q-p1-1': { examId: 'exam-phys-1', topic: 'Dao động cơ học', lastWrongAt: '2026-09-19', wrongCount: 3 },
+    'q-p1-3': { examId: 'exam-phys-1', topic: 'Dao động cơ học', lastWrongAt: '2026-09-19', wrongCount: 1 },
+    'q-c1-1': { examId: 'exam-chem-1', topic: 'Hydrocarbon', lastWrongAt: '2026-09-17', wrongCount: 2 },
+    'q-c1-2': { examId: 'exam-chem-1', topic: 'Hydrocarbon', lastWrongAt: '2026-09-17', wrongCount: 1 },
+    'q-e1-1': { examId: 'exam-eng-1', topic: 'Ngữ pháp', lastWrongAt: '2026-09-15', wrongCount: 1 },
+    'q-b1-1': { examId: 'exam-bio-1', topic: 'Cấu trúc tế bào', lastWrongAt: '2026-09-14', wrongCount: 2 },
   },
   savedExams: ['exam-phys-1'],
   savedDocs: ['doc-eng-1'],
@@ -475,3 +495,381 @@ export const mockLeaderboard: LeaderboardEntry[] = [
   { rank: 7, name: 'Nguyễn Phương Thảo', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=80&h=80', school: 'THPT Chuyên Nguyễn Huệ, Hà Nội', grade: 'Lớp 12', xp: 6200, streak: 6, badges: ['Yêu sinh học'] },
   { rank: 8, name: 'Bùi Anh Quân', avatar: 'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?auto=format&fit=crop&w=80&h=80', school: 'Trường Trung học Thực nghiệm KHGD, Hà Nội', grade: 'Lớp 10', xp: 5930, streak: 15, badges: ['Kiên trì'] }
 ];
+
+export const mockCourses: Course[] = [
+  {
+    id: 'course-math-12',
+    title: 'Toán 12 — Ôn thi THPT',
+    subject: 'Toán học',
+    grade: 'Lớp 12',
+    description: 'Ôn luyện toàn bộ chương trình Toán 12 theo định hướng đề thi tốt nghiệp THPT: đạo hàm, hàm số mũ logarit và xác suất.',
+    practiceCount: 6,
+    examCount: 3,
+    chapters: [
+      {
+        id: 'ch-m12-1',
+        title: 'Chương 1: Ứng dụng đạo hàm để khảo sát hàm số',
+        lessons: [
+          {
+            id: 'le-m12-1-1',
+            title: 'Bài 1: Tính đơn điệu của hàm số',
+            durationMinutes: 18,
+            blocks: [
+              { type: 'heading', level: 2, text: 'Tính đơn điệu của hàm số' },
+              { type: 'paragraph', text: 'Cho hàm số y = f(x) xác định trên khoảng K. Hàm số đồng biến trên K nếu với mọi x1, x2 thuộc K mà x1 < x2 thì f(x1) < f(x2).' },
+              { type: 'formula', latex: "f'(x) > 0 \\iff f \\text{ đồng biến trên khoảng đang xét}", display: 'block' },
+              { type: 'callout', variant: 'info', title: 'Lưu ý', content: 'Trên bảng biến thiên, hàm số đồng biến trên những khoảng mà đạo hàm f\'(x) nhận giá trị dương.' },
+              { type: 'image', src: '/math_illustration.png', alt: 'Minh họa đồ thị hàm số và bảng biến thiên', size: 'medium' as const }
+            ]
+          },
+          {
+            id: 'le-m12-1-2',
+            title: 'Bài 2: Cực trị của hàm số',
+            durationMinutes: 22,
+            blocks: [
+              { type: 'heading', level: 2, text: 'Cực trị của hàm số' },
+              { type: 'paragraph', text: 'Điểm x0 được gọi là điểm cực đại của hàm số f(x) nếu tồn tại khoảng (a; b) chứa x0 sao cho f(x0) là giá trị lớn nhất của hàm số trên khoảng đó.' },
+              { type: 'list', ordered: true, items: ['Tìm tập xác định', "Tính f'(x) và tìm nghiệm của f'(x) = 0", 'Lập bảng biến thiên và kết luận cực trị'] }
+            ]
+          },
+          {
+            id: 'le-m12-1-3',
+            title: 'Bài 3: Giá trị lớn nhất và nhỏ nhất',
+            durationMinutes: 20,
+            blocks: [
+              { type: 'heading', level: 2, text: 'Giá trị lớn nhất và nhỏ nhất trên đoạn' },
+              { type: 'paragraph', text: 'Hàm số liên tục trên đoạn [a; b] thì đạt giá trị lớn nhất và nhỏ nhất trên đoạn đó, tại các điểm tới hạn hoặc tại hai đầu mút.' },
+              { type: 'formula', latex: '\\max_{[a;b]} f = \\max\\{f(a),\\ f(b),\\ f(x_1),\\ \\dots,\\ f(x_n)\\}', display: 'block' }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'ch-m12-2',
+        title: 'Chương 2: Xác suất thống kê',
+        lessons: [
+          {
+            id: 'le-m12-2-1',
+            title: 'Bài 4: Biến cố và quy tắc tính xác suất',
+            durationMinutes: 25,
+            blocks: [
+              { type: 'heading', level: 2, text: 'Biến cố và quy tắc tính xác suất' },
+              { type: 'paragraph', text: 'Biến cố là kết quả hoặc tập hợp các kết quả của một phép thử có thể xảy ra hoặc không xảy ra. Xác suất của biến cố A ký hiệu P(A).' },
+              { type: 'formula', latex: 'P(A \\cup B) = P(A) + P(B) - P(A \\cap B)', display: 'block' }
+            ]
+          },
+          {
+            id: 'le-m12-2-2',
+            title: 'Bài 5: Xác suất có điều kiện',
+            durationMinutes: 24,
+            blocks: [
+              { type: 'heading', level: 2, text: 'Xác suất có điều kiện' },
+              { type: 'paragraph', text: 'Xác suất có điều kiện của A khi B xảy ra là xác suất của biến cố A trong giả thiết rằng biến cố B đã xảy ra.' },
+              { type: 'formula', latex: 'P(A \\mid B) = \\frac{P(A \\cap B)}{P(B)}, \\quad P(B) > 0', display: 'block' },
+              { type: 'callout', variant: 'warning', title: 'Nhầm lẫn thường gặp', content: 'Phân biệt P(A|B) với P(B|A) — hai xác suất có điều kiện này thường khác nhau.' }
+            ]
+          },
+          {
+            id: 'le-m12-2-3',
+            title: 'Bài 6: Định lý Bayes',
+            durationMinutes: 26,
+            blocks: [
+              { type: 'heading', level: 2, text: 'Định lý Bayes' },
+              { type: 'paragraph', text: 'Định lý Bayes cho phép tính xác suất của nguyên nhân dựa trên kết quả quan sát được, khi đã biết các xác suất ngược lại.' },
+              { type: 'formula', latex: 'P(A_i \\mid B) = \\frac{P(A_i) \\, P(B \\mid A_i)}{\\sum_{j} P(A_j) \\, P(B \\mid A_j)}', display: 'block' }
+            ]
+          },
+          {
+            id: 'le-m12-2-4',
+            title: 'Bài 7: Luyện tập xác suất',
+            durationMinutes: 30,
+            blocks: [
+              { type: 'heading', level: 2, text: 'Luyện tập xác suất' },
+              { type: 'paragraph', text: 'Sau bài này, hãy chuyển sang phần Luyện tập để làm 10 câu về xác suất có điều kiện và định lý Bayes.' }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'course-phys-12',
+    title: 'Vật lý 12 — Dao động cơ học',
+    subject: 'Vật lý',
+    grade: 'Lớp 12',
+    description: 'Chuyên đề dao động cơ học: dao động điều hòa, con lắc lò xo và con lắc đơn — nền tảng cho đề thi tốt nghiệp.',
+    practiceCount: 4,
+    examCount: 2,
+    chapters: [
+      {
+        id: 'ch-p12-1',
+        title: 'Chương 1: Dao động điều hòa',
+        lessons: [
+          {
+            id: 'le-p12-1-1',
+            title: 'Bài 1: Dao động điều hòa',
+            durationMinutes: 20,
+            blocks: [
+              { type: 'heading', level: 2, text: 'Dao động điều hòa' },
+              { type: 'paragraph', text: 'Dao động điều hòa là dao động mà li độ là hàm cosin (hoặc sin) của thời gian theo phương trình x = A cos(ωt + φ).' },
+              { type: 'formula', latex: 'x = A\\cos(\\omega t + \\varphi); \\quad v = -A\\omega\\sin(\\omega t + \\varphi)', display: 'block' },
+              { type: 'image', src: '/physics_illustration.png', alt: 'Minh họa dao động điều hòa con lắc lò xo', size: 'medium' as const }
+            ]
+          },
+          {
+            id: 'le-p12-1-2',
+            title: 'Bài 2: Con lắc lò xo',
+            durationMinutes: 22,
+            blocks: [
+              { type: 'heading', level: 2, text: 'Con lắc lò xo' },
+              { type: 'paragraph', text: 'Con lắc lò xo gồm vật nhỏ khối lượng m treo vào lò xo có độ cứng k, dao động điều hòa với chu kỳ phụ thuộc vào m và k.' },
+              { type: 'formula', latex: 'T = 2\\pi\\sqrt{\\frac{m}{k}}', display: 'block' }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'course-lit-12',
+    title: 'Ngữ văn 12 — Ôn thi tốt nghiệp',
+    subject: 'Ngữ văn',
+    grade: 'Lớp 12',
+    description: 'Ôn tập kỹ năng đọc hiểu và viết bài nghị luận xã hội theo cấu trúc đề thi tốt nghiệp THPT.',
+    practiceCount: 3,
+    examCount: 2,
+    chapters: [
+      {
+        id: 'ch-l12-1',
+        title: 'Chương 1: Nghị luận xã hội',
+        lessons: [
+          {
+            id: 'le-l12-1-1',
+            title: 'Bài 1: Dàn ý nghị luận xã hội',
+            durationMinutes: 15,
+            blocks: [
+              { type: 'heading', level: 2, text: 'Dàn ý nghị luận xã hội' },
+              { type: 'list', ordered: true, items: ['Mở bài: giới thiệu vấn đề nghị luận', 'Thân bài: giải thích, bàn luận, mở rộng, phản đề', 'Kết bài: khẳng định vấn đề và bài học nhận thức'] }
+            ]
+          },
+          {
+            id: 'le-l12-1-2',
+            title: 'Bài 2: Bài nghị luận mẫu',
+            durationMinutes: 18,
+            blocks: [
+              { type: 'heading', level: 2, text: 'Bài nghị luận mẫu' },
+              { type: 'quote', text: 'Học tập không phải là chuẩn bị cho cuộc sống, học tập chính là cuộc sống.', cite: 'John Dewey' }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+];
+
+const SUBJECT_SLUGS: Record<string, string> = {
+  'toan-hoc': 'Toán học',
+  'vat-ly': 'Vật lý',
+  'hoa-hoc': 'Hóa học',
+  'tieng-anh': 'Tiếng Anh',
+  'sinh-hoc': 'Sinh học',
+  'ngu-van': 'Ngữ văn',
+};
+
+export function subjectToSlug(subject: string): string | undefined {
+  return Object.keys(SUBJECT_SLUGS).find((slug) => SUBJECT_SLUGS[slug] === subject);
+}
+
+/** Xây bộ luyện tập (pseudo-Exam) từ id ổn định dạng practice-*, dùng chung engine thi.
+ * examMistakes: truyền user.examMistakes từ mọi call-site (default {} chỉ là guard compile). */
+export function buildPracticeSet(
+  id: string,
+  examMistakes: Record<string, ExamMistake> = {}
+): Exam | undefined {
+  const collectQuestions = (predicate: (q: Question, exam: Exam) => boolean): Question[] =>
+    mockExams.flatMap((exam) => exam.questions.filter((q) => predicate(q, exam)));
+
+  const toPracticeExam = (questions: Question[], subject: string, title: string): Exam => ({
+    id,
+    title,
+    subject,
+    grade: 'Lớp 12',
+    difficulty: 'Trung bình',
+    questionCount: questions.length,
+    durationMinutes: Math.max(10, questions.length * 2),
+    tries: 0,
+    rating: 0,
+    isPremium: false,
+    tag: 'Luyện tập',
+    questions,
+  });
+
+  if (id.startsWith('topic-')) {
+    const subject = SUBJECT_SLUGS[id.slice('topic-'.length)];
+    if (!subject) return undefined;
+    const questions = collectQuestions((_q, exam) => exam.subject === subject);
+    return questions.length > 0 ? toPracticeExam(questions, subject, `Luyện theo chủ đề: ${subject}`) : undefined;
+  }
+
+  if (id === 'mistakes-review') {
+    const questions = collectQuestions((q, exam) => {
+      const m = examMistakes[q.id];
+      return m && m.examId === exam.id && !m.mastered;
+    });
+    return questions.length > 0 ? toPracticeExam(questions, 'Tổng hợp', 'Ôn câu sai') : undefined;
+  }
+
+  if (id.startsWith('quick-')) {
+    const parts = id.split('-');
+    const count = Number(parts[parts.length - 1]);
+    if (!Number.isInteger(count) || ![10, 20].includes(count)) return undefined;
+    const subject = SUBJECT_SLUGS[parts.slice(1, -1).join('-')];
+    if (!subject) return undefined;
+    // ponytail: slice đầu danh sách (deterministic, không Math.random) — shuffle khi có adaptive engine
+    const questions = collectQuestions((_q, exam) => exam.subject === subject).slice(0, count);
+    return questions.length > 0 ? toPracticeExam(questions, subject, `Luyện nhanh ${questions.length} câu: ${subject}`) : undefined;
+  }
+
+  return undefined;
+}
+
+/** Bộ luyện thích ứng: ≤5 câu sai chưa nắm (ôn nền tảng) + câu môn yếu nhất đủ 15 (mức hiện tại) + câu môn khác đủ 20 (thử thách).
+ * id cố định 'adaptive' để result.examId khớp khi resolve lại. Trả undefined khi không còn câu sai nào chưa nắm. */
+export function buildAdaptiveSet(examMistakes: Record<string, ExamMistake> = {}): Exam | undefined {
+  const unmastered = Object.entries(examMistakes).filter(([, m]) => !m.mastered);
+  if (unmastered.length === 0) return undefined;
+
+  const questionIndex = new Map<string, { question: Question; subject: string }>();
+  for (const exam of mockExams) {
+    for (const q of exam.questions) questionIndex.set(q.id, { question: q, subject: exam.subject });
+  }
+
+  const picked = new Set<string>();
+  const questions: Question[] = [];
+
+  // 1) Ôn nền tảng: câu sai chưa nắm (≤5, theo thứ tự key)
+  for (const [qid] of unmastered) {
+    if (questions.length >= 5) break;
+    const entry = questionIndex.get(qid);
+    if (entry && !picked.has(qid)) {
+      picked.add(qid);
+      questions.push(entry.question);
+    }
+  }
+
+  // 2) Mức hiện tại: môn có nhiều lỗi chưa nắm nhất — count cao nhất trước, tie chọn môn xuất hiện đầu (deterministic)
+  const subjectCounts = new Map<string, number>();
+  for (const [, m] of unmastered) {
+    const subject = mockExams.find((e) => e.id === m.examId)?.subject;
+    if (subject) subjectCounts.set(subject, (subjectCounts.get(subject) || 0) + 1);
+  }
+  const weakSubject = [...subjectCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+
+  if (weakSubject) {
+    for (const exam of mockExams) {
+      if (exam.subject !== weakSubject) continue;
+      for (const q of exam.questions) {
+        if (questions.length >= 15) break;
+        if (!picked.has(q.id)) {
+          picked.add(q.id);
+          questions.push(q);
+        }
+      }
+      if (questions.length >= 15) break;
+    }
+  }
+
+  // 3) Thử thách: câu môn khác fill đến 20
+  for (const exam of mockExams) {
+    if (exam.subject === weakSubject) continue;
+    for (const q of exam.questions) {
+      if (questions.length >= 20) break;
+      if (!picked.has(q.id)) {
+        picked.add(q.id);
+        questions.push(q);
+      }
+    }
+    if (questions.length >= 20) break;
+  }
+
+  if (questions.length === 0) return undefined;
+  return {
+    id: 'adaptive',
+    title: 'Luyện theo năng lực của bạn',
+    subject: weakSubject || 'Tổng hợp',
+    grade: 'Lớp 12',
+    difficulty: 'Trung bình',
+    questionCount: questions.length,
+    durationMinutes: Math.max(10, questions.length * 2),
+    tries: 0,
+    rating: 0,
+    isPremium: false,
+    tag: 'Adaptive',
+    questions,
+  };
+}
+
+// ===== Teacher Studio analytics (P6) — aggregates deterministic, mọi chỉ số derive ở render =====
+export interface ClassExamAnalytics {
+  examId: string;
+  className: string;
+  studentScores: number[];    // điểm 0-10 từng học sinh
+  questionAccuracy: number[]; // % đúng từng câu (index = thứ tự câu trong đề)
+  topicAccuracy: { topic: string; percent: number }[];
+}
+
+export const mockClassAnalytics: ClassExamAnalytics[] = [
+  {
+    examId: 'exam-math-1',
+    className: 'Lớp 12A',
+    studentScores: [8.5, 7, 9, 6.5, 8, 7.5, 5.5, 9.5, 7, 8],
+    questionAccuracy: [80, 70, 60, 90, 50],
+    topicAccuracy: [
+      { topic: 'Hàm số và đồ thị', percent: 75 },
+      { topic: 'Mũ và Logarit', percent: 60 },
+    ],
+  },
+  {
+    examId: 'exam-phys-1',
+    className: 'Lớp 12B',
+    studentScores: [7, 8, 6, 9, 5.5, 7.5, 8.5, 6.5],
+    questionAccuracy: [75, 62.5, 87.5, 50, 62.5],
+    topicAccuracy: [{ topic: 'Dao động cơ học', percent: 62 }],
+  },
+];
+
+/** Derive tiến độ khóa học từ user.completedLessons — nguồn duy nhất dùng chung Home/Courses/CourseDetail. */export function courseProgress(
+  course: Course,
+  completedLessons: Record<string, true>
+): { percent: number; done: number; total: number; nextLesson?: CourseLesson; nextChapterTitle?: string } {
+  const lessons = course.chapters.flatMap((ch) => ch.lessons);
+  const done = lessons.filter((l) => completedLessons[l.id]).length;
+  const nextLesson = lessons.find((l) => !completedLessons[l.id]);
+  const nextChapter = nextLesson
+    ? course.chapters.find((ch) => ch.lessons.some((l) => l.id === nextLesson.id))
+    : undefined;
+  return {
+    percent: lessons.length === 0 ? 0 : Math.round((done / lessons.length) * 100),
+    done,
+    total: lessons.length,
+    nextLesson,
+    nextChapterTitle: nextChapter?.title,
+  };
+}
+
+/** Tiến độ trung bình theo môn (dedupe subject) — dùng chung Home snapshot + Progress tổng quan. */
+export function subjectProgress(
+  courses: Course[],
+  completedLessons: Record<string, true>
+): { subject: string; percent: number }[] {
+  const bySubject = new Map<string, { sum: number; count: number }>();
+  for (const c of courses) {
+    const { percent } = courseProgress(c, completedLessons);
+    const cur = bySubject.get(c.subject) || { sum: 0, count: 0 };
+    bySubject.set(c.subject, { sum: cur.sum + percent, count: cur.count + 1 });
+  }
+  return [...bySubject.entries()].map(([subject, v]) => ({
+    subject,
+    percent: Math.round(v.sum / v.count),
+  }));
+}

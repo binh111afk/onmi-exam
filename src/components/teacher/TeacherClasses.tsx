@@ -1,0 +1,69 @@
+import React from 'react';
+import { ArrowLeft, ArrowRight, Users } from 'lucide-react';
+import { mockClassAnalytics, mockExams } from '../../data/mockData';
+
+interface TeacherClassesProps {
+  onSelectExam: (examId: string) => void;
+  onBack: () => void;
+}
+
+export const TeacherClasses: React.FC<TeacherClassesProps> = ({ onSelectExam, onBack }) => {
+  return (
+    <div className="max-w-[1440px] mx-auto px-6 lg:px-8 py-8 antialiased">
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1.5 text-xs font-bold text-text-secondary hover:text-primary transition-colors cursor-pointer mb-5"
+      >
+        <ArrowLeft size={14} /> Dashboard
+      </button>
+
+      <header className="mb-6">
+        <h1 className="text-2xl font-black text-text-primary">Lớp học</h1>
+        <p className="text-xs text-text-secondary font-medium mt-1">
+          Các lớp đang sử dụng đề của bạn — chọn lớp để xem analytics
+        </p>
+      </header>
+
+      {mockClassAnalytics.length === 0 ? (
+        <div className="bg-white border border-slate-100 rounded-2xl p-10 text-center">
+          <Users size={28} className="mx-auto text-slate-300 mb-3" />
+          <p className="text-xs font-bold text-text-secondary">Chưa có lớp học nào</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {mockClassAnalytics.map((item) => {
+            const exam = mockExams.find((e) => e.id === item.examId);
+            const avg = item.studentScores.length > 0
+              ? item.studentScores.reduce((s, v) => s + v, 0) / item.studentScores.length
+              : 0;
+            return (
+              <div
+                key={`${item.className}-${item.examId}`}
+                className="bg-white border border-slate-100 rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4 hover:border-primary/30 transition-all duration-200"
+              >
+                <div className="min-w-0">
+                  <h2 className="text-sm font-black text-text-primary">{item.className}</h2>
+                  <p className="text-[11px] text-text-secondary font-medium mt-0.5 truncate">
+                    {exam?.title || item.examId}
+                  </p>
+                  <div className="flex items-center gap-3 text-[10px] font-bold text-text-secondary mt-2">
+                    <span className="flex items-center gap-1">
+                      <Users size={11} /> {item.studentScores.length} học sinh
+                    </span>
+                    <span>ĐTB {avg.toFixed(1)}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => onSelectExam(item.examId)}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-primary hover:bg-primary/90 text-white text-xs font-bold rounded-xl cursor-pointer transition-all duration-200 shrink-0"
+                >
+                  Xem analytics <ArrowRight size={13} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};

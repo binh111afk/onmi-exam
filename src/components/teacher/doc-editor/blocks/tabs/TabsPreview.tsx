@@ -38,7 +38,7 @@ export const TabsPreview: React.FC<TabsPreviewProps> = ({
   }
 
   const activeTab = tabs.find(t => t.id === activeTabId) || tabs[0];
-  const themeColor = settings.themeColor || '#6366f1';
+  const themeColor = settings.themeColor || '#6C5DD3';
 
   const isLeft = settings.position === 'left';
   const isBottom = settings.position === 'bottom';

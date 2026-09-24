@@ -6,7 +6,6 @@ import { OmlPreviewPaper } from '../../ExamEditor/OmlRenderer/OmlPreviewPaper';
 import { parseFileToOml } from '../../../services/ocrService';
 import type { OmlQuestionBlock } from '../../../types/oml';
 import {
-  File,
   X,
   ChevronRight,
   Sparkles,
@@ -93,7 +92,6 @@ export const ExamQuickOcrStep: React.FC<ExamQuickOcrStepProps> = ({
   handleDragOver,
   handleDrop,
   handleJsonUpload,
-  handleQuickScroll,
   renderExamPreviewColumn,
   onApplyOcrCode,
 }) => {

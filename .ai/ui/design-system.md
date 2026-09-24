@@ -40,6 +40,14 @@ Onmi uses a custom design system built on **TailwindCSS v4**. Design tokens are 
 | Danger Hover | `--color-danger-hover` | `#DC2626` | `hover:bg-danger-hover` |
 | Danger Light | `--color-danger-light` | `#FEF2F2` | `bg-danger-light` |
 
+### Warning (Amber)
+
+| Token | CSS Variable | Hex | Tailwind Class |
+|---|---|---|---|
+| Warning | `--color-warning` | `#F59E0B` | `text-warning`, `bg-warning` |
+| Warning Hover | `--color-warning-hover` | `#D97706` | `hover:bg-warning-hover` |
+| Warning Light | `--color-warning-light` | `#FFFBEB` | `bg-warning-light` |
+
 ### Text Colors
 
 | Token | CSS Variable | Hex | Usage |

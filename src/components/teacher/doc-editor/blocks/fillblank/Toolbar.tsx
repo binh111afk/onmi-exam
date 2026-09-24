@@ -22,7 +22,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
   if (!isBlockActive) return null;
 
-  const themeColor = settings.themeColor || '#8B5CF6';
+  const themeColor = settings.themeColor || '#6C5DD3';
 
   return (
     <div className="mb-2 animate-fadeIn select-none">
